@@ -45,8 +45,8 @@ Before you install the MagicPrompt Extension, ensure that you have the following
 To install the MagicPrompt Extension, follow these steps:
 
 1. Close your SwarmUI instance and navigate to `SwarmUI/src/Extensions` directory and clone the repo there. Open cmd `cd` to the directory above and `git clone ` the repo.
-2. Run `update-windows.bat` or `update-linuxmac.sh` to recompile the project.
-3. Configue the extension as described in the Configuration section.
+2. Configure the extension as described in the [Configuration](#configuration) section.
+3. Run `update-windows.bat` or `update-linuxmac.sh` to recompile the project.
 4. Restart your SwarmUI instance.
 
 ## Configuration
@@ -54,7 +54,7 @@ To install the MagicPrompt Extension, follow these steps:
 
 The MagicPrompt Extension can be used with ay LLM model that is supported by Jan AI. To configure the extension, follow these steps:
 
-1. Open the extension folder in your SwarmUI instance and open the `config.json` file.
+1. Open the extension folder in your SwarmUI instance and open the `setup.json` file.
 2. replace the `LlmEndpoint` with the URL of your LLM API server. and If you want, replace the `Instructions` with your own.				
 3. Currently, you need to hardcode the model name in the MagicPromptAPI.cs file. This will change in the future.
 4. Save your changes and rebuild the project.

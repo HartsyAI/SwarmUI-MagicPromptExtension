@@ -70,7 +70,7 @@ namespace Kalebbroo.Extensions.MagicPromptExtension.WebAPI
         /// <returns>Tuple containing the instructions and API endpoint, or null values if loading fails.</returns>
         private static async Task<(string instructions, string llmEndpoint)> LoadConfigData()
         {
-            string configFilePath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, "src/Extensions/MagicPromptExtension", "setup.json");
+            string configFilePath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, "src/Extensions/SwarmUI-MagicPromptExtension", "setup.json");
             try
             {
                 string configContent = await File.ReadAllTextAsync(configFilePath);
