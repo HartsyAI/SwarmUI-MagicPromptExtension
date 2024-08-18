@@ -1,7 +1,7 @@
-﻿# SwarmUI MagicPrompt Extension
+# SwarmUI MagicPrompt Extension
 ===============================
 
-![Image description](./Images/kalebbroo.png)
+![Kalebbroo LLC](./Images/kalebbroo.png)
 
 ## Table of Contents
 -----------------
@@ -63,9 +63,13 @@ The MagicPrompt Extension can be used with ay LLM model that is supported by Jan
 --------
 
 1. When you open your SwarmUI instance, you will see a new tab called "Kalebbroo". All the extensions will be under this tab.
+![Image description](./Images/Screenshots/kalebbroo_tab.png)
 2. Enter your crappy prompt in the box and click submit or hit enter. 
-3. It will rewrite the prompt for your review.				
+![Image description](./Images/Screenshots/magicprompt_tab.png)
+3. It will rewrite the prompt for your review.	
+![Image description](./Images/Screenshots/rewritten.png)
 4. If you like the prompt, click send to prompt button and it will yeet it to the Generate tab and fill in your prompt box.
+![Image description](./Images/Screenshots/generate.png)
 
 ## Troubleshooting
 -----------------
