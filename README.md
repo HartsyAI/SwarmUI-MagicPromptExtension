@@ -1,7 +1,7 @@
 ﻿# SwarmUI MagicPrompt Extension
 ===============================
 
-![Image description](../Images/kalebbroo.png)
+![Image description](./Images/kalebbroo.png)
 
 ## Table of Contents
 -----------------
