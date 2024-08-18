@@ -1,0 +1,31 @@
+# Ignore build output
+/dist
+/build
+
+# Ignore node_modules
+/node_modules
+
+# Ignore IDE files
+/.idea
+/.vscode
+
+# Ignore operating system files
+.DS_Store
+Thumbs.db
+
+# Ignore logs
+/logs
+
+# Ignore images folder (if you don't want to track images)
+/!Images
+
+# Ignore config files
+/config.json
+
+# Ignore package files
+/package-lock.json
+/yarn.lock
+
+# Ignore other files
+/.env
+/.gitattributes
