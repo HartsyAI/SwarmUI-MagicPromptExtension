@@ -4,9 +4,9 @@ using SwarmUI.WebAPI;
 using System.Net.Http;
 using System.Text.Json;
 using System.IO;
-using Kalebbroo.Extensions.MagicPromptExtension.WebAPI.Models;
+using hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
 
-namespace Kalebbroo.Extensions.MagicPromptExtension.WebAPI
+namespace hartsy.Extensions.MagicPromptExtension.WebAPI
 {
     [API.APIClass("API routes related to MagicPromptExtension extension")]
     public static class MagicPromptAPI
@@ -15,9 +15,48 @@ namespace Kalebbroo.Extensions.MagicPromptExtension.WebAPI
         public static void Register()
         {
             API.RegisterAPICall(PhoneHomeAsync, true);
+            API.RegisterAPICall(GetAvailableModelsAsync);
         }
 
         private static readonly HttpClient _httpClient = new();
+
+        /// <summary>Fetches available models from the LLM API endpoint.</summary>
+        /// <returns>A JSON object containing the models or an error message.</returns>
+        public static async Task<JObject> GetAvailableModelsAsync()
+        {
+            try
+            {
+                Logs.Info("Fetching available models for the MagicPrompt Extension...");
+                string url = "http://192.168.0.15:11434/api/tags";
+                HttpResponseMessage response = await _httpClient.GetAsync(url);
+                if (response.IsSuccessStatusCode)
+                {
+                    string jsonString = await response.Content.ReadAsStringAsync();
+                    List<ModelData> models = DeserializeModels(jsonString);
+                    if (models != null)
+                    {
+                        return CreateSuccessResponse(null, models);
+                    }
+                    else
+                    {
+                        string error = "Failed to parse models from response.";
+                        Logs.Error(error);
+                        return CreateErrorResponse(error);
+                    }
+                }
+                else
+                {
+                    string error = $"Error fetching models: {response.StatusCode} - {response.ReasonPhrase}";
+                    Logs.Error(error);
+                    return CreateErrorResponse(error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logs.Error($"Exception occurred: {ex.Message}");
+                return CreateErrorResponse(ex.Message);
+            }
+        }
 
         /// <summary>Sends the prompt to the LLM API and processes the response.</summary>
         /// <returns>Returns a JSON object with success and a rewritten prompt or an error.</returns>
@@ -30,7 +69,8 @@ namespace Kalebbroo.Extensions.MagicPromptExtension.WebAPI
             }
             """)]
         public static async Task<JObject> PhoneHomeAsync(
-            [API.APIParameter("Text input")] string inputText)
+            [API.APIParameter("Text input")] string inputText,
+            [API.APIParameter("Model ID")]string modelId)
         {
             try
             {
@@ -39,14 +79,16 @@ namespace Kalebbroo.Extensions.MagicPromptExtension.WebAPI
                 {
                     return CreateErrorResponse("Failed to load configuration.");
                 }
-                object requestBody = CreateRequestBody(inputText, instructions, llmEndpoint);
+                llmEndpoint += "/api/chat";
+                inputText = $"{instructions} User: {inputText}";
+                Logs.Verbose($"Sending prompt to LLM API: {inputText}");
+                object requestBody = CreateRequestBody(inputText, modelId);
                 HttpResponseMessage response = await SendRequest(llmEndpoint, requestBody);
                 if (response.IsSuccessStatusCode)
                 {
                     string llmResponse = await DeserializeResponse(response);
                     if (!string.IsNullOrEmpty(llmResponse))
                     {
-                        llmResponse = llmResponse.Replace("<|end_of_turn|>", "");
                         return CreateSuccessResponse(llmResponse);
                     }
                     else
@@ -89,26 +131,22 @@ namespace Kalebbroo.Extensions.MagicPromptExtension.WebAPI
             }
         }
 
-        /// <summary>Chooses the body for the LLM API request. This will be dynamic if needed.</summary>
+        /// <summary>Chooses the body for the LLM API request. Currently only supports Ollama.</summary>
         /// <returns>An object representing the JSON structure for the API request.</returns>
-        private static object CreateRequestBody(string inputText, string instructions, string llmEndpoint)
+        private static object CreateRequestBody(string inputText, string currentModel)
         {
-            // TODO: Add other request body formats for other API backends if needed
             return new
             {
-                model = "openchat-3.5-7b",  // TODO: Create method to get current model instead of hardcoding
+                model = currentModel,
                 messages = new[]
+                {
+                    new
                     {
-                        new { role = "system", content = instructions },
-                        new { role = "user", content = inputText }
-                    },
-                stream = false,
-                max_tokens = 2048,
-                stop = new[] { "End" },
-                frequency_penalty = 0.2,
-                presence_penalty = 0.6,
-                temperature = 0.8,
-                top_p = 0.95
+                        role = "user",
+                        content = inputText
+                    }
+                },
+                stream = false
             };
         }
 
@@ -130,7 +168,7 @@ namespace Kalebbroo.Extensions.MagicPromptExtension.WebAPI
             }
         }
 
-        /// <summary>Makes the JSON response into a structured object and extracys the Message.Content.</summary>
+        /// <summary>Makes the JSON response into a structured object and extracts the Message.Content.</summary>
         /// <returns>The rewritten prompt, or null if deserialization fails.</returns>
         private static async Task<string> DeserializeResponse(HttpResponseMessage response)
         {
@@ -141,23 +179,14 @@ namespace Kalebbroo.Extensions.MagicPromptExtension.WebAPI
                 {
                     PropertyNameCaseInsensitive = true
                 };
-                JsonSerializerOptions options = jsonSerializerOptions;
-                LLMResponse llmResponse = JsonSerializer.Deserialize<LLMResponse>(responseContent, options);
-                if (llmResponse?.Choices != null && llmResponse.Choices.Length > 0)
+                LLMOllamaResponse llmResponse = JsonSerializer.Deserialize<LLMOllamaResponse>(responseContent, jsonSerializerOptions);
+                if (llmResponse?.Message != null)
                 {
-                    Choice choice = llmResponse.Choices[0];
-                    if (choice.Message != null)
-                    {
-                        return choice.Message.Content;
-                    }
-                    else
-                    {
-                        Logs.Error("Message object is null in the Choice element.");
-                    }
+                    return llmResponse.Message.Content;
                 }
                 else
                 {
-                    Logs.Error("Choices array is null or empty.");
+                    Logs.Error("Message object is null in the response.");
                 }
                 return null;
             }
@@ -168,14 +197,37 @@ namespace Kalebbroo.Extensions.MagicPromptExtension.WebAPI
             }
         }
 
+        /// <summary>Deserializes the API response into a list of models.</summary>
+        /// <returns>A list of models or null if deserialization fails.</returns>
+        private static List<ModelData> DeserializeModels(string responseContent)
+        {
+            try
+            {
+                RootObject rootObject = Newtonsoft.Json.JsonConvert.DeserializeObject<RootObject>(responseContent);
+                if (rootObject?.Data != null)
+                {
+                    return rootObject.Data;
+                }
+                Logs.Error("Data array is null or empty.");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Logs.Error($"Error deserializing models: {ex.Message}");
+                return null;
+            }
+        }
+
         /// <summary>Creates a JSON object for a success, includes the rewritten prompt.</summary>
         /// <returns>The success bool and the rewritten prompt to the JavaScript function that called it.</returns>
-        private static JObject CreateSuccessResponse(string llmResponse)
+        private static JObject CreateSuccessResponse(string response, List<ModelData> models = null)
         {
             return new JObject
             {
-                { "success", true },
-                { "response", llmResponse }
+                ["success"] = true,
+                ["response"] = response,
+                ["models"] = models != null ? JArray.FromObject(models) : null,
+                ["error"] = null
             };
         }
 

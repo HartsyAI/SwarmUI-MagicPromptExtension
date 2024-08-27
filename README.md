@@ -21,15 +21,15 @@
 ## Introduction
 ---------------
 
-The Magic Prompt Extension is a browser extension that provides a simple and intuitive way to generate text prompts for Stable Diffusion models.
+The MagicPrompt Extension provides a simple and intuitive way directly in SwarmUI to generate text prompts for Stable Diffusion images. This uses your local Ollama LLMs. 
 
 ## Features
 ------------
 
-* Generate text prompts for Stable Diffusion models
-* Supports multiple models and configurations
-* Easy-to-use interface for customizing prompts
-* Compatible with other Kalebbroo SwarmUI extensions
+* Generate a rewritten prompt with more detail directly in SwarmUI
+* Supports any models you have on your local Ollama LLM server
+* Easy-to-use interface that will send the rewritten prompts to the Generate tab
+* Compatible with other SwarmUI extensions from Hartsy.AI
 
 ## Prerequisites
 ----------------
@@ -37,32 +37,32 @@ The Magic Prompt Extension is a browser extension that provides a simple and int
 Before you install the MagicPrompt Extension, ensure that you have the following prerequisites:
 
 * You need to have SwarmUI installed on your system. If you don't have it installed, you can download it from [here](https://github.com/mcmonkeyprojects/SwarmUI).
-* This extension assumes you have a working and setup local LLM API server. If you don't have one installed, you can download Jan AI from [here](https://jan.ai). If you want to use a paid API like OpenAI you can also set that up in Jan AI.
+* This extension assumes you have a working and setup local Ollama LLM API server and you know the URL to make API calls. If you do not have this installed follow the instructions on their [GitHub](https://github.com/ollama/ollama).
 
 ## Installation
 --------------
 
-To install the MagicPrompt Extension, follow these steps:
+To install the Extension real through all the steps before attempting to install. Then, follow these steps:
 
 1. Close your SwarmUI instance and navigate to `SwarmUI/src/Extensions` directory and clone the repo there. Open cmd `cd` to the directory above and `git clone ` the repo.
 2. Configure the extension as described in the [Configuration](#configuration) section.
-3. Run `update-windows.bat` or `update-linuxmac.sh` to recompile the project.
-4. Restart your SwarmUI instance.
+3. Make sure you have run `update-windows.bat` or `update-linuxmac.sh` to recompile SwarmUI. This only needs to be done on first install.
+4. Restart your SwarmUI instance and refresh your browser. You should now have a new tab called Hartsy.AI and a sub-tab called MagicPrompt.
 
 ## Configuration
 ----------------
 
-The MagicPrompt Extension can be used with ay LLM model that is supported by Jan AI. To configure the extension, follow these steps:
+The MagicPrompt Extension can be used with ay LLM model that is supported by Ollama. Currently only Ollama is supported:
 
 1. Open the extension folder in your SwarmUI instance and open the `setup.json` file.
-2. replace the `LlmEndpoint` with the URL of your LLM API server. and If you want, replace the `Instructions` with your own.				
-3. Currently, you need to hardcode the model name in the MagicPromptAPI.cs file. This will change in the future.
-4. Save your changes and rebuild the project.
+2. replace the `LlmEndpoint` with the your LLM API server IP. For most people you should change this to `http://localhost:11434`. If you want, replace the `Instructions` with your own.
+3. Make sure you have at least 1 model downloaded and ready in your Ollama instance.
+4. Save your changes and rebuild the SwarmUI project using the `update-windows.bat` or `update-linuxmac.sh` script.
 
 ## Usage
 --------
 
-1. When you open your SwarmUI instance, you will see a new tab called "Kalebbroo". All the extensions will be under this tab.
+1. When you open your SwarmUI instance, you will see a new tab called "Hartsy.AI". All our extensions will be under this tab.
 ![Image description](./Images/Screenshots/kalebbroo_tab.PNG)
 2. Enter your crappy prompt in the box and click submit or hit enter. 
 ![Image description](./Images/Screenshots/magicprompt_tab.PNG)
@@ -70,22 +70,33 @@ The MagicPrompt Extension can be used with ay LLM model that is supported by Jan
 ![Image description](./Images/Screenshots/rewritten.PNG)
 4. If you like the prompt, click send to prompt button and it will yeet it to the Generate tab and fill in your prompt box.
 ![Image description](./Images/Screenshots/generate.PNG)
+5. If you do not like it enter a new prompt or click the regenerate button to get a new version of your original prompt. 
+6. Profit.
 
 ## Troubleshooting
 -----------------
 
-If you encounter any issues check the common solutions before you open an issue on GitHub.
+If you encounter any issues check these common solutions before you open an issue on GitHub.
 
 * Check the logs for any error messages or warnings.
 * Ensure that the extension is properly installed and configured. Did you add your API URL to the config.json file?
-* If you are using any LLM service other than Jan AI, I cannot guarantee that it will work. You may need to modify the code to work with your service.
-* Ask in the SwarmUI Discord server for help. That is one of the places I live.
+* If you are using any LLM service other than Ollama, I cannot guarantee that it will work. You may need to modify the code to work with your service. Feel free to enter a feature request to add support for your service.
+* Ask me in the SwarmUI Discord server for help by creating a new post in [#help-fourm](https://discord.com/channels/1243166023859961988/1255990493830057995/1255990493830057995). That is one of the places I live.
 * If you still have issues, open an issue on GitHub or join my [Dev Discord Server](https://discord.com/invite/5m4Wyu52Ek)
 
 ## Changelog
 ------------
 
 * Version 0.1: Initial release
+* Version 0.2: Added support for Ollama LLM API and removed Jan support
+* Version 0.2.1: Fixed a bug where the extension would not work if the prompt was empty
+* Version 0.2.2: Small bug fixes
+* Version 0.3: Added a select menu to choose which model to use
+* Version 0.4: Added a regenerate button if you did not like the rewritten prompt
+* Version 0.5: changed the Instructions to be betterer
+* Version 0.6: Changed the main tab to be Hartsy.AI (Branding is everything)
+* Version 0.7: Updated the readme to be more informative
+* Version 1.0: Initial public release
 
 ## License
 ----------

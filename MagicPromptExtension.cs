@@ -1,14 +1,14 @@
-﻿using Kalebbroo.Extensions.MagicPromptExtension.WebAPI;
+﻿using hartsy.Extensions.MagicPromptExtension.WebAPI;
 using SwarmUI.Core;
 using SwarmUI.Utils;
 
-namespace Kalebbroo.Extensions.MagicPromptExtension
+namespace hartsy.Extensions.MagicPromptExtension
 {
     public class MagicPromptExtension : Extension
     {
         public override void OnPreInit()
         {
-            Logs.Debug("MagicPromptExtension started.");
+            Logs.Debug("MagicPromptExtension started. Visit https://Hartsy.AI to see more.");
             ScriptFiles.Add("Assets/magicprompt.js");
         }
 
