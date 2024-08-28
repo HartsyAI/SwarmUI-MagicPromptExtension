@@ -52,7 +52,7 @@ To install the Extension, read through all the steps before attempting to instal
 ## Configuration
 ----------------
 
-The MagicPrompt Extension can be used with ay LLM model that is supported by Ollama. Currently only Ollama is supported:
+The MagicPrompt Extension can be used with any LLM model that is supported by Ollama. Currently only Ollama is supported:
 
 1. Open the extension folder in your SwarmUI instance and open the `setup.json` file.
 2. replace the `LlmEndpoint` with the your LLM API server IP. For most people you should change this to `http://localhost:11434`. If you want, replace the `Instructions` with your own.
