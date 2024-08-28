@@ -63,15 +63,16 @@ The MagicPrompt Extension can be used with ay LLM model that is supported by Oll
 --------
 
 1. When you open your SwarmUI instance, you will see a new tab called "Hartsy.AI". All our extensions will be under this tab.
-![Image description](./Images/Screenshots/kalebbroo_tab.PNG)
-2. Enter your crappy prompt in the box and click submit or hit enter. 
-![Image description](./Images/Screenshots/magicprompt_tab.PNG)
-3. It will rewrite the prompt for your review.	
-![Image description](./Images/Screenshots/rewritten.PNG)
-4. If you like the prompt, click send to prompt button and it will yeet it to the Generate tab and fill in your prompt box.
-![Image description](./Images/Screenshots/generate.PNG)
-5. If you do not like it enter a new prompt or click the regenerate button to get a new version of your original prompt. 
-6. Profit.
+![The New Hartsy tab](./Images/Screenshots/hartsyTab.PNG)
+2. Choose a model from the dropdown menu. Personally I like StableLM-Zephyr 3B.
+3. Enter your crappy prompt in the box and click submit or hit enter. 
+![MagicPrompt Tab in the Hartsy tab](./Images/Screenshots/magicprompttab.PNG)
+4. It will rewrite the prompt for your review.	
+![Rewritten Prompt](./Images/Screenshots/rewritten.PNG)
+5. If you like the prompt, click send to prompt button and it will yeet it to the Generate tab and fill in your prompt box.
+![Generate from the prompt](./Images/Screenshots/generate.PNG)
+6. If you do not like it enter a new prompt or click the regenerate button to get a new version of your original prompt. 
+7. Profit.
 
 ## Troubleshooting
 -----------------

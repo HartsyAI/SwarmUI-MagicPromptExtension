@@ -27,8 +27,9 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI
             try
             {
                 Logs.Info("Fetching available models for the MagicPrompt Extension...");
-                string url = "http://192.168.0.15:11434/api/tags";
-                HttpResponseMessage response = await _httpClient.GetAsync(url);
+                var (instructions, llmEndpoint) = await LoadConfigData();
+                llmEndpoint += "/api/tags";
+                HttpResponseMessage response = await _httpClient.GetAsync(llmEndpoint);
                 if (response.IsSuccessStatusCode)
                 {
                     string jsonString = await response.Content.ReadAsStringAsync();
@@ -89,7 +90,9 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI
                     string llmResponse = await DeserializeResponse(response);
                     if (!string.IsNullOrEmpty(llmResponse))
                     {
-                        return CreateSuccessResponse(llmResponse);
+                        // Remove the "AI: " prefix if it exists
+                        string cleanedResponse = llmResponse.StartsWith("AI: ") ? llmResponse[4..] : llmResponse;
+                        return CreateSuccessResponse(cleanedResponse);
                     }
                     else
                     {
