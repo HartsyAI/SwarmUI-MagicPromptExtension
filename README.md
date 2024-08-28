@@ -1,7 +1,7 @@
 # SwarmUI MagicPrompt Extension
 ===============================
 
-![Kalebbroo LLC](./Images/kalebbroo.png)
+![HartsySwarm](./Images/HartsySwarm.webp)
 
 ## Table of Contents
 -----------------
