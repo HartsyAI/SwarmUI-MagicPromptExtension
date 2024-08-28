@@ -42,7 +42,7 @@ Before you install the MagicPrompt Extension, ensure that you have the following
 ## Installation
 --------------
 
-To install the Extension real through all the steps before attempting to install. Then, follow these steps:
+To install the Extension, read through all the steps before attempting to install. Then, follow these steps:
 
 1. Close your SwarmUI instance and navigate to `SwarmUI/src/Extensions` directory and clone the repo there. Open cmd `cd` to the directory above and `git clone ` the repo.
 2. Configure the extension as described in the [Configuration](#configuration) section.
