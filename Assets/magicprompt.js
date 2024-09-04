@@ -62,30 +62,112 @@ async function addMagicPromptTab()
         newTabContent.id = 'MagicPrompt-Tab';
         newTabContent.setAttribute('role', 'tabpanel');
         newTabContent.innerHTML = `
-             <div class="card border-secondary mb-3 card-center-container" style="width: 287.5px; float: left; margin-left: 200px; margin-right: 20px; box-sizing: border-box;">
-                 <div class="card-header translate">Choose a Model to Load (3B works well)</div>
-                 <div class="card-body">
-                     <div class="form-group" style="display: flex; align-items: center;">
-                         <label for="modelSelect" class="translate" style="margin-right: 10px;">Models:</label>
-                         <select id="modelSelect" class="form-control auto-dropdown" style="margin-right: 20px;">
-                             <option value="" selected disabled>Loading models...</option>
-                         </select>
-                     </div>
-                 </div>
-             </div>
-             <div class="card border-secondary mb-3 card-center-container" style="width: 60%; margin-left: 20px; margin-right: 20px;">
-                 <div class="card-header translate">MagicPrompt</div>
-                 <div class="card-body">
-                     <p class="card-text translate">Enter a prompt and let your AI do its magic:</p>
-                     <textarea id="chat_llm_textarea" placeholder="A photo of Steve Irwin finding a mcmonkey in the wild, with text in a speech bubble that says aint she a beaute" style="width: 100%; height: 100px;"></textarea>
-                     <button id="chat_llm_submit_button" class="basic-button translate" style="margin-top: 10px;">Submit</button>
-                     <button id="send_to_prompt_button" class="basic-button translate" style="margin-top: 10px;">Send to Prompt</button>
-                     <button id="regenerate" class="basic-button translate" style="margin-top: 10px;">Regenerate</button>
-                     <div id="original_prompt" style="margin-top: 20px; white-space: pre-wrap;"></div>
-                     <div id="chat_llm_response" style="margin-top: 20px; white-space: pre-wrap;"></div>
-                 </div>
-             </div>
-         `;
+            <!-- Choose a Model Section -->
+            <div class="card border-secondary mb-3 card-center-container" style="width: 287.5px; float: left; margin-left: 200px; margin-right: 20px; box-sizing: border-box;">
+                <div class="card-header translate">Choose a Model to Load (3B works well)</div>
+                <div class="card-body">
+                    <div class="form-group" style="display: flex; align-items: center;">
+                        <label for="modelSelect" class="translate" style="margin-right: 10px;">Models:</label>
+                        <select id="modelSelect" class="form-control auto-dropdown" style="margin-right: 20px;">
+                            <option value="" selected disabled>Loading models...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <!-- MagicPrompt Section -->
+            <div class="card border-secondary mb-3 card-center-container" style="width: 60%; margin-left: 20px; margin-right: 20px;">
+                <div class="card-header translate">MagicPrompt</div>
+                <div class="card-body">
+                    <p class="card-text translate">Enter a prompt and let your AI do its magic:</p>
+                    <textarea id="chat_llm_textarea" placeholder="A photo of Steve Irwin finding a mcmonkey in the wild, with text in a speech bubble that says aint she a beaute" style="width: 100%; height: 100px;"></textarea>
+                    <button id="chat_llm_submit_button" class="basic-button translate" style="margin-top: 10px;">Submit</button>
+                    <button id="send_to_prompt_button" class="basic-button translate" style="margin-top: 10px;">Send to Prompt</button>
+                    <button id="regenerate" class="basic-button translate" style="margin-top: 10px;">Regenerate</button>
+                    <button id="settingsButton" class="basic-button translate" style="margin-right: 10px;">Settings</button>
+                    <div id="original_prompt" style="margin-top: 40px; white-space: pre-wrap;"></div>
+                    <div id="chat_llm_response" style="margin-top: 20px; white-space: pre-wrap;"></div>
+                </div>
+            </div>
+            <!-- Modal Structure -->
+            <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title translate" id="settingsModalLabel">Settings</h5>
+                            <button type="button" class="btn-close translate" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <ul class="nav nav-tabs" id="myTab" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="backend-tab" data-bs-toggle="tab" data-bs-target="#backend" type="button" role="tab" aria-controls="backend" aria-selected="true">LLM Backend</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="instructions-tab" data-bs-toggle="tab" data-bs-target="#instructions" type="button" role="tab" aria-controls="instructions" aria-selected="false">Response Instructions</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="api-key-tab" data-bs-toggle="tab" data-bs-target="#api" type="button" role="tab" aria-controls="api" aria-selected="false">API Key (optional)</button>
+                                </li>
+                            </ul>
+                           <div class="tab-content" id="myTabContent">
+                                <div class="tab-pane fade show active" id="backend" role="tabpanel" aria-labelledby="backend-tab">
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <div class="form-group">
+                                                <div class="d-flex align-items-center">
+                                                <label for="llmBackendSelect" class="translate" style="margin-right: 15px; white-space: nowrap;">Choose LLM Backend:</label>
+                                                    <select id="llmBackendSelect" class="nogrow auto-dropdown" style="margin-right: 10px; width: auto;">
+                                                        <option value="ollama" selected>Ollama</option>
+                                                        <option value="gpt3">GPT-3</option>
+                                                        <option value="llama">Llama</option>
+                                                        <option value="llm">LLM</option>
+                                                        <!-- TODO: Add more backend support -->
+                                                    </select>
+                                                    <div class="d-flex align-items-center" style="margin-right: 10px;">
+                                                        <input type="checkbox" id="unloadModelCheckbox" />
+                                                        <label for="unloadModelCheckbox" class="translate" style="margin-left: 5px; white-space: nowrap;">Unload Model</label>
+                                                    </div>
+                                                    <textarea id="backendUrl" class="styled-textarea" rows="1" style="width: 100%;" placeholder="Enter LLM backend URL"></textarea>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="instructions" role="tabpanel" aria-labelledby="instructions-tab">
+                                    <textarea id="llmInstructions" class="styled-textarea" rows="10" style="width: 100%; height: 150px;" placeholder="Leave this blank to use the default."></textarea>
+                                </div>
+                                <div class="tab-pane fade" id="api" role="tabpanel" aria-labelledby="api-key-tab">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group d-flex align-items-center">
+                                                <label for="apiBackendSelect" class="translate" style="margin-right: 10px;">Choose API Backend:</label>
+                                                <select id="apiBackendSelect" class="nogrow auto-dropdown"  style="width: 60%;">
+                                                    <option value="ollama" selected>Ollama</option>
+                                                    <option value="gpt3">GPT-3</option>
+                                                    <option value="llama">Llama</option>
+                                                    <option value="llm">LLM</option>
+                                                    <!-- Add more backends if needed -->
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group d-flex align-items-center">
+                                                <label for="apiKeyInput" class="translate" style="margin-right: 10px; white-space: nowrap;">API Key:</label>
+                                                <textarea id="apiKeyInput" class="styled-textarea" rows="1" style="width: 100%;" placeholder="Enter API key"></textarea>
+                                                <button id="saveApiKeyButton" type="button" class="basic-button translate" style="margin-left: 10px;">Submit</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="basic-button translate" data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="basic-button translate" data-bs-dismiss="modal">Save changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
         hartsyTabContent.appendChild(newTabContent);
         try
         {
@@ -98,8 +180,9 @@ async function addMagicPromptTab()
         const submitButton = document.getElementById("chat_llm_submit_button");
         const sendToPromptButton = document.getElementById("send_to_prompt_button");
         const regenerateButton = document.getElementById("regenerate");
-        const originalPrompt = document.getElementById("original_prompt").textContent;
         const textArea = document.getElementById("chat_llm_textarea");
+        const settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
+        const saveApiKeyButton = document.getElementById("saveApiKeyButton");
 
         submitButton.addEventListener("click", function ()
         {
@@ -117,6 +200,14 @@ async function addMagicPromptTab()
                 event.preventDefault(); // Prevent the default action, which is to insert a newline
                 submitInput(textArea.value, "submit");
             }
+        });
+        document.getElementById("settingsButton").addEventListener("click", function () {
+            settingsModal.show();
+        });
+        saveApiKeyButton.addEventListener("click", function () {
+            const apiKeyInput = document.getElementById("apiKeyInput");
+            const apiKey = apiKeyInput.value;
+            saveSettings()
         });
     }
 }
@@ -239,7 +330,8 @@ function sendToPrompt()
     }
 }
 
-function makeLLMAPIRequest(inputText, modelId) {
+function makeLLMAPIRequest(inputText, modelId)
+{
     genericRequest(
         'PhoneHomeAsync',
         { "inputText": inputText, "modelId": modelId },
@@ -257,6 +349,46 @@ function makeLLMAPIRequest(inputText, modelId) {
             }
         }
     );
+}
+
+async function saveSettings()
+{
+    try
+    {
+        const modelSelect = document.getElementById("modelSelect");
+        const modelUnloadCheckbox = document.getElementById("modelUnloadCheckbox");
+        const apiUrlInput = document.getElementById("apiUrlInput");
+        const settings =
+        {
+            selectedModel: modelSelect.value,
+            modelUnload: modelUnloadCheckbox.checked,
+            apiUrl: apiUrlInput.value
+        };
+
+        // Send the settings to the C# API to save them to the JSON file
+        const response = await genericRequest(
+            'SaveSettingsAsync', // API call name
+            settings,
+            data =>
+            {
+                if (data.success)
+                {
+                    console.log("Settings saved successfully!");
+                    // You can also show a success message in the UI here
+                }
+                else
+                {
+                    showError(data.error); // Show error message in case of failure
+                    console.error("Failed to save settings:", data.error);
+                }
+            }
+        );
+    }
+    catch (error)
+    {
+        console.error("Error saving settings:", error);
+        showError(error);
+    }
 }
 
 function showError(message)
