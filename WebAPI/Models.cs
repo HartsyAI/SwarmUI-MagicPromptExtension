@@ -2,11 +2,16 @@
 
 namespace hartsy.Extensions.MagicPromptExtension.WebAPI.Models
 {
-    /// <summary>The structure for the setup.json</summary>
+    ///<summary>The structure for the config.json.</summary>
     public class ConfigData
     {
+        public string LLMBackend { get; set; }
         public string Instructions { get; set; }
         public string LlmEndpoint { get; set; }
+        public bool UnloadModel { get; set; }
+        public string Model { get; set; }
+        public string OpenAIKey { get; set; }
+        public string ClaudeAPIKey { get; set; }
     }
 
     /// <summary>The structure for what is returned from the Ollama API.</summary>

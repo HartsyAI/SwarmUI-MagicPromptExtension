@@ -117,9 +117,8 @@ async function addMagicPromptTab()
                                                 <label for="llmBackendSelect" class="translate" style="margin-right: 15px; white-space: nowrap;">Choose LLM Backend:</label>
                                                     <select id="llmBackendSelect" class="nogrow auto-dropdown" style="margin-right: 10px; width: auto;">
                                                         <option value="ollama" selected>Ollama</option>
-                                                        <option value="gpt3">GPT-3</option>
-                                                        <option value="llama">Llama</option>
-                                                        <option value="llm">LLM</option>
+                                                        <option value="openai">OpenAI</option>
+                                                        <option value="claude">Claude</option>
                                                         <!-- TODO: Add more backend support -->
                                                     </select>
                                                     <div class="d-flex align-items-center" style="margin-right: 10px;">
@@ -141,11 +140,9 @@ async function addMagicPromptTab()
                                             <div class="form-group d-flex align-items-center">
                                                 <label for="apiBackendSelect" class="translate" style="margin-right: 10px;">Choose API Backend:</label>
                                                 <select id="apiBackendSelect" class="nogrow auto-dropdown"  style="width: 60%;">
-                                                    <option value="ollama" selected>Ollama</option>
-                                                    <option value="gpt3">GPT-3</option>
-                                                    <option value="llama">Llama</option>
-                                                    <option value="llm">LLM</option>
-                                                    <!-- Add more backends if needed -->
+                                                    <option value="openai">OpenAI</option>
+                                                    <option value="claude">Claude</option>
+                                                    <!-- Add more backends -->
                                                 </select>
                                             </div>
                                         </div>
@@ -162,7 +159,7 @@ async function addMagicPromptTab()
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="basic-button translate" data-bs-dismiss="modal">Close</button>
-                            <button type="button" class="basic-button translate" data-bs-dismiss="modal">Save changes</button>
+                            <button id="saveChanges" type="button" class="basic-button translate" data-bs-dismiss="modal">Save changes</button>
                         </div>
                     </div>
                 </div>
@@ -205,11 +202,37 @@ async function addMagicPromptTab()
             settingsModal.show();
         });
         saveApiKeyButton.addEventListener("click", function () {
-            const apiKeyInput = document.getElementById("apiKeyInput");
-            const apiKey = apiKeyInput.value;
-            saveSettings()
+            const apiKeyInput = document.getElementById("apiKeyInput").value;
+            const apiProvider = document.getElementById("apiBackendSelect").value;
+
+            if (apiKeyInput && apiProvider) {
+                // Call the function to submit the API key and provider
+                submitApiKey(apiKeyInput, apiProvider);
+            } else {
+                showError("Please enter an API key and select a provider.");
+            }
+        });
+
+        document.getElementById("saveChanges").addEventListener("click", function() {
+            saveSettings();
         });
     }
+}
+
+function submitApiKey(apiKey, apiProvider) {
+    genericRequest(
+        'SaveApiKeyAsync',
+        { "apiKey": apiKey, "apiProvider": apiProvider },
+        data => {
+            if (data.success) {
+                console.log("API key saved successfully:", data.response);
+                showError(data.response);
+            } else {
+                console.error("Failed to save API key:", data.error);
+                showError(data.error);
+            }
+        }
+    );
 }
 
 async function fetchModels()
@@ -351,47 +374,36 @@ function makeLLMAPIRequest(inputText, modelId)
     );
 }
 
-async function saveSettings()
-{
-    try
-    {
-        const modelSelect = document.getElementById("modelSelect");
-        const modelUnloadCheckbox = document.getElementById("modelUnloadCheckbox");
-        const apiUrlInput = document.getElementById("apiUrlInput");
-        const settings =
-        {
+async function saveSettings() {
+    try {
+        const modelSelect = document.getElementById("llmBackendSelect");
+        const modelUnloadCheckbox = document.getElementById("unloadModelCheckbox");
+        const apiUrlInput = document.getElementById("backendUrl");
+        const settings = {
             selectedModel: modelSelect.value,
             modelUnload: modelUnloadCheckbox.checked,
             apiUrl: apiUrlInput.value
         };
-
-        // Send the settings to the C# API to save them to the JSON file
-        const response = await genericRequest(
-            'SaveSettingsAsync', // API call name
+        genericRequest(
+            'SaveSettingsAsync',
             settings,
-            data =>
-            {
-                if (data.success)
-                {
-                    console.log("Settings saved successfully!");
-                    // You can also show a success message in the UI here
-                }
-                else
-                {
-                    showError(data.error); // Show error message in case of failure
-                    console.error("Failed to save settings:", data.error);
+            data => {
+                if (data.success) {
+                    console.log("Success!:", data.response);
+                    // TODO: Close modal
+                } else {
+                    console.error("Error saving settings:", data.error);
+                    showError("An error occurred while saving settings: " + data.error);
                 }
             }
         );
-    }
-    catch (error)
-    {
-        console.error("Error saving settings:", error);
-        showError(error);
+    } catch (error) {
+        console.error("Error in saveSettings:", error);
+        showError("An error occurred while saving settings. Please try again.");
     }
 }
 
-function showError(message)
+function showError(message) // TODO: pass a color and make this a more general function
 {
     const responseDiv = document.getElementById("chat_llm_response");
     responseDiv.textContent = `Error: ${message}`;

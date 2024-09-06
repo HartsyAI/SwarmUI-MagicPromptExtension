@@ -5,6 +5,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.IO;
 using hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
+using SwarmUI.Extensions.SwarmUI_MagicPromptExtension.WebAPI;
 
 namespace hartsy.Extensions.MagicPromptExtension.WebAPI
 {
@@ -16,9 +17,77 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI
         {
             API.RegisterAPICall(PhoneHomeAsync, true);
             API.RegisterAPICall(GetAvailableModelsAsync);
+            API.RegisterAPICall(SaveSettingsAsync);
+            API.RegisterAPICall(SaveApiKeyAsync);
         }
 
         private static readonly HttpClient _httpClient = new();
+
+        /// <summary>Saves a new API key to the config.json file.</summary>
+        /// <param name="apiKey">The new API key entered by the user.</param>
+        /// <param name="apiProvider">The API provider (e.g., OpenAI, Claude).</param>
+        /// <returns>A JSON object indicating success or failure.</returns>
+        public static async Task<JObject> SaveApiKeyAsync(
+        [API.APIParameter("API Key")] string apiKey,
+        [API.APIParameter("API Provider")] string apiProvider)
+        {
+            try
+            {
+                Dictionary<string, string> updates = [];
+                if (apiProvider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
+                {
+                    updates["OpenAIKey"] = apiKey;
+                }
+                else if (apiProvider.Equals("Claude", StringComparison.OrdinalIgnoreCase))
+                {
+                    updates["ClaudeAPIKey"] = apiKey;
+                }
+                else
+                {
+                    return CreateErrorResponse($"Unknown API provider: {apiProvider}");
+                }
+                ConfigUtil.UpdateConfig(updates);
+                Logs.Info($"API key for {apiProvider} saved successfully.");
+                return CreateSuccessResponse($"API key for {apiProvider} saved successfully.");
+            }
+            catch (Exception ex)
+            {
+                Logs.Error($"Error saving API key: {ex.Message}");
+                return CreateErrorResponse($"Error saving API key: {ex.Message}");
+            }
+        }
+
+        /// <summary>Saves user settings to the setup.json file.</summary>
+        /// <param name="selectedModel">The selected model.</param>
+        /// <param name="modelUnload">Whether to unload the model after use.</param>
+        /// <param name="apiUrl">The API URL.</param>
+        /// <returns>A JSON object indicating success or failure.</returns>
+        public static async Task<JObject> SaveSettingsAsync(
+            [API.APIParameter("Selected Model")] string selectedLLM,
+            [API.APIParameter("Model Unload Option")] bool modelUnload,
+            [API.APIParameter("API URL")] string apiUrl)
+        {
+            try
+            {
+                string configFilePath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, 
+                    "src/Extensions/SwarmUI-MagicPromptExtension", "config.json");
+                // Read the current config file and update the LLM backend, model unload option, and LLM endpoint
+                string configContent = await File.ReadAllTextAsync(configFilePath);
+                ConfigData configData = JsonSerializer.Deserialize<ConfigData>(configContent);
+                configData.LLMBackend = selectedLLM;
+                configData.UnloadModel = modelUnload;
+                configData.LlmEndpoint = apiUrl;
+                string updatedConfigContent = JsonSerializer.Serialize(configData, new JsonSerializerOptions { WriteIndented = true });
+                await File.WriteAllTextAsync(configFilePath, updatedConfigContent);
+                Logs.Info("LLM settings saved successfully.");
+                return CreateSuccessResponse("Settings saved successfully.");
+            }
+            catch (Exception ex)
+            {
+                Logs.Error($"Error saving settings: {ex.Message}");
+                return CreateErrorResponse($"Error saving settings: {ex.Message}");
+            }
+        }
 
         /// <summary>Fetches available models from the LLM API endpoint.</summary>
         /// <returns>A JSON object containing the models or an error message.</returns>
@@ -115,7 +184,7 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI
         /// <returns>Tuple containing the instructions and API endpoint, or null values if loading fails.</returns>
         private static async Task<(string instructions, string llmEndpoint)> LoadConfigData()
         {
-            string configFilePath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, "src/Extensions/SwarmUI-MagicPromptExtension", "setup.json");
+            string configFilePath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, "src/Extensions/SwarmUI-MagicPromptExtension", "config.json");
             try
             {
                 string configContent = await File.ReadAllTextAsync(configFilePath);
@@ -244,5 +313,41 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI
                 { "error", errorMessage }
             };
         }
+
+        /// <summary>
+        /// Unloads the specified model in Ollama by setting keep_alive to 0.
+        /// </summary>
+        /// <param name="modelId">The ID of the model to unload.</param>
+        /// <returns>A task representing the asynchronous operation.</returns>
+        private static async Task UnloadModelAsync(string modelId)
+        {
+            string unloadEndpoint = "http://localhost:11434/api/generate";
+            var requestBody = new
+            {
+                model = modelId,
+                keep_alive = 0
+            };
+
+            try
+            {
+                string jsonRequestBody = JsonSerializer.Serialize(requestBody);
+                StringContent httpContent = new(jsonRequestBody, Encoding.UTF8, "application/json");
+                HttpResponseMessage response = await _httpClient.PostAsync(unloadEndpoint, httpContent);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Logs.Info($"Model {modelId} unloaded successfully.");
+                }
+                else
+                {
+                    Logs.Error($"Failed to unload model {modelId}. Status code: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logs.Error($"Error unloading model {modelId}: {ex.Message}");
+            }
+        }
+
     }
 }
