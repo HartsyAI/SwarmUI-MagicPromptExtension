@@ -16,9 +16,10 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI
         public static void Register()
         {
             API.RegisterAPICall(PhoneHomeAsync, true);
-            API.RegisterAPICall(GetAvailableModelsAsync);
             API.RegisterAPICall(SaveSettingsAsync);
             API.RegisterAPICall(SaveApiKeyAsync);
+            API.RegisterAPICall(ReadConfigAsync);
+            API.RegisterAPICall(GetModelsAsync);
         }
 
         private static readonly HttpClient _httpClient = new();
@@ -63,22 +64,19 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI
         /// <param name="apiUrl">The API URL.</param>
         /// <returns>A JSON object indicating success or failure.</returns>
         public static async Task<JObject> SaveSettingsAsync(
-            [API.APIParameter("Selected Model")] string selectedLLM,
-            [API.APIParameter("Model Unload Option")] bool modelUnload,
-            [API.APIParameter("API URL")] string apiUrl)
+        [API.APIParameter("Selected Backend")] string selectedBackend,
+        [API.APIParameter("Model Unload Option")] bool modelUnload,
+        [API.APIParameter("API URL")] string apiUrl)
         {
             try
             {
-                string configFilePath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, 
-                    "src/Extensions/SwarmUI-MagicPromptExtension", "config.json");
-                // Read the current config file and update the LLM backend, model unload option, and LLM endpoint
-                string configContent = await File.ReadAllTextAsync(configFilePath);
-                ConfigData configData = JsonSerializer.Deserialize<ConfigData>(configContent);
-                configData.LLMBackend = selectedLLM;
-                configData.UnloadModel = modelUnload;
-                configData.LlmEndpoint = apiUrl;
-                string updatedConfigContent = JsonSerializer.Serialize(configData, new JsonSerializerOptions { WriteIndented = true });
-                await File.WriteAllTextAsync(configFilePath, updatedConfigContent);
+                Dictionary<string, string> updates = new()
+                {
+                    { "LLMBackend", selectedBackend },
+                    { "UnloadModel", modelUnload.ToString() },
+                    { "LlmEndpoint", apiUrl }
+                };
+                ConfigUtil.UpdateConfig(updates);
                 Logs.Info("LLM settings saved successfully.");
                 return CreateSuccessResponse("Settings saved successfully.");
             }
@@ -89,31 +87,53 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI
             }
         }
 
+        /// <summary>Reads the configuration file asynchronously.</summary>
+        /// <returns>A JSON object with the configuration data or an error message.</returns>
+        public static async Task<JObject> ReadConfigAsync()
+        {
+            try
+            {
+                // Check if GlobalConfig is already loaded in memory
+                if (GlobalConfig.ConfigData == null)
+                {
+                    ConfigUtil.ReadConfig();
+                    if (GlobalConfig.ConfigData == null)
+                    {
+                        return CreateErrorResponse("Failed to load configuration from file.");
+                    }
+                }
+                ConfigData configDataObj = GlobalConfig.ConfigData;
+                return CreateSuccessResponse("success"); // TODO: What do we need to do with the config data now that we have it?
+            }
+            catch (Exception ex)
+            {
+                Logs.Error($"Exception occurred while reading config: {ex.Message}");
+                return CreateErrorResponse(ex.Message);
+            }
+        }
+
         /// <summary>Fetches available models from the LLM API endpoint.</summary>
         /// <returns>A JSON object containing the models or an error message.</returns>
-        public static async Task<JObject> GetAvailableModelsAsync()
+        public static async Task<JObject> GetModelsAsync()
         {
             try
             {
                 Logs.Info("Fetching available models for the MagicPrompt Extension...");
-                var (instructions, llmEndpoint) = await LoadConfigData();
-                llmEndpoint += "/api/tags";
+                if (GlobalConfig.ConfigData == null)
+                {
+                    await ReadConfigAsync();
+                }
+                ConfigData configDataObj = GlobalConfig.ConfigData;
+                string llmEndpoint = configDataObj.LlmEndpoint + "/api/tags"; // TODO: Remove Ollama hardcoding
                 HttpResponseMessage response = await _httpClient.GetAsync(llmEndpoint);
                 if (response.IsSuccessStatusCode)
                 {
                     string jsonString = await response.Content.ReadAsStringAsync();
                     List<ModelData> models = DeserializeModels(jsonString);
-                    if (models != null)
-                    {
-                        return CreateSuccessResponse(null, models);
-                    }
-                    else
-                    {
-                        string error = "Failed to parse models from response.";
-                        Logs.Error(error);
-                        return CreateErrorResponse(error);
-                    }
-                }
+                    return models != null
+                    ? CreateSuccessResponse(null, models, configDataObj)
+                    : CreateErrorResponse("Failed to parse models from response.");
+                }   
                 else
                 {
                     string error = $"Error fetching models: {response.StatusCode} - {response.ReasonPhrase}";
@@ -139,34 +159,37 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI
             }
             """)]
         public static async Task<JObject> PhoneHomeAsync(
-            [API.APIParameter("Text input")] string inputText,
-            [API.APIParameter("Model ID")]string modelId)
+    [API.APIParameter("Text input")] string inputText,
+    [API.APIParameter("Model ID")] string modelId)
         {
             try
             {
-                var (instructions, llmEndpoint) = await LoadConfigData();
-                if (instructions == null || llmEndpoint == null)
+                if (GlobalConfig.ConfigData == null)
                 {
-                    return CreateErrorResponse("Failed to load configuration.");
+                    ConfigUtil.ReadConfig();
+                    if (GlobalConfig.ConfigData == null)
+                    {
+                        return CreateErrorResponse("Failed to load configuration from file.");
+                    }
                 }
-                llmEndpoint += "/api/chat";
-                inputText = $"{instructions} User: {inputText}";
+                ConfigData configDataObj = GlobalConfig.ConfigData;
+                // Split the config into seperate variables. This can probably be cleaned up.
+                string model = configDataObj.Model;
+                string llmEndpoint = configDataObj.LlmEndpoint + "/api/chat"; // TODO: Remove hardcoding
+                string instructions = configDataObj.Instructions;
+                bool unloadModel = configDataObj.UnloadModel;
+                string openAIKey = configDataObj.OpenAIKey;
+                string claudeAPIKey = configDataObj.ClaudeAPIKey;
+                inputText = $"{instructions} User: {inputText}"; // Add instructions to the prompt
                 Logs.Verbose($"Sending prompt to LLM API: {inputText}");
-                object requestBody = CreateRequestBody(inputText, modelId);
+                object requestBody = BackendSchema.GetSchemaType(model); // Dynamically get the schema type based on the model
                 HttpResponseMessage response = await SendRequest(llmEndpoint, requestBody);
                 if (response.IsSuccessStatusCode)
                 {
                     string llmResponse = await DeserializeResponse(response);
-                    if (!string.IsNullOrEmpty(llmResponse))
-                    {
-                        // Remove the "AI: " prefix if it exists
-                        string cleanedResponse = llmResponse.StartsWith("AI: ") ? llmResponse[4..] : llmResponse;
-                        return CreateSuccessResponse(cleanedResponse);
-                    }
-                    else
-                    {
-                        return CreateErrorResponse("Unexpected API response format or empty response.");
-                    }
+                    return !string.IsNullOrEmpty(llmResponse)
+                        ? CreateSuccessResponse(llmResponse)
+                        : CreateErrorResponse("Unexpected API response format or empty response.");
                 }
                 else
                 {
@@ -178,48 +201,6 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI
                 Logs.Error(ex.Message);
                 return CreateErrorResponse(ex.Message);
             }
-        }
-
-        /// <summary>Loads the setup.json file, extracts instructions and the API endpoint, handles errors if they occur.</summary>
-        /// <returns>Tuple containing the instructions and API endpoint, or null values if loading fails.</returns>
-        private static async Task<(string instructions, string llmEndpoint)> LoadConfigData()
-        {
-            string configFilePath = Utilities.CombinePathWithAbsolute(Environment.CurrentDirectory, "src/Extensions/SwarmUI-MagicPromptExtension", "config.json");
-            try
-            {
-                string configContent = await File.ReadAllTextAsync(configFilePath);
-                ConfigData configData = JsonSerializer.Deserialize<ConfigData>(configContent);
-                if (configData == null)
-                {
-                    Logs.Error("Failed to deserialize config data.");
-                    return (null, null);
-                }
-                return (configData.Instructions, configData.LlmEndpoint);
-            }
-            catch (Exception ex)
-            {
-                Logs.Error($"Error reading or deserializing config file: {ex.Message}");
-                return (null, null);
-            }
-        }
-
-        /// <summary>Chooses the body for the LLM API request. Currently only supports Ollama.</summary>
-        /// <returns>An object representing the JSON structure for the API request.</returns>
-        private static object CreateRequestBody(string inputText, string currentModel)
-        {
-            return new
-            {
-                model = currentModel,
-                messages = new[]
-                {
-                    new
-                    {
-                        role = "user",
-                        content = inputText
-                    }
-                },
-                stream = false
-            };
         }
 
         /// <summary>Sends a POST request to the LLM API endpoint with the chosen request body. The body should match what LLM backend you are using.</summary>
@@ -290,15 +271,16 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI
             }
         }
 
-        /// <summary>Creates a JSON object for a success, includes the rewritten prompt.</summary>
-        /// <returns>The success bool and the rewritten prompt to the JavaScript function that called it.</returns>
-        private static JObject CreateSuccessResponse(string response, List<ModelData> models = null)
+        /// <summary>Creates a JSON object for a success, includes models and config data.</summary>
+        /// <returns>The success bool, models, and config data to the JavaScript function that called it.</returns>
+        private static JObject CreateSuccessResponse(string response, List<ModelData> models = null, ConfigData configData = null)
         {
             return new JObject
             {
                 ["success"] = true,
                 ["response"] = response,
                 ["models"] = models != null ? JArray.FromObject(models) : null,
+                ["config"] = configData != null ? JObject.FromObject(configData) : null,
                 ["error"] = null
             };
         }
@@ -348,6 +330,5 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI
                 Logs.Error($"Error unloading model {modelId}: {ex.Message}");
             }
         }
-
     }
 }

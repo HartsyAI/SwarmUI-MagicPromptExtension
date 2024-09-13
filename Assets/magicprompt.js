@@ -194,7 +194,7 @@ async function addMagicPromptTab()
         {
             if (event.key === "Enter")
             {
-                event.preventDefault(); // Prevent the default action, which is to insert a newline
+                event.preventDefault(); // Prevent the default action, of insert a newline
                 submitInput(textArea.value, "submit");
             }
         });
@@ -204,7 +204,6 @@ async function addMagicPromptTab()
         saveApiKeyButton.addEventListener("click", function () {
             const apiKeyInput = document.getElementById("apiKeyInput").value;
             const apiProvider = document.getElementById("apiBackendSelect").value;
-
             if (apiKeyInput && apiProvider) {
                 // Call the function to submit the API key and provider
                 submitApiKey(apiKeyInput, apiProvider);
@@ -212,7 +211,6 @@ async function addMagicPromptTab()
                 showError("Please enter an API key and select a provider.");
             }
         });
-
         document.getElementById("saveChanges").addEventListener("click", function() {
             saveSettings();
         });
@@ -235,47 +233,41 @@ function submitApiKey(apiKey, apiProvider) {
     );
 }
 
-async function fetchModels()
-{
+async function fetchModels() {
     const modelSelect = document.getElementById("modelSelect");
-    modelSelect.style.color = "inherit";
-    try
-    {
-        const response = await genericRequest(
-            'GetAvailableModelsAsync',
-            {},
-            data =>
-            {
-                if (data.success)
-                {
-                    const models = data.models; // Access the models array so it can be looped through
-                    modelSelect.innerHTML = ''; // Clear any existing options in the dropdown
-                    if (!models || models.length === 0)
-                    {
-                        showError("No models available");
-                    }
-                    else
-                    {
-                        // Populate the dropdown with model names
-                        models.forEach(model =>
-                        {
-                            const option = document.createElement("option");
-                            option.value = model.model;
-                            option.textContent = model.name;
-                            modelSelect.appendChild(option);
-                        });
-                    }
-                }
-                else
-                {
-                    showError(data.error); // Also show error to the user if the API call failed
-                    console.error("Call to C# method GetAvailableModelsAsync() failed:", data.error);
-                }
+    modelSelect.style.color = "inherit"; // Reset colors to default
+    try {
+        const response = await genericRequest('GetModelsAsync', {}, data => {
+            if (!data.success) {
+                showError("Failed to load configuration or models.");
+                throw new Error("Failed to load configuration or models.");
             }
-        );
+            const llmBackend = data.config.LLMBackend;
+            if (!llmBackend || llmBackend.trim() === "") {
+                showError("LLM Backend is not configured. Please click the settings button to set it up.");
+                console.error("LLM Backend is not configured. User needs to set up the backend.");
+                return false;
+            }
+            const models = data.models;
+            modelSelect.innerHTML = ''; // Clear any existing options in the dropdown
+            if (!models || models.length === 0) {
+                showError("No models available.");
+            } else {
+                // Populate the dropdown with model names
+                models.forEach(model => {
+                    const option = document.createElement("option");
+                    option.value = model.model;
+                    option.textContent = model.name;
+                    modelSelect.appendChild(option);
+                });
+            }
+            return true;
+        });
+        if (!response) {
+            return;
+        }
     }
-    catch (error)
-    {
+    catch (error) {
         console.error("Error fetching models:", error);
     }
 }
@@ -376,11 +368,11 @@ function makeLLMAPIRequest(inputText, modelId)
 
 async function saveSettings() {
     try {
-        const modelSelect = document.getElementById("llmBackendSelect");
+        const llmBackendSelect = document.getElementById("llmBackendSelect");
         const modelUnloadCheckbox = document.getElementById("unloadModelCheckbox");
         const apiUrlInput = document.getElementById("backendUrl");
         const settings = {
-            selectedModel: modelSelect.value,
+            selectedBackend: llmBackendSelect.value,
             modelUnload: modelUnloadCheckbox.checked,
             apiUrl: apiUrlInput.value
         };
