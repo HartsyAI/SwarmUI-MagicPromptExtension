@@ -33,7 +33,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
                 }
                 else if (selectedBackend.Equals("ollama", StringComparison.OrdinalIgnoreCase))
                 {
-                    config.LlmEndpoint = apiUrl;
+                    if (!string.IsNullOrEmpty(apiUrl))
+                    {
+                        config.LlmEndpoint = apiUrl;
+                    }
                 }
                 else
                 {

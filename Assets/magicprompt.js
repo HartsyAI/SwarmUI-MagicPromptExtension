@@ -219,12 +219,6 @@ async function addMagicPromptTab()
         modelSelect.addEventListener("change", function () {
             let selectedModel = modelSelect.value;
             console.log("Selected model value:", selectedModel);
-
-            if (selectedModel === "null") {
-                let selectedOption = modelSelect.selectedOptions[0];
-                selectedModel = selectedOption.text;
-                console.log("Selected model text:", selectedModel);
-            }
             loadModel(selectedModel);
         });
     }

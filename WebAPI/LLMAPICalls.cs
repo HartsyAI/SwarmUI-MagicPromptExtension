@@ -174,7 +174,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 ConfigData configDataObj = GlobalConfig.ConfigData;
                 // Split the config into seperate variables. This can probably be cleaned up.
                 string llmBackend = configDataObj.LLMBackend;
-                string model = configDataObj.Model;
+                configDataObj.Model = modelId;
                 string llmEndpoint = ConfigUtil.GetLlmEndpoint(llmBackend, "chat");
                 string instructions = configDataObj.Instructions;
                 bool unloadModel = configDataObj.UnloadModel;
@@ -182,10 +182,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 Logs.Verbose($"Sending prompt to LLM API: {inputText}");
                 Logs.Verbose($"ConfigData.Model: {configDataObj.Model}");
                 Logs.Verbose($"ConfigData.LLMBackend: {configDataObj.LLMBackend}");
-                object requestBody = BackendSchema.GetSchemaType(llmBackend, inputText, model);
+                object requestBody = BackendSchema.GetSchemaType(llmBackend, inputText, configDataObj.Model);
                 Logs.Verbose($"Request body for LLM Backend: {JsonSerializer.Serialize(requestBody)}");
                 HttpRequestMessage request = new(HttpMethod.Post, llmEndpoint);
-                if (configDataObj.LLMBackend.Equals("openai", StringComparison.CurrentCultureIgnoreCase))
+                if (llmBackend.Equals("openai", StringComparison.CurrentCultureIgnoreCase))
                 {
                     string apiKey = configDataObj.Backends.OpenAI.ApiKey;
                     if (string.IsNullOrEmpty(apiKey))
