@@ -117,8 +117,9 @@ async function addMagicPromptTab()
                                                 <label for="llmBackendSelect" class="translate" style="margin-right: 15px; white-space: nowrap;">Choose LLM Backend:</label>
                                                     <select id="llmBackendSelect" class="nogrow auto-dropdown" style="margin-right: 10px; width: auto;">
                                                         <option value="ollama" selected>Ollama</option>
-                                                        <option value="openai">OpenAI</option>
-                                                        <option value="claude">Claude</option>
+                                                        <option value="openaiapi" selected>OpenAIAPI (local)</option>
+                                                        <option value="openai">OpenAI (ChatGPT)</option>
+                                                        <!-- <option value="claude">Anthropic (Claude)</option> -->
                                                         <!-- TODO: Add more backend support -->
                                                     </select>
                                                     <div class="d-flex align-items-center" style="margin-right: 10px;">
@@ -177,6 +178,7 @@ async function addMagicPromptTab()
         const submitButton = document.getElementById("chat_llm_submit_button");
         const sendToPromptButton = document.getElementById("send_to_prompt_button");
         const regenerateButton = document.getElementById("regenerate");
+        const modelSelect = document.getElementById("modelSelect");
         const textArea = document.getElementById("chat_llm_textarea");
         const settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
         const saveApiKeyButton = document.getElementById("saveApiKeyButton");
@@ -214,12 +216,22 @@ async function addMagicPromptTab()
         document.getElementById("saveChanges").addEventListener("click", function() {
             saveSettings();
         });
+        modelSelect.addEventListener("change", function () {
+            let selectedModel = modelSelect.value;
+            console.log("Selected model value:", selectedModel);
+
+            if (selectedModel === "null") {
+                let selectedOption = modelSelect.selectedOptions[0];
+                selectedModel = selectedOption.text;
+                console.log("Selected model text:", selectedModel);
+            }
+            loadModel(selectedModel);
+        });
     }
 }
 
 function submitApiKey(apiKey, apiProvider) {
-    genericRequest(
-        'SaveApiKeyAsync',
+    genericRequest('SaveApiKeyAsync',
         { "apiKey": apiKey, "apiProvider": apiProvider },
         data => {
             if (data.success) {
@@ -231,6 +243,22 @@ function submitApiKey(apiKey, apiProvider) {
             }
         }
     );
+}
+
+function loadModel(modelId) {
+    try {
+        genericRequest('LoadModelAsync', { "modelId": modelId }, data => {
+            if (data.success) {
+                console.log("Model loaded successfully:", data.response);
+            } else {
+                console.error("Failed to load model:", data.error);
+                showError(data.error);
+            }
+        });
+    } catch (error) {
+        console.error("Error loading model:", error);
+        showError("An error occurred while loading the model. Please try again.");
+    }
 }
 
 async function fetchModels() {
@@ -249,6 +277,7 @@ async function fetchModels() {
                 return false;
             }
             const models = data.models;
+            console.log("Models:", models);
             modelSelect.innerHTML = ''; // Clear any existing options in the dropdown
             if (!models || models.length === 0) {
                 showError("No models available.");
@@ -347,8 +376,7 @@ function sendToPrompt()
 
 function makeLLMAPIRequest(inputText, modelId)
 {
-    genericRequest(
-        'PhoneHomeAsync',
+    genericRequest('PhoneHomeAsync',
         { "inputText": inputText, "modelId": modelId },
         data =>
         {
@@ -376,9 +404,7 @@ async function saveSettings() {
             modelUnload: modelUnloadCheckbox.checked,
             apiUrl: apiUrlInput.value
         };
-        genericRequest(
-            'SaveSettingsAsync',
-            settings,
+        genericRequest('SaveSettingsAsync', settings,
             data => {
                 if (data.success) {
                     console.log("Success!:", data.response);
@@ -389,6 +415,7 @@ async function saveSettings() {
                 }
             }
         );
+        await fetchModels(); // Refresh the models dropdown
     } catch (error) {
         console.error("Error in saveSettings:", error);
         showError("An error occurred while saving settings. Please try again.");
