@@ -27,7 +27,7 @@ The MagicPrompt Extension provides a simple and intuitive way directly in SwarmU
 ------------
 
 * Generate a rewritten prompt with more detail directly in SwarmUI
-* Supports any models you have on your local Ollama LLM server
+* Supports any models you have on your local Ollama LLM server, any local LLM server that uses OpenAI's API format, Open AI (Requires API key), and Anthropic (Requires API key).
 * Easy-to-use interface that will send the rewritten prompts to the Generate tab
 * Compatible with other SwarmUI extensions from Hartsy.AI
 
@@ -37,7 +37,8 @@ The MagicPrompt Extension provides a simple and intuitive way directly in SwarmU
 Before you install the MagicPrompt Extension, ensure that you have the following prerequisites:
 
 * You need to have SwarmUI installed on your system. If you don't have it installed, you can download it from [here](https://github.com/mcmonkeyprojects/SwarmUI).
-* This extension assumes you have a working and setup local Ollama LLM API server and you know the URL to make API calls. If you do not have this installed follow the instructions on their [GitHub](https://github.com/ollama/ollama).
+* This extension assumes you have a working and setup local Ollama LLM API server or a compatable equilavent that uses OpenAi API format and you know the URL to make API calls. If you do not have this installed follow the instructions on their [GitHub](https://github.com/ollama/ollama).
+* Alternatively, you can use OpenAI or Anthropic LLM API servers. You will need an API key for these services.
 
 ## Installation
 --------------
@@ -45,19 +46,27 @@ Before you install the MagicPrompt Extension, ensure that you have the following
 To install the Extension, read through all the steps before attempting to install. Then, follow these steps:
 
 1. Close your SwarmUI instance and navigate to `SwarmUI/src/Extensions` directory and clone the repo there. Open cmd `cd` to the directory above and `git clone ` the repo.
-2. Configure the extension as described in the [Configuration](#configuration) section.
-3. Make sure you have run `update-windows.bat` or `update-linuxmac.sh` to recompile SwarmUI. This only needs to be done on first install.
-4. Restart your SwarmUI instance and refresh your browser. You should now have a new tab called Hartsy.AI and a sub-tab called MagicPrompt.
+2. Make sure you have run `update-windows.bat` or `update-linuxmac.sh` to recompile SwarmUI. This only needs to be done on first install.
+3. Restart your SwarmUI instance and refresh your browser. You should now have a new tab called Hartsy.AI and a sub-tab called MagicPrompt.
+4. Configure the extension as described in the [Configuration](#configuration) section.
 
 ## Configuration
 ----------------
 
-The MagicPrompt Extension can be used with any LLM model that is supported by Ollama. Currently only Ollama is supported:
+The MagicPrompt Extension can be used with any LLM model that works on the supported backends.
 
-1. Open the extension folder in your SwarmUI instance and open the `setup.json` file.
-2. replace the `LlmEndpoint` with the your LLM API server IP. For most people you should change this to `http://localhost:11434`. If you want, replace the `Instructions` with your own.
-3. Make sure you have at least 1 model downloaded and ready in your Ollama instance.
-4. Save your changes and rebuild the SwarmUI project using the `update-windows.bat` or `update-linuxmac.sh` script.
+1. Open the Hartsy.AI/MagicPrompt tab in SwarmUI and find and click the settings button. This will open a window with three tabs (LLM Backend, Response Instructions, and API Key)
+** LLM Backend: 
+* Choose a backend from the dropdown menu. 
+* Check the checkbox if you want to have the model unload after you press send to prompt. This unloads the model from VRAM and will need to be reloaded to make another prompt.
+* Enter your `LlmEndpoint` (LLM API server IP). For most people you should change this to `http://localhost:11434`. You can leave this blank if you are using a paid API.
+** Response Instructions:
+* Enter the instructions you want to give the model. This is what tells the LLM how and what format to rewrite the prompt in. Leave this blank to use the provided instructions.
+** API Key:
+* Choose which API you are using. OpenAI or Anthropic from the dropdown.
+* Enter your API key for your selected API. Then, click save. This will save the key only no other settings are saved.
+2. Save your changes by clicking the button at the bottom right and the window will close.
+3. Check to make sure you did not encounter any errors and that you see a new list of available models in the dropdown menu.
 
 ## Usage
 --------
@@ -83,7 +92,7 @@ If you encounter any issues check these common solutions before you open an issu
 * Ensure that the extension is properly installed and configured. Did you add your API URL to the config.json file?
 * If you are using any LLM service other than Ollama, I cannot guarantee that it will work. You may need to modify the code to work with your service. Feel free to enter a feature request to add support for your service.
 * Ask me in the SwarmUI Discord server for help by creating a new post in [#help-fourm](https://discord.com/channels/1243166023859961988/1255990493830057995/1255990493830057995). That is one of the places I live.
-* If you still have issues, open an issue on GitHub or join my [Dev Discord Server](https://discord.com/invite/5m4Wyu52Ek)
+* If you still have issues, open an issue on GitHub or join the [Hartsy Discord Community](https://discord.gg/g9WxrANX4z)
 
 ## Changelog
 ------------
@@ -98,17 +107,20 @@ If you encounter any issues check these common solutions before you open an issu
 * Version 0.6: Changed the main tab to be Hartsy.AI (Branding is everything)
 * Version 0.7: Updated the readme to be more informative
 * Version 1.0: Initial public release
+* Version 1.1: Added support for OpenAI and Anthropic LLM API servers as well as local OpenAI API servers
+* Version 1.2: Added settings config window to allow for easier configuration of the extension
 
 ## License
 ----------
 
-Kalebbroo Extensions including this one are licensed under the [MIT License](https://opensource.org/licenses/MIT).
+Hartsy Extensions including this one are licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
 ## Contributing
 ---------------
 
 Contributions to the extension are welcome. Please ask before working on anything big. I may already be working on it.
 
+Join the Discord server to ask questions or get help with the extension. You can also open an issue on GitHub if you encounter any bugs or have feature requests.
 1. Fork the extension's repository on GitHub.
 2. Make your changes and commit them to your fork.
 3. Open a pull request and wait for a review.

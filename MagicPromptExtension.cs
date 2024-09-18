@@ -1,8 +1,8 @@
-﻿using hartsy.Extensions.MagicPromptExtension.WebAPI;
+﻿using Hartsy.Extensions.MagicPromptExtension.WebAPI;
 using SwarmUI.Core;
 using SwarmUI.Utils;
 
-namespace hartsy.Extensions.MagicPromptExtension
+namespace Hartsy.Extensions.MagicPromptExtension
 {
     public class MagicPromptExtension : Extension
     {

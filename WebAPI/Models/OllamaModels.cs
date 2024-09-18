@@ -1,16 +1,9 @@
 ﻿using Newtonsoft.Json;
 
-namespace hartsy.Extensions.MagicPromptExtension.WebAPI.Models
+namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
 {
-    /// <summary>The structure for the setup.json</summary>
-    public class ConfigData
-    {
-        public string Instructions { get; set; }
-        public string LlmEndpoint { get; set; }
-    }
-
     /// <summary>The structure for what is returned from the Ollama API.</summary>
-    public class LLMOllamaResponse
+    public class OllamaResponse
     {
         [JsonProperty("model")]
         public string Model { get; set; }
@@ -43,19 +36,12 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI.Models
         public long EvalDuration { get; set; }
     }
 
-    /// <summary>The message content within a response, including the content and the role.</summary>
-    public class Message
-    {
-        [JsonProperty("content")]
-        public string Content { get; set; }
-
-        [JsonProperty("role")]
-        public string Role { get; set; }
-    }
-
     /// <summary>The structure for models and related metadata.</summary>
     public class ModelData
     {
+        [JsonProperty("id")]
+        public string Id { get; set; }
+
         [JsonProperty("name")]
         public string Name { get; set; }
 
@@ -94,12 +80,5 @@ namespace hartsy.Extensions.MagicPromptExtension.WebAPI.Models
 
         [JsonProperty("quantization_level")]
         public string QuantizationLevel { get; set; }
-    }
-
-    /// <summary>The root object containing a list of models.</summary>
-    public class RootObject
-    {
-        [JsonProperty("models")]
-        public List<ModelData> Data { get; set; }
     }
 }
