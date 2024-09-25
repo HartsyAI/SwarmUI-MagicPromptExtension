@@ -8,7 +8,7 @@ namespace Hartsy.Extensions.MagicPromptExtension
     {
         public override void OnPreInit()
         {
-            Logs.Debug("MagicPromptExtension started. Visit https://Hartsy.AI to see more.");
+            Logs.Info("MagicPromptExtension started.");
             ScriptFiles.Add("Assets/magicprompt.js");
         }
 

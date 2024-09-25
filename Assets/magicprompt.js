@@ -108,8 +108,26 @@ async function addMagicPromptTab() {
                                 <textarea id="responseInstructions" class="form-control" rows="3" placeholder="Response instructions for the LLM"></textarea>
                             </div>
                             <div class="tab-pane fade" id="api" role="tabpanel" aria-labelledby="api-key-tab">
-                                <input type="text" id="api_key_input" class="form-control" placeholder="Enter API Key (Optional)" />
-                                <button id="saveApiKeyButton" type="button" class="basic-button translate" style="margin-left: 10px;">Submit</button>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-group d-flex align-items-center">
+                                                <label for="apiBackendSelect" class="translate" style="margin-right: 10px;">Choose API Backend:</label>
+                                                <select id="apiBackendSelect" class="nogrow auto-dropdown"  style="width: 60%;">
+                                                    <option value="openai">OpenAI</option>
+                                                    <option value="claude">Claude</option>
+                                                    <!-- Add more backends -->
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-group d-flex align-items-center">
+                                                <label for="apiKeyInput" class="translate" style="margin-right: 10px; white-space: nowrap;">API Key:</label>
+                                                <textarea id="apiKeyInput" class="styled-textarea" rows="1" style="width: 100%;" placeholder="Enter API key"></textarea>
+                                                <button id="saveApiKeyButton" type="button" class="basic-button translate" style="margin-left: 10px;">Submit</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
