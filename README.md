@@ -37,6 +37,7 @@ The MagicPrompt Extension provides a simple and intuitive way directly in SwarmU
 Before you install the MagicPrompt Extension, ensure that you have the following prerequisites:
 
 * You need to have SwarmUI installed on your system. If you don't have it installed, you can download it from [here](https://github.com/mcmonkeyprojects/SwarmUI).
+* The HartsyCore Extension must be installed. You can download it from [here](https://github.com/HartsyAI/SwarmUI-HartsyCore).
 * This extension assumes you have a working and setup local Ollama LLM API server or a compatable equilavent that uses OpenAi API format and you know the URL to make API calls. If you do not have this installed follow the instructions on their [GitHub](https://github.com/ollama/ollama).
 * Alternatively, you can use OpenAI or Anthropic LLM API servers. You will need an API key for these services.
 
