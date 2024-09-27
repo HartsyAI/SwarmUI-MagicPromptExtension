@@ -1,4 +1,4 @@
-﻿document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded", function () {
     const maxRetries = 5; // Maximum number of retries
     const retryInterval = 1000; // Retry interval in milliseconds
     let retryCount = 0; // Current retry count
@@ -143,6 +143,7 @@ async function addMagicPromptTab() {
         await fetchModels();
     } catch (error) {
         console.error("Error fetching models:", error);
+        showMessage('error', 'An error occurred while fetching models: ' + error);
     }
 
     const submitButton = document.getElementById("chat_llm_submit_button");
@@ -175,7 +176,7 @@ async function addMagicPromptTab() {
         if (apiKeyInput && apiProvider) {
             submitApiKey(apiKeyInput, apiProvider);
         } else {
-            showError("Please enter an API key and select a provider.");
+            showMessage('error', 'Please enter an API key and select a provider.');
         }
     });
     document.getElementById("saveChanges").addEventListener("click", function () {
@@ -183,7 +184,7 @@ async function addMagicPromptTab() {
     });
     modelSelect.addEventListener("change", function () {
         let selectedModel = modelSelect.value;
-        console.log("Selected model value:", selectedModel);
+        console.log("Selected model value:", selectedModel); // debug
         loadModel(selectedModel);
     });
 }
@@ -194,10 +195,10 @@ function submitApiKey(apiKey, apiProvider) {
         data => {
             if (data.success) {
                 console.log("API key saved successfully:", data.response);
-                showError(data.response);
+                showMessage('success', 'API key saved successfully!');
             } else {
                 console.error("Failed to save API key:", data.error);
-                showError(data.error);
+                showMessage('error', 'Failed to save API key: ' + data.error);
             }
         }
     );
@@ -208,14 +209,15 @@ function loadModel(modelId) {
         genericRequest('LoadModelAsync', { "modelId": modelId }, data => {
             if (data.success) {
                 console.log("Model loaded successfully:", data.response);
+                showMessage('success', 'Model loaded successfully: ' + data.response);
             } else {
                 console.error("Failed to load model:", data.error);
-                showError(data.error);
+                showMessage('error', 'Failed to load model: ' + data.error);
             }
         });
     } catch (error) {
         console.error("Error loading model:", error);
-        showError("An error occurred while loading the model. Please try again.");
+        showMessage('error', 'An error occurred while loading the model. Please try again.');
     }
 }
 
@@ -225,20 +227,22 @@ async function fetchModels() {
     try {
         const response = await genericRequest('GetModelsAsync', {}, data => {
             if (!data.success) {
-                showError("Failed to load configuration or models.");
+                showMessage('error', 'Failed to load configuration or models.');
+                console.error("Failed to load configuration or models.");
                 throw new Error("Failed to load configuration or models.");
             }
             const llmBackend = data.config.LLMBackend;
             if (!llmBackend || llmBackend.trim() === "") {
-                showError("LLM Backend is not configured. Please click the settings button to set it up.");
+                showMessage('warning', 'LLM Backend is not configured. Please click the settings button to set it up.');
                 console.error("LLM Backend is not configured. User needs to set up the backend.");
                 return false;
             }
             const models = data.models;
-            console.log("Models:", models);
+            console.log("Models:", models); // debug
             modelSelect.innerHTML = ''; // Clear any existing options in the dropdown
             if (!models || models.length === 0) {
-                showError("No models available.");
+                console.error("No models available.");
+                showMessage('warning', 'No models available. Please check the backend configuration.');
             } else {
                 // Populate the dropdown with model names
                 models.forEach(model => {
@@ -256,6 +260,7 @@ async function fetchModels() {
     }
     catch (error) {
         console.error("Error fetching models:", error);
+        showMessage('error', 'An error occurred while fetching models: ' + error);
     }
 }
 
@@ -279,7 +284,8 @@ function submitInput(inputText, buttonType)
         }
         if (textToUse === fallbackText)
         {
-            showError("You did not enter any text... I guess I will just make some crap up.."); //TODO: Actully have this show somwehere.
+            console.log("No text entered, using default prompt.");
+            showMessage('info', 'You did not enter any text... I guess I will just make some crap up..');
         }
         // Get the selected model ID from the dropdown
         const modelSelect = document.getElementById("modelSelect");
@@ -296,8 +302,8 @@ function submitInput(inputText, buttonType)
     }
     catch (error)
     {
-        console.log("Unexpected error in submitInput function:", error);
-        showError(error);
+        console.error("Unexpected error in submitInput function:", error);
+        showMessage('error', 'Unexpected error in submitInput function: ' + error);
     }
 }
 
@@ -323,12 +329,15 @@ function sendToPrompt()
         }
         else
         {
-            console.log("Prompt textarea not found in Generate tab.");
+            console.error("Prompt textarea not found in Generate tab.");
+            showError("error", "Prompt textarea not found in Generate tab.");
         }
     }
     catch (error)
     {
-        console.log("Unexpected error in sendToPrompt function:", error);
+        console.error("Unexpected error in sendToPrompt function:", error);
+        showMessage('error', 'Unexpected error in sendToPrompt function: ' + error);
+
     }
 }
 
@@ -347,6 +356,7 @@ function makeLLMAPIRequest(inputText, modelId)
             else
             {
                 console.error("Call to C# method PhoneHomeAsync() failed:", data.error);
+                showMessage('error', 'An error occurred while calling PhoneHomeAsync(): ' + data.error);
             }
         }
     );
@@ -366,23 +376,39 @@ async function saveSettings() {
             data => {
                 if (data.success) {
                     console.log("Success!:", data.response);
+                    showMessage('success', 'Settings saved successfully!');
                     // TODO: Close modal
                 } else {
                     console.error("Error saving settings:", data.error);
-                    showError("An error occurred while saving settings: " + data.error);
+                    showMessage('error', 'An error occurred while saving settings: ' + data.error);
                 }
             }
         );
         await fetchModels(); // Refresh the models dropdown
     } catch (error) {
         console.error("Error in saveSettings:", error);
-        showError("An error occurred while saving settings. Please try again.");
+        showMessage('error', 'An error occurred while saving settings: ' + error);
     }
 }
 
-function showError(message) // TODO: pass a color and make this a more general function
-{
+function showMessage(type, message) {
     const responseDiv = document.getElementById("chat_llm_response");
-    responseDiv.textContent = `Error: ${message}`;
-    responseDiv.style.color = "red";
+    responseDiv.textContent = message;
+    switch (type) {
+        case 'error':
+            responseDiv.style.color = "red";
+            break;
+        case 'success':
+            responseDiv.style.color = "green";
+            break;
+        case 'info':
+            responseDiv.style.color = "blue";
+            break;
+        case 'warning':
+            responseDiv.style.color = "orange";
+            break;
+        default:
+            responseDiv.style.color = "black";
+            break;
+    }
 }
