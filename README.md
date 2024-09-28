@@ -1,7 +1,7 @@
 # SwarmUI MagicPrompt Extension
 ===========================================================================
 
-![HartsySwarm](./Images/HartsySwarm.webp)
+![HartsySwarm](https://raw.githubusercontent.com/HartsyAI/SwarmUI-MagicPromptExtension/refs/heads/master/Images/HartsySwarm.webp)
 
 ## Table of Contents
 -----------------
@@ -23,9 +23,9 @@
 
 The MagicPrompt Extension provides a simple and intuitive way directly in SwarmUI to generate text prompts for Stable Diffusion images. This uses your local Ollama LLMs. 
 
-> **Warning:**
-> - [HartsyCore](https://github.com/HartsyAI/SwarmUI-HartsyCore) is a critical component for all Hartsy extensions. Ensure it is installed and functioning correctly before installing other Hartsy extensions.
-> - Always back up your SwarmUI configuration before making changes.
+> [!WARNING]
+> [HartsyCore](https://github.com/HartsyAI/SwarmUI-HartsyCore) is a critical component for all Hartsy extensions. Ensure it is installed and functioning correctly before installing other Hartsy extensions.
+> Always back up your SwarmUI configuration before making changes.
 
 ## Features
 ------------
