@@ -20,13 +20,12 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
             try
             {
                 ConfigData config = GlobalConfig.ConfigData;
-                if (config == null)
-                {
-                    return MagicPromptAPI.CreateErrorResponse("Config data is not loaded.");
-                }
-                // Set the selected backend and unload model option
                 config.LLMBackend = selectedBackend.ToLower();
                 config.UnloadModel = modelUnload;
+                if (config == null || string.IsNullOrEmpty(config.LLMBackend))
+                {
+                    return CreateErrorResponse("Config data is not loaded or LLMBackend is not configured.");
+                }
                 if (selectedBackend.Equals("openai", StringComparison.OrdinalIgnoreCase))
                 {
                     config.Backends.OpenAIAPI.ApiKey = apiUrl;

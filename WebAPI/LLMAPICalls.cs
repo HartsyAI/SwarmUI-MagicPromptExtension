@@ -25,6 +25,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     await SaveConfigSettings.ReadConfigAsync();
                 }
                 ConfigData configDataObj = GlobalConfig.ConfigData;
+                if (configDataObj == null || string.IsNullOrEmpty(configDataObj.LLMBackend))
+                {
+                    return CreateErrorResponse("Failed to load models: LLM backend is not configured.");
+                }
                 Logs.Debug($"LLMBackend: {configDataObj.LLMBackend}");
                 string llmEndpoint = ConfigUtil.GetLlmEndpoint(configDataObj.LLMBackend, "models");
                 Logs.Debug($"LLM Endpoint: {llmEndpoint}");
@@ -80,7 +84,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             }
             if (configDataObj.LLMBackend == "openai")
             {
-                return CreateSuccessResponse("SKIP: 3rd party APIs do not pre load models."); // TODO: Maybe this should be success?
+                return CreateSuccessResponse("SKIP: 3rd party APIs do not pre load models.");
             }
             string loadEndpoint = configDataObj.LlmEndpoint + "/api/generate"; // TODO: Get the endpoint from the config
             var requestBody = new

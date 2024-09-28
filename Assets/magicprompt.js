@@ -130,10 +130,10 @@ async function addMagicPromptTab() {
                                 </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="basic-button translate" data-bs-dismiss="modal">Close</button>
-                        <button id="saveChanges" type="button" class="basic-button translate" data-bs-dismiss="modal">Save changes</button>
+                        <div class="modal-footer">
+                            <button type="button" class="basic-button translate" data-bs-dismiss="modal">Close</button>
+                            <button id="saveChanges" type="button" class="basic-button translate" data-bs-dismiss="modal">Save changes</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -184,7 +184,6 @@ async function addMagicPromptTab() {
     });
     modelSelect.addEventListener("change", function () {
         let selectedModel = modelSelect.value;
-        console.log("Selected model value:", selectedModel); // debug
         loadModel(selectedModel);
     });
 }
@@ -375,9 +374,7 @@ async function saveSettings() {
         genericRequest('SaveSettingsAsync', settings,
             data => {
                 if (data.success) {
-                    console.log("Success!:", data.response);
                     showMessage('success', 'Settings saved successfully!');
-                    // TODO: Close modal
                 } else {
                     console.error("Error saving settings:", data.error);
                     showMessage('error', 'An error occurred while saving settings: ' + data.error);
