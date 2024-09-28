@@ -29,3 +29,4 @@ Thumbs.db
 # Ignore other files
 /.env
 /.gitattributes
+config.json
