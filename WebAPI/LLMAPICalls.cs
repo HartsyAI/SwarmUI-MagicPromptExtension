@@ -1,11 +1,11 @@
-﻿using Hartsy.Extensions.MagicPromptExtension.WebAPI;
-using Hartsy.Extensions.MagicPromptExtension.WebAPI.Config;
+﻿using Hartsy.Extensions.MagicPromptExtension.WebAPI.Config;
 using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
 using Newtonsoft.Json.Linq;
 using System.Text.Json;
 using SwarmUI.Utils;
 using SwarmUI.WebAPI;
 using System.Net.Http;
+using System.IO.Pipes;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
 {
@@ -19,7 +19,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
         {
             try
             {
-                Logs.Info("Fetching available models for the MagicPrompt Extension...");
+                Logs.Info("Fetching available models for Hartsy's MagicPrompt Extension...");
                 if (GlobalConfig.ConfigData == null)
                 {
                     await SaveConfigSettings.ReadConfigAsync();
@@ -32,18 +32,31 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 Logs.Debug($"LLMBackend: {configDataObj.LLMBackend}");
                 string llmEndpoint = ConfigUtil.GetLlmEndpoint(configDataObj.LLMBackend, "models");
                 Logs.Debug($"LLM Endpoint: {llmEndpoint}");
+                // Create the GET request for the API call
                 HttpRequestMessage request = new(HttpMethod.Get, llmEndpoint);
-                if (configDataObj.LLMBackend.Equals("openai", StringComparison.CurrentCultureIgnoreCase))
+                switch (configDataObj.LLMBackend.ToLower())
                 {
-                    string apiKey = configDataObj.Backends.OpenAI.ApiKey;
-                    if (string.IsNullOrEmpty(apiKey))
-                    {
-                        string error = "OpenAI API Key is missing from the configuration.";
-                        Logs.Error(error);
-                        return CreateErrorResponse(error);
-                    }
-                    request.Headers.Add("Authorization", $"Bearer {apiKey}");
-                    Logs.Debug("Added OpenAI API key to the request headers.");
+                    case "openai":
+                        string apiKey = configDataObj.Backends.OpenAI.ApiKey;
+                        if (string.IsNullOrEmpty(apiKey))
+                        {
+                            string error = "OpenAI API Key is missing from the configuration.";
+                            Logs.Error(error);
+                            return CreateErrorResponse(error);
+                        }
+                        request.Headers.Add("Authorization", $"Bearer {apiKey}");
+                        Logs.Debug("Added OpenAI API key to the request headers.");
+                        break;
+                    case "openaiapi":
+                        Logs.Debug("Using openaiapi as LLM backend.");
+                        break;
+                    case "ollama":
+                        Logs.Debug("Using Ollama as LLM backend.");
+                        break;
+                    default:
+                        string unsupportedError = $"Unsupported backend type in GetModelsAsync: {configDataObj.LLMBackend}";
+                        Logs.Error(unsupportedError);
+                        return CreateErrorResponse(unsupportedError);
                 }
                 HttpResponseMessage response = await _httpClient.SendAsync(request);
                 Logs.Debug($"Response from LLM API: {response}");
@@ -51,9 +64,11 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 if (response.IsSuccessStatusCode)
                 {
                     string jsonString = await response.Content.ReadAsStringAsync();
-                    List<ModelData> models = DeserializeModels(jsonString, configDataObj.LLMBackend); return models != null
-                    ? CreateSuccessResponse(null, models, configDataObj)
-                    : CreateErrorResponse("Failed to parse models from response.");
+                    List<ModelData> models = DeserializeModels(jsonString, configDataObj.LLMBackend);
+
+                    return models != null
+                        ? CreateSuccessResponse(null, models, configDataObj)
+                        : CreateErrorResponse("Failed to parse models from response.");
                 }
                 else
                 {
@@ -69,24 +84,36 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             }
         }
 
+        /// <summary>Loads the specified model from the LLM backend.</summary>
+        /// <param name="modelId">The ID of the model to load.</param>
+        /// <returns>A JSON object indicating success or error.</returns>
         public static async Task<JObject> LoadModelAsync(
-        [API.APIParameter("Model ID")] string modelId)
+            [API.APIParameter("Model ID")] string modelId)
         {
             ConfigData configDataObj = GlobalConfig.ConfigData;
-            if (GlobalConfig.ConfigData == null)
+            if (configDataObj == null)
             {
                 await SaveConfigSettings.ReadConfigAsync();
+                configDataObj = GlobalConfig.ConfigData; // Refresh after reading
             }
-            else
+            configDataObj.Model = modelId;
+            ConfigUtil.UpdateConfig(configDataObj);
+            string endpoint;
+            switch (configDataObj.LLMBackend)
             {
-                configDataObj.Model = modelId;
-                ConfigUtil.UpdateConfig(configDataObj);
+                case "anthropic":
+                case "openai":
+                    return CreateSuccessResponse("SKIP: 3rd party APIs do not preload models.");
+                case "openaiapi":
+                    endpoint = configDataObj.Backends.OpenAIAPI.BaseUrl;
+                    break;
+                case "ollama":
+                    endpoint = configDataObj.LlmEndpoint + configDataObj.Backends.Ollama.Endpoints["load"];
+                    break;
+                default:
+                    Logs.Error($"Unsupported backend type in LoadModels: {configDataObj.LLMBackend}");
+                    return CreateErrorResponse($"Unsupported backend type: {configDataObj.LLMBackend}");
             }
-            if (configDataObj.LLMBackend == "openai")
-            {
-                return CreateSuccessResponse("SKIP: 3rd party APIs do not pre load models.");
-            }
-            string loadEndpoint = configDataObj.LlmEndpoint + "/api/generate"; // TODO: Get the endpoint from the config
             var requestBody = new
             {
                 model = modelId,
@@ -95,12 +122,12 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             {
                 string jsonRequestBody = JsonSerializer.Serialize(requestBody);
                 StringContent httpContent = new(jsonRequestBody, Encoding.UTF8, "application/json");
-                HttpResponseMessage response = await _httpClient.PostAsync(loadEndpoint, httpContent);
+                HttpResponseMessage response = await _httpClient.PostAsync(endpoint, httpContent);
                 if (response.IsSuccessStatusCode)
                 {
                     Logs.Info($"Successfully loaded model: {modelId}");
-                    configDataObj.Model = modelId;
-                    ConfigUtil.UpdateConfig(configDataObj);
+                    configDataObj.Model = modelId; // Update the model in config
+                    ConfigUtil.UpdateConfig(configDataObj); // Save the updated config
                     return CreateSuccessResponse($"Successfully loaded model: {modelId}", null, configDataObj);
                 }
                 else

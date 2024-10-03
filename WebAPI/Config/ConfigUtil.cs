@@ -49,7 +49,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
             {
                 "ollama" => config.LlmEndpoint + config.Backends.Ollama.Endpoints[endpointType],
                 "openai" => config.Backends.OpenAI.BaseUrl + config.Backends.OpenAI.Endpoints[endpointType],
-                "openaiapi" => config.Backends.OpenAIAPI.Endpoints[endpointType],
+                "openaiapi" => config.Backends.OpenAIAPI.BaseUrl + config.Backends.OpenAIAPI.Endpoints[endpointType],
                 "claude" => config.Backends.Claude.BaseUrl + config.Backends.Claude.Endpoints[endpointType],
                 _ => throw new InvalidOperationException($"Unknown backend: {backend}"),
             };
