@@ -21,6 +21,7 @@
       }
     },
     "openaiapi": {
+      "BaseUrl": "",
       "ApiKey": "",
       "Endpoints": {
         "chat": "/v1/chat/completions",

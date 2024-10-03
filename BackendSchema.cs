@@ -17,10 +17,10 @@ namespace Hartsy.Extensions.MagicPromptExtension
                 case "ollama":
                     return OllamaRequestBody(inputText, model);
                 case "openai":
-                case "oogabooga":
+                case "openaiapi":
                     return OpenAICompatibleRequestBody(inputText, model);
-                case "claude":
-                    return ClaudeRequestBody(inputText, model);
+                case "anthropic":
+                    return AnthropicRequestBody(inputText, model);
                 default:
                     Logs.Error("Unsupported or null backend. Check the config.json");
                     return null;
@@ -85,7 +85,7 @@ namespace Hartsy.Extensions.MagicPromptExtension
         /// <param name="inputText"></param>
         /// <param name="currentModel"></param>
         /// <returns></returns>
-        public static object ClaudeRequestBody(string inputText, string currentModel)
+        public static object AnthropicRequestBody(string inputText, string currentModel)
         {
             if (string.IsNullOrEmpty(inputText) || string.IsNullOrEmpty(currentModel))
             {

@@ -36,9 +36,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
         public Dictionary<string, string> Endpoints { get; set; }
     }
 
-    ///<summary>Represents the structure for openaiapi which requires only an ApiKey.</summary>
+    ///<summary>Represents the structure for openaiapi which requires only an ApiKey (optional).</summary>
     public class OpenAIAPIBackend : Backend
     {
+        public string BaseUrl { get; set; }
         public string ApiKey { get; set; }
     }
 

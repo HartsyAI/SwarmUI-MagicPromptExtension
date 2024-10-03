@@ -61,6 +61,18 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                             return null;
                         }
                         break;
+                    case "openaiapi":
+                        OpenAIAPIResponse openAIAPIResponse = JsonSerializer.Deserialize<OpenAIAPIResponse>(responseContent, jsonSerializerOptions);
+                        if (openAIAPIResponse?.Choices != null && openAIAPIResponse.Choices.Count > 0)
+                        {
+                            messageContent = openAIAPIResponse.Choices[0].Message.Content;
+                        }
+                        else
+                        {
+                            Logs.Error("OpenAI API response is null or has no choices.");
+                            return null;
+                        }
+                        break;
                     default:
                         Logs.Error("Unsupported LLM backend.");
                         return null;
@@ -97,7 +109,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                             Logs.Error("Data array is null or empty.");
                             return null;
                         }
-
                     case "openai":
                         OpenAIResponse openAIResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenAIResponse>(responseContent);
                         if (openAIResponse?.Data != null)
@@ -111,6 +122,21 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         else
                         {
                             Logs.Error("Data array is null or empty.");
+                            return null;
+                        }
+                    case "openaiapi":
+                        OpenAIAPIResponse openAIAPIResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenAIAPIResponse>(responseContent);
+                        if (openAIAPIResponse?.Data != null)
+                        {
+                            return openAIAPIResponse.Data.Select(x => new ModelData
+                            {
+                                Model = x.Id,
+                                Name = x.Id
+                            }).ToList();
+                        }
+                        else
+                        {
+                            Logs.Error("Data array is null or empty in OpenAI API response.");
                             return null;
                         }
                     default:

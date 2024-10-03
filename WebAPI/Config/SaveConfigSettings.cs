@@ -8,17 +8,18 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
     public class SaveConfigSettings : MagicPromptAPI
     {
         /// <summary>Saves user settings to the setup.json file.</summary>
-        /// <param name="selectedModel">The selected model.</param>
+        /// <param name="selectedBackend">The selected backend.</param>
         /// <param name="modelUnload">Whether to unload the model after use.</param>
         /// <param name="apiUrl">The API URL.</param>
         /// <returns>A JSON object indicating success or failure.</returns>
         public static async Task<JObject> SaveSettingsAsync(
-        [API.APIParameter("Selected Backend")] string selectedBackend,
-        [API.APIParameter("Model Unload Option")] bool modelUnload,
-        [API.APIParameter("API URL")] string apiUrl)
+            [API.APIParameter("Selected Backend")] string selectedBackend,
+            [API.APIParameter("Model Unload Option")] bool modelUnload,
+            [API.APIParameter("API URL")] string apiUrl)
         {
             try
             {
+                // TODO: if the user uses Paid API ignore URL field and check for API key exists.
                 ConfigData config = GlobalConfig.ConfigData;
                 config.LLMBackend = selectedBackend.ToLower();
                 config.UnloadModel = modelUnload;
@@ -26,20 +27,22 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
                 {
                     return CreateErrorResponse("Config data is not loaded or LLMBackend is not configured.");
                 }
-                if (selectedBackend.Equals("openai", StringComparison.OrdinalIgnoreCase))
+                switch (config.LLMBackend)
                 {
-                    config.Backends.OpenAIAPI.ApiKey = apiUrl;
-                }
-                else if (selectedBackend.Equals("ollama", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (!string.IsNullOrEmpty(apiUrl))
-                    {
-                        config.LlmEndpoint = apiUrl;
-                    }
-                }
-                else
-                {
-                    return CreateErrorResponse($"Unknown backend: {selectedBackend}");
+                    case "openai":
+                        config.Backends.OpenAI.ApiKey = apiUrl;
+                        break;
+                    case "openaiapi":
+                        config.Backends.OpenAIAPI.BaseUrl = apiUrl;
+                        break;
+                    case "ollama":
+                        if (!string.IsNullOrEmpty(apiUrl))
+                        {
+                            config.LlmEndpoint = apiUrl;
+                        }
+                        break;
+                    default:
+                        return CreateErrorResponse($"Unknown backend: {selectedBackend}");
                 }
                 ConfigUtil.UpdateConfig(config);
                 Logs.Info("LLM settings saved successfully.");
