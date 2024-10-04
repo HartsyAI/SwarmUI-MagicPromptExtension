@@ -237,6 +237,7 @@ async function fetchModels() {
                 return false;
             }
             const models = data.models;
+            const selectedModel = data.config.Model;
             console.log("Models:", models); // debug
             modelSelect.innerHTML = ''; // Clear any existing options in the dropdown
             if (!models || models.length === 0) {
@@ -248,6 +249,9 @@ async function fetchModels() {
                     const option = document.createElement("option");
                     option.value = model.model;
                     option.textContent = model.name;
+                    if (model.model === selectedModel) {
+                        option.selected = true;
+                    }
                     modelSelect.appendChild(option);
                 });
             }
