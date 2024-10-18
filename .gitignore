@@ -30,3 +30,4 @@ Thumbs.db
 /.env
 /.gitattributes
 config.json
+/.vs
