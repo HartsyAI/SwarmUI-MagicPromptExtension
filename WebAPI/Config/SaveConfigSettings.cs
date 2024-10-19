@@ -30,10 +30,22 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
                 switch (config.LLMBackend)
                 {
                     case "openai":
-                        config.Backends.OpenAI.ApiKey = apiUrl;
+                        if (!string.IsNullOrEmpty(apiUrl))
+                        {
+                            config.Backends.OpenAI.ApiKey = apiUrl;
+                        }
+                        break;
+                    case "anthropic":
+                        if (!string.IsNullOrEmpty(apiUrl))
+                        {
+                            config.Backends.Anthropic.ApiKey = apiUrl;
+                        }
                         break;
                     case "openaiapi":
-                        config.Backends.OpenAIAPI.BaseUrl = apiUrl;
+                        if (!string.IsNullOrEmpty(apiUrl))
+                        {
+                            config.Backends.OpenAIAPI.BaseUrl = apiUrl;
+                        }
                         break;
                     case "ollama":
                         if (!string.IsNullOrEmpty(apiUrl))
@@ -97,11 +109,17 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
 
                 if (apiProvider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
                 {
-                    config.Backends.OpenAI.ApiKey = apiKey;
+                    if (!string.IsNullOrEmpty(apiKey))
+                    {
+                        config.Backends.OpenAI.ApiKey = apiKey;
+                    }
                 }
-                else if (apiProvider.Equals("Claude", StringComparison.OrdinalIgnoreCase))
+                else if (apiProvider.Equals("Anthropic", StringComparison.OrdinalIgnoreCase))
                 {
-                    config.Backends.Claude.ApiKey = apiKey;
+                    if (!string.IsNullOrEmpty(apiKey))
+                    {
+                        config.Backends.OpenAI.ApiKey = apiKey;
+                    }
                 }
                 else
                 {
