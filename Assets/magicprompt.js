@@ -11,14 +11,46 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
     checkForMagicPrompt();
+    // Create the MagicPrompt button in the Generate tab
+    const generateButton = document.getElementById('alt_generate_button');
+    const promptTextArea = document.getElementById('alt_prompt_textbox');
+    if (generateButton) {
+        const magicPromptContainer = document.createElement('div');
+        //magicPromptContainer.style.display = 'block'; // Block to force a new line
+        const magicPromptButton = document.createElement('img');
+        magicPromptButton.id = 'magic_prompt_button';
+        magicPromptButton.className = 'alt-prompt-buttons magic-prompt-button basic-button translate';
+        magicPromptButton.src = 'https://raw.githubusercontent.com/HartsyAI/SwarmUI-HartsyCore/refs/heads/main/Images/magic_prompt.png';
+        magicPromptButton.alt = 'MagicPrompt';
+        magicPromptButton.style.cursor = 'pointer'; // Make the image clickable.
+        magicPromptButton.style.border = 'none';
+        magicPromptButton.style.background = 'none';
+
+        // Add hover effect
+        magicPromptButton.addEventListener('mouseenter', function () {
+            magicPromptButton.style.opacity = '0.8'; // Slightly dim the button on hover
+            magicPromptButton.style.transform = 'scale(1.05)'; // Slightly enlarge the button on hover
+        });
+        magicPromptButton.addEventListener('mouseleave', function () {
+            magicPromptButton.style.opacity = '1'; // Reset opacity
+            magicPromptButton.style.transform = 'scale(1)'; // Reset scale
+        });
+
+        magicPromptButton.addEventListener('click', function () {
+            const promptText = promptTextArea.value;
+            submitInput(promptText, "magic");
+        });
+        magicPromptContainer.appendChild(magicPromptButton);
+        generateButton.parentNode.appendChild(magicPromptContainer);
+    }
 });
 
 async function addMagicPromptTab(utilitiesTab) {
     // Add MagicPrompt tab under the Utilities tab
     const tabList = utilitiesTab.querySelector('.nav-tabs');
-    console.log('tabList:', tabList);
+    console.log('tabList:', tabList); // debug
     const tabContentContainer = utilitiesTab.querySelector('.tab-content');
-    console.log('tabContentContainer:', tabContentContainer);
+    console.log('tabContentContainer:', tabContentContainer); // debug
     if (tabList && tabContentContainer) {
         // Create the tab link
         const tabItem = document.createElement('li');
@@ -31,11 +63,10 @@ async function addMagicPromptTab(utilitiesTab) {
         tabButton.setAttribute('href', '#Utilities-MagicPrompt-Tab');
         tabButton.setAttribute('role', 'tab');
         tabButton.setAttribute('aria-selected', 'false');
-        tabButton.textContent = 'Magic';
+        tabButton.textContent = 'MagicPrompt';
         tabItem.appendChild(tabButton);
         tabList.appendChild(tabItem);
         // Create the tab content
-        const utilitiesTab = document.querySelector('#utilities_tab.tab-content');
         const magicPromptTabContent = `
             <!-- Choose a Model Section -->
             <div class="tab-pane" id="Utilities-MagicPrompt-Tab" role="tabpanel">
@@ -297,6 +328,11 @@ function submitInput(inputText, buttonType)
         const textArea = document.getElementById("chat_llm_textarea");
         // Determine the text to use based on which button was clicked
         let textToUse;
+        if (buttonType === "magic")
+        {
+            textToUse = inputText || fallbackText;
+            originalPrompt.textContent = textToUse;
+        }
         if (buttonType === "regenerate")
         {
             textToUse = originalPrompt.textContent || fallbackText;
@@ -374,8 +410,10 @@ function makeLLMAPIRequest(inputText, modelId)
             if (data.success)
             {
                 const chatLLMResponse = document.getElementById("chat_llm_response");
+                const promptTextArea = document.getElementById('alt_prompt_textbox');
                 chatLLMResponse.style.color = "inherit"; // Reset the color to default. Needed if there was an error message before.
                 chatLLMResponse.textContent = data.response;
+                promptTextArea.value = data.response; // TODO: This should only trigger when we are in the Generate tab and use the MagicPrompt button there
             }
             else
             {
