@@ -28,7 +28,7 @@
         "models": "/v1/models"
       }
     },
-    "claude": {
+    "anthropic": {
       "BaseUrl": "https://api.anthropic.com",
       "ApiKey": "",
       "Endpoints": {
