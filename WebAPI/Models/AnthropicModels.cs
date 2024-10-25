@@ -15,40 +15,46 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
         [JsonProperty("data")]
         public List<AnthropicModel> Data { get; set; }
 
-        [JsonPropertyName("id")]
-        public string Id { get; set; }
-
-        [JsonPropertyName("object")]
-        public string Object { get; set; }
-
-        [JsonPropertyName("created")]
-        public long Created { get; set; }
-
-        [JsonPropertyName("model")]
-        public string Model { get; set; }
-
         [JsonPropertyName("choices")]
         public List<AnthropicChoice> Choices { get; set; }
+
+        [JsonPropertyName("content")]
+        public AnthropicContent[] Content { get; set; }
+    }
+
+    public class AnthropicContent
+    {
+        [JsonPropertyName("type")]
+        public string Type { get; set; }
+
+        [JsonPropertyName("text")]
+        public string Text { get; set; }
     }
 
     public class AnthropicChoice
     {
-        [JsonPropertyName("index")]
-        public int Index { get; set; }
-
         [JsonPropertyName("message")]
         public AnthropicMessage Message { get; set; }
+    }
 
-        [JsonPropertyName("finish_reason")]
-        public string FinishReason { get; set; }
+    public class AnthropicRequest
+    {
+        [JsonProperty("model")]
+        public string Model { get; set; }
+
+        [JsonProperty("max_tokens")]
+        public int MaxTokens { get; set; }
+
+        [JsonProperty("messages")]
+        public List<AnthropicMessage> Messages { get; set; }
     }
 
     public class AnthropicMessage
     {
-        [JsonPropertyName("role")]
+        [JsonProperty("role")]
         public string Role { get; set; }
 
-        [JsonPropertyName("content")]
+        [JsonProperty("content")]
         public string Content { get; set; }
     }
 
@@ -56,17 +62,5 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
     {
         [JsonProperty("id")]
         public string Id { get; set; }
-
-        [JsonProperty("object")]
-        public string Object { get; set; }
-
-        [JsonProperty("created")]
-        public long Created { get; set; }
-
-        [JsonProperty("description")]
-        public string Description { get; set; }
-
-        [JsonProperty("tags")]
-        public List<string> Tags { get; set; }
     }
 }

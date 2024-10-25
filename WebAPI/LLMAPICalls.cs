@@ -6,6 +6,7 @@ using SwarmUI.Utils;
 using SwarmUI.WebAPI;
 using System.Net.Http;
 using System.IO.Pipes;
+using System.Text.Json.Nodes;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
 {
@@ -53,6 +54,36 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     case "ollama":
                         Logs.Debug("Using Ollama as LLM backend.");
                         break;
+                    case "anthropic":
+                        Logs.Debug("Using Anthropic as LLM backend.");
+                        List<ModelData> models =
+                        [
+                            new ModelData
+                            {
+                                Name = "Claude 3.5 Sonnet",
+                                Version = "20241022",
+                                Model = "claude-3-5-sonnet-20241022",
+                            },
+                            new ModelData
+                            {
+                                Name = "Claude 3 Opus",
+                                Version = "20240229",
+                                Model = "claude-3-opus-20240229",
+                            },
+                            new ModelData
+                            {
+                                Name = "Claude 3 Sonnet",
+                                Version = "20240229",
+                                Model = "claude-3-sonnet-20240229",
+                            },
+                            new ModelData
+                            {
+                                Name = "Claude 3 Haiku",
+                                Version = "20240307",
+                                Model = "claude-3-haiku-20240229",
+                            }
+                        ];
+                        return CreateSuccessResponse(null, models, configDataObj);
                     default:
                         string unsupportedError = $"Unsupported backend type in GetModelsAsync: {configDataObj.LLMBackend}";
                         Logs.Error(unsupportedError);
@@ -103,7 +134,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             {
                 case "anthropic":
                 case "openai":
-                    return CreateSuccessResponse("SKIP: 3rd party APIs do not preload models.");
+                    return CreateSuccessResponse("Skip Model Preload: Not needed for 3rd party APIs.");
                 case "openaiapi":
                     endpoint = configDataObj.Backends.OpenAIAPI.BaseUrl;
                     break;
@@ -214,7 +245,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 Logs.Verbose($"ConfigData.Model: {configDataObj.Model}");
                 Logs.Verbose($"ConfigData.LLMBackend: {configDataObj.LLMBackend}");
                 object requestBody = BackendSchema.GetSchemaType(llmBackend, inputText, configDataObj.Model);
-                Logs.Verbose($"Request body for LLM Backend: {JsonSerializer.Serialize(requestBody)}");
                 HttpRequestMessage request = new(HttpMethod.Post, llmEndpoint);
                 if (llmBackend.Equals("openai", StringComparison.CurrentCultureIgnoreCase))
                 {
@@ -229,9 +259,40 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     request.Headers.Add("Authorization", $"Bearer {apiKey}");
                     Logs.Debug("Added OpenAI API key to the request headers.");
                 }
-                request.Content = new StringContent(JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json");
+                if (llmBackend.Equals("anthropic", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    string apiKey = configDataObj.Backends.Anthropic.ApiKey;
+                    if (string.IsNullOrEmpty(apiKey))
+                    {
+                        string error = "Anthropic API Key is missing from the configuration.";
+                        Logs.Error(error);
+                        return CreateErrorResponse(error);
+                    }
+                    // Add the API key to the Authorization header
+                    request.Headers.Add("x-api-key", apiKey);
+                    request.Headers.Add("anthropic-version", "2023-06-01");
+                    Logs.Debug("Added Anthropic API key and version to the request headers.");
+                }
+                request.Headers.Add("Accept", "application/json");
+                string jsonBody = JsonSerializer.Serialize(requestBody);
+                request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+                Logs.Debug("=== Full Request Details ===");
+                Logs.Debug($"URL: {request.RequestUri}");
+                Logs.Debug("Headers:");
+                foreach (var header in request.Headers)
+                {
+                    Logs.Debug($"  {header.Key}: {string.Join(", ", header.Value)}");
+                }
+                Logs.Debug("Content Headers:");
+                foreach (var header in request.Content.Headers)
+                {
+                    Logs.Debug($"  {header.Key}: {string.Join(", ", header.Value)}");
+                }
+                Logs.Debug("Request Body:");
+                Logs.Debug(jsonBody);  // Print the actual JSON string
+                Logs.Debug("========================");
                 HttpResponseMessage response = await _httpClient.SendAsync(request);
-                Logs.Debug($"Response From LLM Backend: {response}");
+                //Logs.Debug($"Response From LLM Backend: {response}"); // Debug
                 if (response.IsSuccessStatusCode)
                 {
                     string llmResponse = await DeserializeResponse(response, llmBackend);
@@ -241,8 +302,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 }
                 else
                 {
-                    Logs.Error($"API request failed {response.Content} with status code: {response.StatusCode}");
-                    return CreateErrorResponse($"API request failed with status code: {response.StatusCode}");
+                    string errorContent = await response.Content.ReadAsStringAsync();
+                    Logs.Error($"API request failed with status code: {response.StatusCode}");
+                    Logs.Error($"Error details: {errorContent}");
+                    return CreateErrorResponse($"API request failed with status code: {response.StatusCode}. Details: {errorContent}");
                 }
             }
             catch (Exception ex)

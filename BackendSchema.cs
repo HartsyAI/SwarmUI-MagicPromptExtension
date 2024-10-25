@@ -1,4 +1,6 @@
-﻿using SwarmUI.Utils;
+﻿using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
+using SwarmUI.Utils;
+using System.Text.Json;
 
 namespace Hartsy.Extensions.MagicPromptExtension
 {
@@ -81,16 +83,18 @@ namespace Hartsy.Extensions.MagicPromptExtension
             };
         }
 
-        /// <summary>Generates a request body for Claude (Anthropic API).</summary>
-        /// <param name="inputText"></param>
-        /// <param name="currentModel"></param>
-        /// <returns></returns>
+        /// <summary>Generates a request body for the Claude (Anthropic API) based on the input text and model.</summary>
+        /// <param name="inputText">The text input provided by the user.</param>
+        /// <param name="currentModel">The Claude model being used (e.g., "claude-3-5-sonnet-20241022").</param>
+        /// <returns>An anonymous object representing the request body for the Claude API.</returns>
+        /// <exception cref="ArgumentException">Thrown when the input text or model is null or empty.</exception>
         public static object AnthropicRequestBody(string inputText, string currentModel)
         {
             if (string.IsNullOrEmpty(inputText) || string.IsNullOrEmpty(currentModel))
             {
                 throw new ArgumentException("Input text or model cannot be null or empty.");
             }
+
             return new
             {
                 model = currentModel,

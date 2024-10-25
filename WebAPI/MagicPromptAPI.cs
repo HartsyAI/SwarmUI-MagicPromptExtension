@@ -51,13 +51,13 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         break;
                     case "anthropic":
                         AnthropicResponse anthropicResponse = JsonSerializer.Deserialize<AnthropicResponse>(responseContent, jsonSerializerOptions);
-                        if (anthropicResponse?.Choices != null && anthropicResponse.Choices.Count > 0)
+                        if (anthropicResponse?.Content != null && anthropicResponse.Content.Length > 0)
                         {
-                            messageContent = anthropicResponse.Choices[0].Message.Content;
+                            messageContent = anthropicResponse.Content[0].Text;
                         }
                         else
                         {
-                            Logs.Error("Anthropic response is null or has no choices.");
+                            Logs.Error("Anthropic response is null or has no content.");
                             return null;
                         }
                         break;
