@@ -1,39 +1,86 @@
+/**
+ * Event listener for the DOMContentLoaded event. This function is called when the HTML document has been completely loaded and parsed.
+ *
+ * It checks for the existence of the Utilities tab and adds the MagicPrompt tab if found.
+ * It also creates the MagicPrompt button in the Generate tab.
+ *
+ * @returns {void}
+ */
 document.addEventListener("DOMContentLoaded", function () {
-    const maxRetries = 5; // Maximum number of retries
-    const retryInterval = 1000; // Retry interval in milliseconds
-    let retryCount = 0; // Current retry count
 
     function checkForMagicPrompt() {
-        const magicPrompt = document.getElementById('MagicPrompt');
-        if (magicPrompt) {
-            // MagicPrompt tab found, add the MagicPrompt tab to the Hartsy tab
-            addMagicPromptTab();
+        const utilities = document.getElementById('utilities_tab');
+        if (utilities) {
+            // Utilities tab found, add the MagicPrompt tab
+            addMagicPromptTab(utilities);
         } else {
-            retryCount++;
-            if (retryCount < maxRetries) {
-                console.log(`MagicPrompt tab not found, retrying in ${retryInterval / 1000} seconds...`);
-                setTimeout(checkForMagicPrompt, retryInterval);
-            } else {
-                console.log('MagicPrompt tab not found after' + maxRetries + 'retries. Please ensure HartsyCore extension is installed.');
-            }
+            console.log('Utilities tab not found, something has gone very wrong!');
+            return;
         }
     }
     checkForMagicPrompt();
+    // Create the MagicPrompt button in the Generate tab
+    const generateButton = document.getElementById('alt_generate_button');
+    const promptTextArea = document.getElementById('alt_prompt_textbox');
+    if (generateButton) {
+        const magicPromptContainer = document.createElement('div');
+        const magicPromptButton = document.createElement('img');
+        magicPromptButton.id = 'magic_prompt_button';
+        magicPromptButton.className = 'alt-prompt-buttons magic-prompt-button basic-button translate';
+        magicPromptButton.src = 'https://raw.githubusercontent.com/HartsyAI/SwarmUI-HartsyCore/refs/heads/main/Images/magic_prompt.png';
+        magicPromptButton.alt = 'MagicPrompt';
+        magicPromptButton.style.cursor = 'pointer'; // Make the image clickable.
+        magicPromptButton.style.border = 'none';
+        magicPromptButton.style.background = 'none';
+
+        // Add hover effect
+        magicPromptButton.addEventListener('mouseenter', function () {
+            magicPromptButton.style.opacity = '0.8'; // Slightly dim the button on hover
+            magicPromptButton.style.transform = 'scale(1.05)'; // Slightly enlarge the button on hover
+        });
+        magicPromptButton.addEventListener('mouseleave', function () {
+            magicPromptButton.style.opacity = '1'; // Reset opacity
+            magicPromptButton.style.transform = 'scale(1)'; // Reset scale
+        });
+
+        magicPromptButton.addEventListener('click', function () {
+            const promptText = promptTextArea.value;
+            submitInput(promptText, "magic");
+        });
+        magicPromptContainer.appendChild(magicPromptButton);
+        generateButton.parentNode.appendChild(magicPromptContainer);
+    }
 });
 
-async function addMagicPromptTab() {
-    const magicPromptTabButton = document.getElementById('magicprompttabbutton');
-    if (!magicPromptTabButton) {
-        console.error('MagicPrompt tab button not found');
+/**
+ * Adds the MagicPrompt tab under the Utilities tab.
+ *
+ * This function creates the MagicPrompt tab and its content, including the model selector, text area, and buttons.
+ * It also initializes the tab content and fetches the list of available models.
+ *
+ * @param {HTMLElement} utilitiesTab - The Utilities tab element.
+ * @returns {void}
+ */
+async function addMagicPromptTab(utilitiesTab) {
+    // Add MagicPrompt tab under the Utilities tab
+    let tabList = utilitiesTab.querySelector('.nav-tabs');
+    let tabContentContainer = utilitiesTab.querySelector('.tab-content');
+    //console.log('tabList:', tabList); // debug
+    //console.log('tabContentContainer:', tabContentContainer); // debug
+    if (!tabList && !tabContentContainer) {
+        console.error('Tab content container not found.');
         return;
     }
-    const magicPromptTabContent = document.getElementById('MagicPrompt');
-    if (!magicPromptTabContent) {
-        console.error('MagicPrompt tab content not found');
-        return;
-    }
-    magicPromptTabContent.innerHTML = `
+    // Create the tab link
+    const magicPromptTabButton = `
+        <li class="nav-item" role="presentation" data-requiredpermission="use_magicprompt">
+            <a class="nav-link translate" id="magicprompt_tab" data-bs-toggle="tab" href="#Utilities-MagicPrompt-Tab" role="tab" tabindex="-1" aria-selected="false">MagicPrompt</a>
+        </li>`;
+    tabList.insertAdjacentHTML('beforeend', magicPromptTabButton);
+    // Create the tab content
+    const magicPromptTabContent = `
         <!-- Choose a Model Section -->
+        <div class="tab-pane" id="Utilities-MagicPrompt-Tab" role="tabpanel">
         <div class="card border-secondary mb-3 card-center-container" style="width: 287.5px; float: left; margin-left: 200px; margin-right: 20px; box-sizing: border-box;">
             <div class="card-header translate">Choose a Model to Load (3B works well)</div>
             <div class="card-body">
@@ -90,6 +137,7 @@ async function addMagicPromptTab() {
                                                     <option value="ollama" selected>Ollama</option>
                                                     <option value="openaiapi">OpenAIAPI (local)</option>
                                                     <option value="openai">OpenAI (ChatGPT)</option>
+                                                    <option value="anthropic">Anthropic</option>
                                                 </select>
                                                 <div class="d-flex align-items-center" style="margin-right: 10px;">
                                                     <input type="checkbox" id="unloadModelCheckbox" />
@@ -114,7 +162,7 @@ async function addMagicPromptTab() {
                                                 <label for="apiBackendSelect" class="translate" style="margin-right: 10px;">Choose API Backend:</label>
                                                 <select id="apiBackendSelect" class="nogrow auto-dropdown"  style="width: 60%;">
                                                     <option value="openai">OpenAI</option>
-                                                    <option value="claude">Claude</option>
+                                                    <option value="anthropic">Anthropic</option>
                                                     <!-- Add more backends -->
                                                 </select>
                                             </div>
@@ -139,13 +187,26 @@ async function addMagicPromptTab() {
             </div>
         </div>
     `;
+    tabContentContainer.insertAdjacentHTML('beforeend', magicPromptTabContent);
+    initializeTabContent();
     try {
         await fetchModels();
     } catch (error) {
         console.error("Error fetching models:", error);
-        showMessage('error', 'An error occurred while fetching models: ' + error);
+        showMessage('error', 'An error occurred while fetching models:' + error);
     }
+}
 
+/**
+ * Initializes the MagicPrompt tab content by attaching event listeners to the buttons and setting up the model selector.
+ *
+ * This function is called when the tab content is loaded. It sets up the event listeners for the submit button, 
+ * send to prompt button, and regenerate button. It also populates the model selector dropdown list with available models.
+ *
+ * @returns {void}
+ */
+function initializeTabContent() {
+    // Attach listeners or manipulate tab content
     const submitButton = document.getElementById("chat_llm_submit_button");
     const sendToPromptButton = document.getElementById("send_to_prompt_button");
     const regenerateButton = document.getElementById("regenerate");
@@ -153,41 +214,53 @@ async function addMagicPromptTab() {
     const textArea = document.getElementById("chat_llm_textarea");
     const settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
     const saveApiKeyButton = document.getElementById("saveApiKeyButton");
-
-    submitButton.addEventListener("click", function () {
-        submitInput(textArea.value, "submit");
-    });
-    regenerateButton.addEventListener("click", function () {
-        submitInput(null, "regenerate");
-    });
-    sendToPromptButton.addEventListener("click", sendToPrompt);
-    textArea.addEventListener("keypress", function (event) {
-        if (event.key === "Enter") {
-            event.preventDefault(); // Prevent the default action, which is to insert a newline
+    if (submitButton) {
+        submitButton.addEventListener("click", function () {
             submitInput(textArea.value, "submit");
-        }
-    });
-    document.getElementById("settingsButton").addEventListener("click", function () {
-        settingsModal.show();
-    });
-    saveApiKeyButton.addEventListener("click", function () {
-        const apiKeyInput = document.getElementById("apiKeyInput").value;
-        const apiProvider = document.getElementById("apiBackendSelect").value;
-        if (apiKeyInput && apiProvider) {
-            submitApiKey(apiKeyInput, apiProvider);
-        } else {
-            showMessage('error', 'Please enter an API key and select a provider.');
-        }
-    });
-    document.getElementById("saveChanges").addEventListener("click", function () {
-        saveSettings();
-    });
-    modelSelect.addEventListener("change", function () {
-        let selectedModel = modelSelect.value;
-        loadModel(selectedModel);
-    });
+        });
+        regenerateButton.addEventListener("click", function () {
+            submitInput(null, "regenerate");
+        });
+        sendToPromptButton.addEventListener("click", sendToPrompt);
+        textArea.addEventListener("keypress", function (event) {
+            if (event.key === "Enter") {
+                event.preventDefault(); // Prevent the default action, which is to insert a newline
+                submitInput(textArea.value, "submit");
+            }
+        });
+        document.getElementById("settingsButton").addEventListener("click", function () {
+            settingsModal.show();
+        });
+        saveApiKeyButton.addEventListener("click", function () {
+            const apiKeyInput = document.getElementById("apiKeyInput").value;
+            const apiProvider = document.getElementById("apiBackendSelect").value;
+            if (apiKeyInput && apiProvider) {
+                submitApiKey(apiKeyInput, apiProvider);
+            } else {
+                showMessage('error', 'Please enter an API key and select a provider.');
+            }
+        });
+        document.getElementById("saveChanges").addEventListener("click", function () {
+            saveSettings();
+        });
+        modelSelect.addEventListener("change", function () {
+            let selectedModel = modelSelect.value;
+            loadModel(selectedModel);
+        });
+    } else {
+        console.log('Submit button not found.');
+    }
 }
 
+/**
+ * Saves the API key and provider to the backend by making an API request to the 'SaveApiKeyAsync' method.
+ *
+ * This function is called when the user clicks the "Submit" button in the API Key settings.
+ *
+ * @param {string} apiKey - The API key to save.
+ * @param {string} apiProvider - The API provider to save (e.g., "OpenAI", "Anthropic").
+ * @returns {void}
+ */
 function submitApiKey(apiKey, apiProvider) {
     genericRequest('SaveApiKeyAsync',
         { "apiKey": apiKey, "apiProvider": apiProvider },
@@ -203,6 +276,15 @@ function submitApiKey(apiKey, apiProvider) {
     );
 }
 
+/**
+ * Loads a selected model from the dropdown list.
+ *
+ * This function is called when the user selects a model from the dropdown list. It retrieves the selected model ID 
+ * and makes an API request to load the model.
+ *
+ * @param {string} modelId - The ID of the selected model.
+ * @returns {void}
+ */
 function loadModel(modelId) {
     try {
         genericRequest('LoadModelAsync', { "modelId": modelId }, data => {
@@ -220,6 +302,14 @@ function loadModel(modelId) {
     }
 }
 
+/**
+ * Fetches the list of available models from the backend and populates the dropdown list.
+ *
+ * This function is called when the tab content is loaded. It makes an API request to retrieve the list of available 
+ * models and populates the dropdown list with the model names.
+ *
+ * @returns {void}
+ */
 async function fetchModels() {
     const modelSelect = document.getElementById("modelSelect");
     modelSelect.style.color = "inherit"; // Reset colors to default
@@ -267,6 +357,16 @@ async function fetchModels() {
     }
 }
 
+/**
+ * Submits the input text to the LLM API, either by clicking the submit button or by pressing Enter in the text area.
+ *
+ * This function is called when the user submits the input text. It retrieves the input text from the text area, 
+ * determines the text to use based on which button was clicked, and makes an API request to the LLM backend.
+ *
+ * @param {string} inputText - The input text to submit.
+ * @param {string} buttonType - The type of button that was clicked (e.g., "submit", "regenerate").
+ * @returns {void}
+ */
 function submitInput(inputText, buttonType)
 {
     try
@@ -276,6 +376,11 @@ function submitInput(inputText, buttonType)
         const textArea = document.getElementById("chat_llm_textarea");
         // Determine the text to use based on which button was clicked
         let textToUse;
+        if (buttonType === "magic")
+        {
+            textToUse = inputText || fallbackText;
+            originalPrompt.textContent = textToUse;
+        }
         if (buttonType === "regenerate")
         {
             textToUse = originalPrompt.textContent || fallbackText;
@@ -310,6 +415,14 @@ function submitInput(inputText, buttonType)
     }
 }
 
+/**
+ * Sends the LLM response to the prompt box in the Generate tab.
+ *
+ * This function is called when the user clicks the "Send to Prompt" button. It retrieves the LLM response from the 
+ * response div and sets the value of the prompt box in the Generate tab.
+ *
+ * @returns {void}
+ */
 function sendToPrompt()
 {
     try
@@ -344,6 +457,16 @@ function sendToPrompt()
     }
 }
 
+/**
+ * Makes an API request to the LLM backend with the input text and selected model ID.
+ *
+ * This function is called when the user submits the input text. It makes an API request to the LLM backend with the 
+ * input text and selected model ID, and displays the response in the response div.
+ *
+ * @param {string} inputText - The input text to submit.
+ * @param {string} modelId - The ID of the selected model.
+ * @returns {void}
+ */
 function makeLLMAPIRequest(inputText, modelId)
 {
     genericRequest('PhoneHomeAsync',
@@ -353,8 +476,10 @@ function makeLLMAPIRequest(inputText, modelId)
             if (data.success)
             {
                 const chatLLMResponse = document.getElementById("chat_llm_response");
+                const promptTextArea = document.getElementById('alt_prompt_textbox');
                 chatLLMResponse.style.color = "inherit"; // Reset the color to default. Needed if there was an error message before.
                 chatLLMResponse.textContent = data.response;
+                promptTextArea.value = data.response; // TODO: This should only trigger when we are in the Generate tab and use the MagicPrompt button there
             }
             else
             {
@@ -365,6 +490,14 @@ function makeLLMAPIRequest(inputText, modelId)
     );
 }
 
+/**
+ * Saves the current settings, including the selected backend, model unload, and API URL.
+ *
+ * This function is called when the user clicks the "Save Changes" button. It retrieves the current settings from the 
+ * form fields and makes an API request to save the settings.
+ *
+ * @returns {void}
+ */
 async function saveSettings() {
     try {
         const llmBackendSelect = document.getElementById("llmBackendSelect");
@@ -392,6 +525,15 @@ async function saveSettings() {
     }
 }
 
+/**
+ * Displays a message to the user with the specified type and text.
+ *
+ * This function is used to display error messages, success messages, and other types of messages to the user.
+ *
+ * @param {string} type - The type of message (e.g., "error", "success", "info", "warning").
+ * @param {string} message - The text of the message.
+ * @returns {void}
+ */
 function showMessage(type, message) {
     const responseDiv = document.getElementById("chat_llm_response");
     responseDiv.textContent = message;

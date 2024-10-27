@@ -26,8 +26,8 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
         [JsonPropertyName("openaiapi")]
         public OpenAIAPIBackend OpenAIAPI { get; set; }
 
-        [JsonPropertyName("claude")]
-        public OpenAIBackend Claude { get; set; }
+        [JsonPropertyName("anthropic")]
+        public AnthropicBackend Anthropic { get; set; }
     }
 
     ///<summary>Represents the structure of Ollama's configuration (no BaseUrl or ApiKey).</summary>

@@ -24,15 +24,16 @@
 The MagicPrompt Extension provides a simple and intuitive way directly in SwarmUI to generate text prompts for Stable Diffusion images. This uses your local Ollama LLMs. 
 
 > [!WARNING]
-> [HartsyCore](https://github.com/HartsyAI/SwarmUI-HartsyCore) is a critical component for all Hartsy extensions. Ensure it is installed and functioning correctly before installing other Hartsy extensions.
+> Uninstall and remove HartsyCore Extension. It was removed to comply with the SwarmUI extension guidelines.
 > Always back up your SwarmUI configuration before making changes.
+> To use 3rd party APIs, you must have an API key. You can get one from OpenAI or Anthropic. Those cost money to use per request.
 
 ## Features
 ------------
 
 * Generate a rewritten prompt with more detail directly in SwarmUI
 * Supports any models you have on your local Ollama LLM server, any local LLM server that uses OpenAI's API format, Open AI (Requires API key), and Anthropic (Requires API key).
-* Easy-to-use interface that will send the rewritten prompts to the Generate tab
+* Easy-to-use interface with a button right in the Generate tab to rewrite the prompt. Or you can use the MagicPrompt tab for more control.
 * Compatible with other SwarmUI extensions from Hartsy.AI
 
 ## Prerequisites
@@ -41,7 +42,7 @@ The MagicPrompt Extension provides a simple and intuitive way directly in SwarmU
 Before you install the MagicPrompt Extension, ensure that you have the following prerequisites:
 
 * You need to have SwarmUI installed on your system. If you don't have it installed, you can download it from [here](https://github.com/mcmonkeyprojects/SwarmUI).
-* The HartsyCore Extension must be installed. You can download it from [here](https://github.com/HartsyAI/SwarmUI-HartsyCore).
+* Remove the HartsyCore Extension if you have it installed. It was removed to comply with the SwarmUI extension guidelines.
 * This extension assumes you have a working and setup local Ollama LLM API server or a compatable equilavent that uses OpenAi API format and you know the URL to make API calls. If you do not have this installed follow the instructions on their [GitHub](https://github.com/ollama/ollama).
 * Alternatively, you can use OpenAI or Anthropic LLM API servers. You will need an API key for these services.
 
@@ -52,7 +53,7 @@ To install the Extension, read through all the steps before attempting to instal
 
 1. Close your SwarmUI instance and navigate to `SwarmUI/src/Extensions` directory and clone the repo there. Open cmd `cd` to the directory above and `git clone ` the repo.
 2. Make sure you have run `update-windows.bat` or `update-linuxmac.sh` to recompile SwarmUI. This only needs to be done on first install.
-3. Restart your SwarmUI instance and refresh your browser. You should now have a new tab called Hartsy.AI and a sub-tab called MagicPrompt.
+3. Restart your SwarmUI instance and refresh your browser. You should now have a sub-tab called MagicPrompt inside of the Utilities tab. You will also see a new MagicPrompt button in the Generate tab.
 4. Configure the extension as described in the [Configuration](#configuration) section.
 
 ## Configuration
@@ -60,7 +61,7 @@ To install the Extension, read through all the steps before attempting to instal
 
 The MagicPrompt Extension can be used with any LLM model that works on the supported backends.
 
-1. Open the Hartsy.AI/MagicPrompt tab in SwarmUI and find and click the settings button. This will open a window with three tabs (LLM Backend, Response Instructions, and API Key)
+1. Open the Utilities/MagicPrompt tab in SwarmUI and find and click the settings button. This will open a window with three tabs (LLM Backend, Response Instructions, and API Key)
 ** LLM Backend: 
 * Choose a backend from the dropdown menu. 
 * Check the checkbox if you want to have the model unload after you press send to prompt. This unloads the model from VRAM and will need to be reloaded to make another prompt.
@@ -76,10 +77,11 @@ The MagicPrompt Extension can be used with any LLM model that works on the suppo
 ## Usage
 --------
 
-1. When you open your SwarmUI instance, you will see a new tab called "Hartsy.AI". All our extensions will be under this tab.
+1. When you open your SwarmUI instance, you will see a new button called "MagicPrompt" in the generate tab. This button will not work until you have entered your settings.
 ![The New Hartsy tab](./Images/Screenshots/hartsyTab.PNG)
+2. Click the Utilities tab and you should see a new sub-tab called MagicPrompt. Click that tab this is where you can adjust settings or change the model or backend.
 2. Choose a model from the dropdown menu. Personally I like StableLM-Zephyr 3B.
-3. Enter your crappy prompt in the box and click submit or hit enter. 
+3. Enter your crappy prompt in the box and click submit or hit enter. Or go to the Generate tab and type a prompt in the positive prompt box. Then, click the MagicPrompt button.
 ![MagicPrompt Tab in the Hartsy tab](./Images/Screenshots/magicprompttab.PNG)
 4. It will rewrite the prompt for your review.	
 ![Rewritten Prompt](./Images/Screenshots/rewritten.PNG)
@@ -114,6 +116,7 @@ If you encounter any issues check these common solutions before you open an issu
 * Version 1.0: Initial public release
 * Version 1.1: Added support for OpenAI and Anthropic LLM API servers as well as local OpenAI API servers
 * Version 1.2: Added settings config window to allow for easier configuration of the extension
+* Version 1.3: Added working Anthropic support and a new button in the Generate tab to rewrite prompts
 
 ## License
 ----------

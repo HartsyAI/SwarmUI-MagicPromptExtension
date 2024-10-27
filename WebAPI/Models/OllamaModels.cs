@@ -59,6 +59,9 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
 
         [JsonProperty("details")]
         public ModelDetails Details { get; set; }
+
+        [JsonProperty("version")]
+        public string Version { get; set; }
     }
 
     public class ModelDetails

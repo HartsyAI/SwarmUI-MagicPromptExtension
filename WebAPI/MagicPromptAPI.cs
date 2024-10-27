@@ -49,6 +49,18 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                             return null;
                         }
                         break;
+                    case "anthropic":
+                        AnthropicResponse anthropicResponse = JsonSerializer.Deserialize<AnthropicResponse>(responseContent, jsonSerializerOptions);
+                        if (anthropicResponse?.Content != null && anthropicResponse.Content.Length > 0)
+                        {
+                            messageContent = anthropicResponse.Content[0].Text;
+                        }
+                        else
+                        {
+                            Logs.Error("Anthropic response is null or has no content.");
+                            return null;
+                        }
+                        break;
                     case "ollama":
                         OllamaResponse ollamaResponse = JsonSerializer.Deserialize<OllamaResponse>(responseContent, jsonSerializerOptions);
                         if (ollamaResponse?.Message != null)
@@ -124,6 +136,13 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                             Logs.Error("Data array is null or empty.");
                             return null;
                         }
+                    case "anthropic":
+                        AnthropicResponse anthropicResponse = null;
+                        return anthropicResponse.Data.Select(x => new ModelData
+                        {
+                            Model = x.Id,
+                            Name = x.Id
+                        }).ToList();
                     case "openaiapi":
                         OpenAIAPIResponse openAIAPIResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenAIAPIResponse>(responseContent);
                         if (openAIAPIResponse?.Data != null)
