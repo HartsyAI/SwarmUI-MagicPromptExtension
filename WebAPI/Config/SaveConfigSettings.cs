@@ -119,6 +119,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
                     if (!string.IsNullOrEmpty(apiKey))
                     {
                         config.Backends.Anthropic.ApiKey = apiKey;
+                        config.Backends.OpenAI.ApiKey = apiKey;
                     }
                 }
                 else
