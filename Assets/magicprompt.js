@@ -27,7 +27,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const magicPromptButton = document.createElement('img');
         magicPromptButton.id = 'magic_prompt_button';
         magicPromptButton.className = 'alt-prompt-buttons magic-prompt-button basic-button translate';
-        magicPromptButton.src = 'https://raw.githubusercontent.com/HartsyAI/SwarmUI-HartsyCore/refs/heads/main/Images/magic_prompt.png';
+        magicPromptButton.src = 'https://raw.githubusercontent.com/HartsyAI/SwarmUI-MagicPromptExtension/refs/heads/master/Images/mp_button.webp';
         magicPromptButton.alt = 'MagicPrompt';
         magicPromptButton.style.cursor = 'pointer'; // Make the image clickable.
         magicPromptButton.style.border = 'none';
@@ -146,14 +146,14 @@ async function addMagicPromptTab(utilitiesTab) {
                                             </div>
                                             <div class="form-group translate" style="display: flex; align-items: center;">
                                                 <label for="backendUrl" class="translate" style="margin-right: 10px;">Custom Endpoint:</label>
-                                                <input type="text" id="backendUrl" class="form-control" placeholder="Enter Backend URL" />
+                                                <input type="text" id="backendUrl" class="form-control" placeholder="Enter Backend URL" style="background-color: inherit; color: inherit;" />
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="tab-pane fade" id="instructions" role="tabpanel" aria-labelledby="instructions-tab">
-                                <textarea id="responseInstructions" class="form-control" rows="3" placeholder="Response instructions for the LLM"></textarea>
+                                <textarea id="responseInstructions" class="form-control" rows="3" placeholder="Response instructions for the LLM" style="background-color: inherit; color: inherit;"></textarea>
                             </div>
                             <div class="tab-pane fade" id="api" role="tabpanel" aria-labelledby="api-key-tab">
                                     <div class="row">
@@ -170,7 +170,7 @@ async function addMagicPromptTab(utilitiesTab) {
                                         <div class="col-md-6">
                                             <div class="form-group d-flex align-items-center">
                                                 <label for="apiKeyInput" class="translate" style="margin-right: 10px; white-space: nowrap;">API Key:</label>
-                                                <textarea id="apiKeyInput" class="styled-textarea" rows="1" style="width: 100%;" placeholder="Enter API key"></textarea>
+                                                <textarea id="apiKeyInput" class="form-control" rows="1" style="width: 100%; background-color: inherit; color: inherit;" placeholder="Enter API key"></textarea>
                                                 <button id="saveApiKeyButton" type="button" class="basic-button translate" style="margin-left: 10px;">Submit</button>
                                             </div>
                                         </div>

@@ -78,15 +78,16 @@ The MagicPrompt Extension can be used with any LLM model that works on the suppo
 --------
 
 1. When you open your SwarmUI instance, you will see a new button called "MagicPrompt" in the generate tab. This button will not work until you have entered your settings.
-![The New Hartsy tab](./Images/Screenshots/hartsyTab.PNG)
+![MP Buttton](./Images/Screenshots/mp_button.PNG)
 2. Click the Utilities tab and you should see a new sub-tab called MagicPrompt. Click that tab this is where you can adjust settings or change the model or backend.
+![MP Tab](./Images/Screenshots/mp_tab_.PNG)
 2. Choose a model from the dropdown menu. Personally I like StableLM-Zephyr 3B.
+![Model Dropdown](./Images/Screenshots/model.PNG)
 3. Enter your crappy prompt in the box and click submit or hit enter. Or go to the Generate tab and type a prompt in the positive prompt box. Then, click the MagicPrompt button.
-![MagicPrompt Tab in the Hartsy tab](./Images/Screenshots/magicprompttab.PNG)
 4. It will rewrite the prompt for your review.	
 ![Rewritten Prompt](./Images/Screenshots/rewritten.PNG)
 5. If you like the prompt, click send to prompt button and it will yeet it to the Generate tab and fill in your prompt box.
-![Generate from the prompt](./Images/Screenshots/generate.PNG)
+![Final Image](./Images/Screenshots/final_image.PNG)
 6. If you do not like it enter a new prompt or click the regenerate button to get a new version of your original prompt. 
 7. Profit.
 
