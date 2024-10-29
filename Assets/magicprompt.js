@@ -146,7 +146,7 @@ async function addMagicPromptTab(utilitiesTab) {
                                             </div>
                                             <div class="form-group translate" style="display: flex; align-items: center;">
                                                 <label for="backendUrl" class="translate" style="margin-right: 10px;">Custom Endpoint:</label>
-                                                <input type="text" id="backendUrl" class="form-control" placeholder="Enter Backend URL" style="background-color: inherit; color: inherit;" />
+                                                <input type="text" id="backendUrl" class="form-control" placeholder="http://localhost:11434" style="background-color: inherit; color: inherit;" />
                                             </div>
                                         </div>
                                     </div>
