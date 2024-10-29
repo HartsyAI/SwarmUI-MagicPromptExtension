@@ -5,26 +5,40 @@ using System.Net.Http;
 using System.Text.Json;
 using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
 using Hartsy.Extensions.MagicPromptExtension.WebAPI.Config;
+using SwarmUI.Accounts;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
 {
+    // Define a permission group specifically for MagicPromptAPI
+    public static class MagicPromptPermissions
+    {
+        public static readonly PermInfoGroup MagicPromptPermGroup = new("MagicPrompt", "Permissions related to MagicPrompt functionality for API calls and settings.");
+        public static readonly PermInfo PermPhoneHome = Permissions.Register(new("magicprompt_phone_home", "Phone Home", "Allows the extension to make outbound calls to retrieve external data.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
+        public static readonly PermInfo PermSaveConfig = Permissions.Register(new("magicprompt_save_config", "Save Configuration", "Allows the user to save configuration settings.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
+        public static readonly PermInfo PermSaveApiKey = Permissions.Register(new("magicprompt_save_api_key", "Save API Key", "Allows the user to save API keys.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
+        public static readonly PermInfo PermReadConfig = Permissions.Register(new("magicprompt_read_config", "Read Configuration", "Allows the user to read configuration settings.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
+        public static readonly PermInfo PermGetModels = Permissions.Register(new("magicprompt_get_models", "Get Models", "Allows the user to retrieve the list of available models.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
+        public static readonly PermInfo PermLoadModel = Permissions.Register(new("magicprompt_load_model", "Load Model", "Allows the user to load a model for usage.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
+    }
+
     [API.APIClass("API routes related to MagicPromptExtension extension")]
     public class MagicPromptAPI
     {
-        /// <summary>Registers the API call for the extension, enabling methods to be called from JavaScript.</summary>
+        /// <summary>Registers the API calls for the extension, enabling methods to be called from JavaScript with appropriate permissions.</summary>
         public static void Register()
         {
-            API.RegisterAPICall(LLMAPICalls.PhoneHomeAsync, true);
-            API.RegisterAPICall(SaveConfigSettings.SaveSettingsAsync);
-            API.RegisterAPICall(SaveConfigSettings.SaveApiKeyAsync);
-            API.RegisterAPICall(SaveConfigSettings.ReadConfigAsync);
-            API.RegisterAPICall(LLMAPICalls.GetModelsAsync);
-            API.RegisterAPICall(LLMAPICalls.LoadModelAsync);
+            // Register API calls with permissions
+            API.RegisterAPICall(LLMAPICalls.PhoneHomeAsync, true, MagicPromptPermissions.PermPhoneHome);
+            API.RegisterAPICall(SaveConfigSettings.SaveSettingsAsync, false, MagicPromptPermissions.PermSaveConfig);
+            API.RegisterAPICall(SaveConfigSettings.SaveApiKeyAsync, false, MagicPromptPermissions.PermSaveApiKey);
+            API.RegisterAPICall(SaveConfigSettings.ReadConfigAsync, false, MagicPromptPermissions.PermReadConfig);
+            API.RegisterAPICall(LLMAPICalls.GetModelsAsync, false, MagicPromptPermissions.PermGetModels);
+            API.RegisterAPICall(LLMAPICalls.LoadModelAsync, true, MagicPromptPermissions.PermLoadModel);
         }
 
-        /// <summary>Makes the JSON response into a structured object and extracts the message content based on the backend type.</summary>
-        /// <returns>The rewritten prompt, or null if deserialization fails.</returns>
-        public static async Task<string> DeserializeResponse(HttpResponseMessage response, string llmBackend)
+    /// <summary>Makes the JSON response into a structured object and extracts the message content based on the backend type.</summary>
+    /// <returns>The rewritten prompt, or null if deserialization fails.</returns>
+    public static async Task<string> DeserializeResponse(HttpResponseMessage response, string llmBackend)
         {
             try
             {
