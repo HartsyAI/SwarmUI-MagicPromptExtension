@@ -480,6 +480,22 @@ function makeLLMAPIRequest(inputText, modelId)
                 chatLLMResponse.style.color = "inherit"; // Reset the color to default. Needed if there was an error message before.
                 chatLLMResponse.textContent = data.response;
                 promptTextArea.value = data.response; // TODO: This should only trigger when we are in the Generate tab and use the MagicPrompt button there
+                // Set the value and trigger necessary events
+                if (promptTextArea) {
+                    promptTextArea.value = data.response;
+                    // Trigger input event
+                    const inputEvent = new Event('input', {
+                        bubbles: true,
+                        cancelable: true,
+                    });
+                    promptTextArea.dispatchEvent(inputEvent);
+                    // Trigger change event
+                    const changeEvent = new Event('change', {
+                        bubbles: true,
+                        cancelable: true,
+                    });
+                    promptTextArea.dispatchEvent(changeEvent);
+                }
             }
             else
             {
