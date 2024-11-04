@@ -15,7 +15,8 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
         public static async Task<JObject> SaveSettingsAsync(
             [API.APIParameter("Selected Backend")] string selectedBackend,
             [API.APIParameter("Model Unload Option")] bool modelUnload,
-            [API.APIParameter("API URL")] string apiUrl)
+            [API.APIParameter("API URL")] string apiUrl,
+            [API.APIParameter("Response Instructions")] string instructions)
         {
             try
             {
@@ -23,6 +24,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
                 ConfigData config = GlobalConfig.ConfigData;
                 config.LLMBackend = selectedBackend.ToLower();
                 config.UnloadModel = modelUnload;
+                config.Instructions = instructions;
                 if (config == null || string.IsNullOrEmpty(config.LLMBackend))
                 {
                     return CreateErrorResponse("Config data is not loaded or LLMBackend is not configured.");

@@ -519,10 +519,12 @@ async function saveSettings() {
         const llmBackendSelect = document.getElementById("llmBackendSelect");
         const modelUnloadCheckbox = document.getElementById("unloadModelCheckbox");
         const apiUrlInput = document.getElementById("backendUrl");
+        const responseInstructions = document.getElementById("responseInstructions");
         const settings = {
             selectedBackend: llmBackendSelect.value,
             modelUnload: modelUnloadCheckbox.checked,
-            apiUrl: apiUrlInput.value
+            apiUrl: apiUrlInput.value,
+            instructions: responseInstructions.value
         };
         genericRequest('SaveSettingsAsync', settings,
             data => {
