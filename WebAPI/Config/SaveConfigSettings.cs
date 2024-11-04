@@ -24,7 +24,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
                 ConfigData config = GlobalConfig.ConfigData;
                 config.LLMBackend = selectedBackend.ToLower();
                 config.UnloadModel = modelUnload;
-                config.Instructions = instructions;
+                if (!string.IsNullOrEmpty(instructions))
+                {
+                    config.Instructions = instructions;
+                }   
                 if (config == null || string.IsNullOrEmpty(config.LLMBackend))
                 {
                     return CreateErrorResponse("Config data is not loaded or LLMBackend is not configured.");
