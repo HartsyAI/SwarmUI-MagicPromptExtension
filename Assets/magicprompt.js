@@ -193,7 +193,8 @@ async function addMagicPromptTab(utilitiesTab) {
         await fetchModels();
     } catch (error) {
         console.error("Error fetching models:", error);
-        showMessage('error', 'An error occurred while fetching models:' + error);
+        showMessage('error', 'Unable to fetch available models. Please ensure you have a compatible LLM backend (like Ollama)' +
+            'installed and running.Check our setup guide: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
     }
 }
 
@@ -237,7 +238,8 @@ function initializeTabContent() {
             if (apiKeyInput && apiProvider) {
                 submitApiKey(apiKeyInput, apiProvider);
             } else {
-                showMessage('error', 'Please enter an API key and select a provider.');
+                showMessage('error', 'Configuration incomplete: Please enter your API key and select a provider. If you need help getting started,' +
+                'visit our documentation: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
             }
         });
         document.getElementById("saveChanges").addEventListener("click", function () {
@@ -267,10 +269,11 @@ function submitApiKey(apiKey, apiProvider) {
         data => {
             if (data.success) {
                 console.log("API key saved successfully:", data.response);
-                showMessage('success', 'API key saved successfully!');
+                showMessage('success', 'API key saved successfully! You can now start using the extension.');
             } else {
                 console.error("Failed to save API key:", data.error);
-                showMessage('error', 'Failed to save API key: ' + data.error);
+                showMessage('error', 'Unable to save API key. Please ensure you have the correct permissions and your LLM backend is properly configured.' +
+                'For troubleshooting steps, visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
             }
         }
     );
@@ -290,15 +293,18 @@ function loadModel(modelId) {
         genericRequest('LoadModelAsync', { "modelId": modelId }, data => {
             if (data.success) {
                 console.log("Model loaded successfully:", data.response);
-                showMessage('success', 'Model loaded successfully: ' + data.response);
+                showMessage('success', 'Model loaded successfully! Ready to create some magic!');
             } else {
                 console.error("Failed to load model:", data.error);
-                showMessage('error', 'Failed to load model: ' + data.error);
+                showMessage('error', 'Failed to load model. This could be because: \n1. You have not installed an LLM backend (It does not get installed automatically)\n' +
+                    '2. Your LLM backend(e.g., Ollama) is not running\n3.You have insufficient system resources\n\nPlease check ' +
+                    'our setup guide: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
             }
         });
     } catch (error) {
         console.error("Error loading model:", error);
-        showMessage('error', 'An error occurred while loading the model. Please try again.');
+        showMessage('error', 'Unable to load the model. Please ensure your LLM backend is installed and running, your perferred model is installed., and you have entered the URL into settings. ' +
+        'For setup instructions, visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
     }
 }
 
@@ -316,13 +322,17 @@ async function fetchModels() {
     try {
         const response = await genericRequest('GetModelsAsync', {}, data => {
             if (!data.success) {
-                showMessage('error', 'Failed to load configuration or models.');
+                showMessage('error', 'Unable to load models. Please ensure you have:\n1. Installed and configured a compatible LLM backend (e.g., Ollama) That is not automatically done for you.\n' +
+                '2. Started your LLM backend service\n3.Properly set up your API keys\n\nFor detailed setup instructions, ' +
+                'visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
                 console.error("Failed to load configuration or models.");
                 throw new Error("Failed to load configuration or models.");
             }
             const llmBackend = data.config.LLMBackend;
             if (!llmBackend || llmBackend.trim() === "") {
-                showMessage('warning', 'LLM Backend is not configured. Please click the settings button to set it up.');
+                showMessage('error', 'No LLM backend configured. Please click the settings button in the MagicPrompt tab and configure your ' +
+                'preferred backend(e.g., Ollama). First time setup? An LLM backend is not installed for you make sure you have one installed. ' +
+                'Check our guide: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
                 console.error("LLM Backend is not configured. User needs to set up the backend.");
                 return false;
             }
@@ -332,7 +342,8 @@ async function fetchModels() {
             modelSelect.innerHTML = ''; // Clear any existing options in the dropdown
             if (!models || models.length === 0) {
                 console.error("No models available.");
-                showMessage('warning', 'No models available. Please check the backend configuration.');
+                showMessage('error', 'No models found. Please ensure you have:\n1. Downloaded at least one model\n2. Properly configured your LLM backend' +
+                '\n3.Have sufficient system resources\n\nNeed help ? Visit : https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
             } else {
                 // Populate the dropdown with model names
                 models.forEach(model => {
@@ -353,7 +364,9 @@ async function fetchModels() {
     }
     catch (error) {
         console.error("Error fetching models:", error);
-        showMessage('error', 'An error occurred while fetching models: ' + error);
+        showMessage('error', 'Failed to fetch models. This usually means:\n1. Your LLM backend is not running or not installed.' +
+            '\n2.You haven\'t installed any models yet\n3. There\'s a network or system issue\n\nPlease follow our troubleshooting ' +
+            'guide: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
     }
 }
 
