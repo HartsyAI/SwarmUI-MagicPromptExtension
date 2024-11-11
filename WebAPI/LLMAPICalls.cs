@@ -5,8 +5,6 @@ using System.Text.Json;
 using SwarmUI.Utils;
 using SwarmUI.WebAPI;
 using System.Net.Http;
-using System.IO.Pipes;
-using System.Text.Json.Nodes;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
 {
@@ -28,7 +26,11 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 ConfigData configDataObj = GlobalConfig.ConfigData;
                 if (configDataObj == null || string.IsNullOrEmpty(configDataObj.LLMBackend))
                 {
-                    return CreateErrorResponse("Failed to load models: LLM backend is not configured.");
+                    return CreateErrorResponse("No LLM backend configured or installed. Please:\n" + "1. After you have installed your backend. Open the extension settings\n" +
+                        "2. Select and configure a backend (Ollama, OpenAI, etc.)\n" + "3. Save your settings\n" +
+                        "If this is your first time using MagicPrompt Make sure you have installed Ollams or a compatable LLM backecd. This is not done for you automatically." +
+                        " For install and setup instructions, " + "visit:\nhttps://github.com/HartsyAI/SwarmUI-MagicPromptExtension"
+                    );
                 }
                 Logs.Debug($"LLMBackend: {configDataObj.LLMBackend}");
                 string llmEndpoint = ConfigUtil.GetLlmEndpoint(configDataObj.LLMBackend, "models");
@@ -41,7 +43,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         string apiKey = configDataObj.Backends.OpenAI.ApiKey;
                         if (string.IsNullOrEmpty(apiKey))
                         {
-                            string error = "OpenAI API Key is missing from the configuration.";
+                            string error ="OpenAI API Key not found. To configure:\n" +
+                                "1. Get your API key from OpenAI\n" + "2. Add it in the extension settings\n" +
+                                "3. Save your changes\n\n" +
+                                "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
                             Logs.Error(error);
                             return CreateErrorResponse(error);
                         }
@@ -85,7 +90,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         ];
                         return CreateSuccessResponse(null, models, configDataObj);
                     default:
-                        string unsupportedError = $"Unsupported backend type in GetModelsAsync: {configDataObj.LLMBackend}";
+                        string unsupportedError =$"Unsupported LLM backend: {configDataObj.LLMBackend}\n" +
+                            "Please select one of the supported backends:\n" + "- Ollama (recommended for local use)\n" +
+                            "- OpenAI\n" + "- Anthropic\n\n" + "For backend setup guides, " +
+                            "visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
                         Logs.Error(unsupportedError);
                         return CreateErrorResponse(unsupportedError);
                 }
@@ -99,11 +107,18 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
 
                     return models != null
                         ? CreateSuccessResponse(null, models, configDataObj)
-                        : CreateErrorResponse("Failed to parse models from response.");
+                        : CreateErrorResponse(
+                            "Unable to load available models. Please ensure:\n" + "1. Your LLM backend is running\n" +
+                            "2. You have models installed\n" + "3. Your network connection is stable\n\n" +
+                            "For troubleshooting steps, visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension"
+                        );
                 }
                 else
                 {
-                    string error = $"Error fetching models: {response.StatusCode} - {response.ReasonPhrase}";
+                    string error =$"Failed to fetch models: {response.StatusCode} - {response.ReasonPhrase}\n" +
+                        "This usually means:\n" + "1. Your LLM backend is not running\n" +
+                        "2. Network connectivity issues\n" + "3. Invalid API credentials\n\n" +
+                        "Check our setup guide: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
                     Logs.Error(error);
                     return CreateErrorResponse(error);
                 }
@@ -111,7 +126,11 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             catch (Exception ex)
             {
                 Logs.Error($"Exception occurred: {ex.Message}");
-                return CreateErrorResponse(ex.Message);
+                return CreateErrorResponse("Unexpected error while fetching models:\n" +
+                    $"{ex.Message}\n\n" + "Common solutions:\n" + "1. Restart your LLM backend\n" +
+                    "2. Check your system resources\n" + "3. Verify your configuration\n\n" +
+                    "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension"
+                );
             }
         }
 
@@ -143,7 +162,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     break;
                 default:
                     Logs.Error($"Unsupported backend type in LoadModels: {configDataObj.LLMBackend}");
-                    return CreateErrorResponse($"Unsupported backend type: {configDataObj.LLMBackend}");
+                    return CreateErrorResponse($"Unsupported LLM backend: {configDataObj.LLMBackend}\n" +
+                        "Please configure a supported backend:\n" + "- Ollama (recommended for local use)\n" + "- OpenAI\n" +
+                        "- Anthropic\n\n" + "Setup instructions: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension"
+                    );
             }
             var requestBody = new
             {
@@ -165,13 +187,21 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 {
                     string errorMessage = await response.Content.ReadAsStringAsync();
                     Logs.Error($"Failed to load model {modelId}: {response.StatusCode} - {response.ReasonPhrase}. Response: {errorMessage}");
-                    return CreateErrorResponse($"Failed to load model {modelId}: {response.StatusCode} - {response.ReasonPhrase}. Response: {errorMessage}");
+                    return CreateErrorResponse($"Failed to load model '{modelId}'. Please ensure:\n" +
+                        "1. The model name is correct\n" + "2. You have sufficient system resources\n" +
+                        "3. The model is downloaded (for Ollama)\n" + $"4. Check the error: {response.StatusCode} - {errorMessage}\n\n" +
+                        "For help, visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension"
+                    );
                 }
             }
             catch (Exception ex)
             {
                 Logs.Error($"Error loading model {modelId}: {ex.Message}");
-                return CreateErrorResponse($"Error loading model {modelId}: {ex.Message}");
+                return CreateErrorResponse($"Error loading model '{modelId}':\n" + $"{ex.Message}\n\n" +
+                    "Common solutions:\n" + "1. Verify your LLM backend is running\n" +
+                    "2. Check your network connection\n" + "3. Ensure the model is available\n\n" +
+                    "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension"
+                );
             }
         }
 
@@ -230,7 +260,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     ConfigUtil.ReadConfig();
                     if (GlobalConfig.ConfigData == null)
                     {
-                        return CreateErrorResponse("Failed to load configuration from file.");
+                        return CreateErrorResponse("Configuration not found. Please:\n" +
+                            "1. Verify you installed Ollama or other compatable backend (That is not done for you)\n" + "2. Check that you have properly saved your settings\n" +
+                            "3. Try restarting Swarm\n\n" + "Setup guide: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension"
+                        );
                     }
                 }
                 ConfigData configDataObj = GlobalConfig.ConfigData;
@@ -251,7 +284,9 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     string apiKey = configDataObj.Backends.OpenAI.ApiKey;
                     if (string.IsNullOrEmpty(apiKey))
                     {
-                        string error = "OpenAI API Key is missing from the configuration.";
+                        string error ="OpenAI API Key required. To set up:\n" +
+                            "1. Get your API key from OpenAI\n" + "2. Add it in the extension settings\n" +
+                            "3. Save your changes\n\n" + "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
                         Logs.Error(error);
                         return CreateErrorResponse(error);
                     }
@@ -264,7 +299,9 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     string apiKey = configDataObj.Backends.Anthropic.ApiKey;
                     if (string.IsNullOrEmpty(apiKey))
                     {
-                        string error = "Anthropic API Key is missing from the configuration.";
+                        string error = "Anthropic API Key required. To set up:\n" + "1. Get your API key from Anthropic\n" +
+                            "2. Add it in the extension settings\n" + "3. Save your changes\n\n" +
+                            "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
                         Logs.Error(error);
                         return CreateErrorResponse(error);
                     }
@@ -311,7 +348,12 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             catch (Exception ex)
             {
                 Logs.Error(ex.Message);
-                return CreateErrorResponse(ex.Message);
+                return CreateErrorResponse(
+                    $"Unexpected error: {ex.Message}\n\n" + "Please try:\n" + "1. Restarting your LLM backend\n" +
+                    "2. Open the config.json and confirm you settings were saved and the URL is correct\n" +
+                    "3. Verify You actually installed Ollama or a compatable backend (This is not done automatically for you)\n\n" +
+                    "For help: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension"
+                );
             }
         }
     }
