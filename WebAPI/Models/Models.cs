@@ -28,6 +28,9 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
 
         [JsonPropertyName("anthropic")]
         public AnthropicBackend Anthropic { get; set; }
+
+        [JsonPropertyName("openrouter")]
+        public OpenRouterBackend OpenRouter { get; set; }
     }
 
     ///<summary>Represents the structure of Ollama's configuration (no BaseUrl or ApiKey).</summary>

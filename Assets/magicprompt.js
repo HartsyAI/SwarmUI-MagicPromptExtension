@@ -138,6 +138,7 @@ async function addMagicPromptTab(utilitiesTab) {
                                                     <option value="openaiapi">OpenAIAPI (local)</option>
                                                     <option value="openai">OpenAI (ChatGPT)</option>
                                                     <option value="anthropic">Anthropic</option>
+                                                    <option value="openrouter">OpenRouter</option>
                                                 </select>
                                                 <div class="d-flex align-items-center" style="margin-right: 10px;">
                                                     <input type="checkbox" id="unloadModelCheckbox" />
@@ -163,6 +164,7 @@ async function addMagicPromptTab(utilitiesTab) {
                                                 <select id="apiBackendSelect" class="nogrow auto-dropdown"  style="width: 60%;">
                                                     <option value="openai">OpenAI</option>
                                                     <option value="anthropic">Anthropic</option>
+                                                    <option value="openrouter">OpenRouter</option>
                                                     <!-- Add more backends -->
                                                 </select>
                                             </div>

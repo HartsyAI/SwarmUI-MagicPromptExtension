@@ -58,6 +58,12 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
                             config.LlmEndpoint = apiUrl;
                         }
                         break;
+                    case "openrouter":
+                        if (!string.IsNullOrEmpty(apiUrl))
+                        {
+                            config.Backends.OpenRouter.ApiKey = apiUrl;
+                        }
+                        break;
                     default:
                         return CreateErrorResponse($"Unknown backend: {selectedBackend}");
                 }
@@ -125,6 +131,13 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
                     {
                         config.Backends.Anthropic.ApiKey = apiKey;
                         config.Backends.OpenAI.ApiKey = apiKey;
+                    }
+                }
+                else if (apiProvider.Equals("OpenRouter", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.IsNullOrEmpty(apiKey))
+                    {
+                        config.Backends.OpenRouter.ApiKey = apiKey;
                     }
                 }
                 else

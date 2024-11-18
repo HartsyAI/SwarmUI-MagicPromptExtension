@@ -99,6 +99,18 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                             return null;
                         }
                         break;
+                    case "openrouter":
+                        OpenRouterResponse openRouterResponse = JsonSerializer.Deserialize<OpenRouterResponse>(responseContent, jsonSerializerOptions);
+                        if (openRouterResponse?.Choices != null && openRouterResponse.Choices.Count > 0)
+                        {
+                            messageContent = openRouterResponse.Choices[0].Message.Content;
+                        }
+                        else
+                        {
+                            Logs.Error("OpenRouter response is null or has no choices.");
+                            return null;
+                        }
+                        break;
                     default:
                         Logs.Error("Unsupported LLM backend.");
                         return null;
@@ -171,6 +183,33 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         {
                             Logs.Error("Data array is null or empty in OpenAI API response.");
                             return null;
+                        }
+                    case "openrouter":
+                        Logs.Debug($"Raw OpenRouter Response: {responseContent}");
+                        try
+                        {
+                            var errorResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenRouterError>(responseContent);
+                            if (errorResponse?.Error != null)
+                            {
+                                Logs.Error($"OpenRouter API error: {errorResponse.Error.Message}");
+                                throw new Exception($"OpenRouter API error: {errorResponse.Error.Message}");
+                            }
+                            OpenRouterResponse openRouterResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenRouterResponse>(responseContent);
+                            if (openRouterResponse?.Data != null)
+                            {
+                                return openRouterResponse.Data.Select(x => new ModelData
+                                {
+                                    Model = x.Id,
+                                    Name = x.Name ?? x.Id
+                                }).ToList();
+                            }
+                            Logs.Error("OpenRouter response contains no model data");
+                            return null;
+                        }
+                        catch (Exception ex)
+                        {
+                            Logs.Error($"Error parsing OpenRouter response: {ex.Message}");
+                            throw;
                         }
                     default:
                         Logs.Error("Unsupported backend type.");

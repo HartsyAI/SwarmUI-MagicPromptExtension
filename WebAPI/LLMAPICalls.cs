@@ -89,6 +89,19 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                             }
                         ];
                         return CreateSuccessResponse(null, models, configDataObj);
+                    case "openrouter":
+                        string openRouterApiKey = configDataObj.Backends.OpenRouter.ApiKey;
+                        if (string.IsNullOrEmpty(openRouterApiKey))
+                        {
+                            string error = "OpenRouter API Key not found. To configure:\n" + "1. Get your API key from OpenRouter\n" +
+                                "2. Add it in the extension settings\n" + "3. Save your changes\n\n" +
+                                "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
+                            Logs.Error(error);
+                            return CreateErrorResponse(error);
+                        }
+                        request.Headers.Add("Authorization", $"Bearer {openRouterApiKey}");
+                        Logs.Debug("Added OpenAI API key to the request headers.");
+                        break;
                     default:
                         string unsupportedError =$"Unsupported LLM backend: {configDataObj.LLMBackend}\n" +
                             "Please select one of the supported backends:\n" + "- Ollama (recommended for local use)\n" +
@@ -153,6 +166,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             {
                 case "anthropic":
                 case "openai":
+                case "openrouter":
                     return CreateSuccessResponse("Skip Model Preload: Not needed for 3rd party APIs.");
                 case "openaiapi":
                     endpoint = configDataObj.Backends.OpenAIAPI.BaseUrl;
@@ -309,6 +323,12 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     request.Headers.Add("x-api-key", apiKey);
                     request.Headers.Add("anthropic-version", "2023-06-01");
                     Logs.Debug("Added Anthropic API key and version to the request headers.");
+                }
+                if (llmBackend.Equals("openrouter", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    string apiKey = configDataObj.Backends.OpenRouter.ApiKey;
+                    request.Headers.Add("Authorization", $"Bearer {apiKey}");
+                    request.Headers.Add("HTTP-Referer", configDataObj.Backends.OpenRouter.BaseUrl);
                 }
                 request.Headers.Add("Accept", "application/json");
                 string jsonBody = JsonSerializer.Serialize(requestBody);

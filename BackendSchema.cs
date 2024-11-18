@@ -20,6 +20,7 @@ namespace Hartsy.Extensions.MagicPromptExtension
                     return OllamaRequestBody(inputText, model);
                 case "openai":
                 case "openaiapi":
+                case "openrouter":
                     return OpenAICompatibleRequestBody(inputText, model);
                 case "anthropic":
                     return AnthropicRequestBody(inputText, model);

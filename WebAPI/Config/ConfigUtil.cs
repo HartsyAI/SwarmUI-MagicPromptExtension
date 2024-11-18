@@ -51,6 +51,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
                 "openai" => config.Backends.OpenAI.BaseUrl + config.Backends.OpenAI.Endpoints[endpointType],
                 "openaiapi" => config.Backends.OpenAIAPI.BaseUrl + config.Backends.OpenAIAPI.Endpoints[endpointType],
                 "anthropic" => config.Backends.Anthropic.BaseUrl + config.Backends.Anthropic.Endpoints[endpointType],
+                "openrouter" => config.Backends.OpenRouter.BaseUrl + config.Backends.OpenRouter.Endpoints[endpointType],
                 _ => throw new InvalidOperationException($"Unknown backend: {backend}"),
             };
             return endpoint;
