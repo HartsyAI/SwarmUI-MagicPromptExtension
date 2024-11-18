@@ -8,7 +8,7 @@ namespace Hartsy.Extensions.MagicPromptExtension
     {
         public override void OnPreInit()
         {
-            Logs.Info("MagicPromptExtension Version 1.3 started.");
+            Logs.Info("MagicPromptExtension Version 1.4 started.");
             ScriptFiles.Add("Assets/magicprompt.js");
         }
 

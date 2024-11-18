@@ -32,7 +32,7 @@ The MagicPrompt Extension provides a simple and intuitive way directly in SwarmU
 ------------
 
 * Generate a rewritten prompt with more detail directly in SwarmUI
-* Supports any models you have on your local Ollama LLM server, any local LLM server that uses OpenAI's API format, Open AI (Requires API key), and Anthropic (Requires API key).
+* Supports any models you have on your local Ollama LLM server, any local LLM server that uses OpenAI's API format, OpenRouter API (Has free models but requires API key), Open AI (Requires API key), and Anthropic (Requires API key).
 * Easy-to-use interface with a button right in the Generate tab to rewrite the prompt. Or you can use the MagicPrompt tab for more control.
 * Compatible with other SwarmUI extensions from Hartsy.AI
 
@@ -60,6 +60,10 @@ To install the Extension, read through all the steps before attempting to instal
 ----------------
 
 The MagicPrompt Extension can be used with any LLM model that works on the supported backends.
+
+> [!NOTE]
+> Looking for a free LLM API? MagicPrompt supports [OpenRouter](https://openrouter.io/). You will need to sign up to get an API key but you 
+> do NOT have to add any payment details. They have several models available for free.
 
 1. Open the Utilities/MagicPrompt tab in SwarmUI and find and click the settings button. This will open a window with three tabs (LLM Backend, Response Instructions, and API Key)
 ** LLM Backend: 
@@ -118,6 +122,7 @@ If you encounter any issues check these common solutions before you open an issu
 * Version 1.1: Added support for OpenAI and Anthropic LLM API servers as well as local OpenAI API servers
 * Version 1.2: Added settings config window to allow for easier configuration of the extension
 * Version 1.3: Added working Anthropic support and a new button in the Generate tab to rewrite prompts
+* Version 1.4: Added support for OpenRouter API (requires API key)
 
 ## License
 ----------
