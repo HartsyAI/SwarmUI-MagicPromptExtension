@@ -21,6 +21,14 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
             try
             {
                 // TODO: if the user uses Paid API ignore URL field and check for API key exists.
+                if (GlobalConfig.ConfigData == null)
+                {
+                    ConfigUtil.ReadConfig();
+                    if (GlobalConfig.ConfigData == null)
+                    {
+                        return CreateErrorResponse("Failed to initialize configuration. Try reloading the page");
+                    }
+                }
                 ConfigData config = GlobalConfig.ConfigData;
                 config.LLMBackend = selectedBackend.ToLower();
                 config.UnloadModel = modelUnload;
@@ -84,16 +92,12 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
         {
             try
             {
+                ConfigUtil.ReadConfig();
                 if (GlobalConfig.ConfigData == null)
                 {
-                    ConfigUtil.ReadConfig();
-                    if (GlobalConfig.ConfigData == null)
-                    {
-                        return CreateErrorResponse("Failed to load configuration from file.");
-                    }
+                    return CreateErrorResponse("Failed to load configuration from file.");
                 }
-                ConfigData configDataObj = GlobalConfig.ConfigData;
-                return CreateSuccessResponse("success"); // TODO: What do we need to do with the config data now that we have it?
+                return CreateSuccessResponse("success");
             }
             catch (Exception ex)
             {
@@ -115,7 +119,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Config
                 ConfigData config = GlobalConfig.ConfigData;
                 if (config == null)
                 {
-                    return CreateErrorResponse("Config data is not loaded.");
+                    return CreateErrorResponse("Config data is not loaded. Try reloading the page.");
                 }
 
                 if (apiProvider.Equals("OpenAI", StringComparison.OrdinalIgnoreCase))
