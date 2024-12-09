@@ -62,7 +62,7 @@ To install the Extension, read through all the steps before attempting to instal
 The MagicPrompt Extension can be used with any LLM model that works on the supported backends.
 
 > [!NOTE]
-> Looking for a free LLM API? MagicPrompt supports [OpenRouter](https://openrouter.io/). You will need to sign up to get an API key but you 
+> Looking for a free LLM API? MagicPrompt supports [OpenRouter](https://openrouter.ai/). You will need to sign up to get an API key but you 
 > do NOT have to add any payment details. They have several models available for free.
 
 1. Open the Utilities/MagicPrompt tab in SwarmUI and find and click the settings button. This will open a window with three tabs (LLM Backend, Response Instructions, and API Key)
