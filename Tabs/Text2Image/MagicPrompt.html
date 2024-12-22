@@ -92,12 +92,6 @@
                                     Unload Models After Response (Ollama Only)
                                 </label>
                             </div>
-                            <!-- Loading Indicator -->
-                            <div class="typing-animation" id="loading_indicator">
-                                <div class="dot"></div>
-                                <div class="dot"></div>
-                                <div class="dot"></div>
-                            </div>
                             <div class="chat-mode-control d-flex align-items-center">
                                 <span class="me-2">Chat Mode:</span>
                                 <div class="btn-group" role="group">
@@ -108,6 +102,14 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Loading Indicator -->
+                        <div id="loading_indicator">
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                        </div>
+
                         <div class="chat-input-wrapper">
                             <textarea id="chat_llm_textarea" class="form-control"
                                       placeholder="Type your prompt here or ask about the uploaded image..."></textarea>
