@@ -3,36 +3,6 @@ using System.Text.Json.Serialization;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
 {
-    ///<summary>The structure for the config.json.</summary>
-    public class ConfigData
-    {
-        public string LLMBackend { get; set; }
-        public string Instructions { get; set; }
-        public string LlmEndpoint { get; set; }
-        public bool UnloadModel { get; set; }
-        public string Model { get; set; }
-        public BackendsConfig Backends { get; set; }
-    }
-
-    ///<summary>The structure for the backends in config.json.</summary>
-    public class BackendsConfig
-    {
-        [JsonPropertyName("ollama")]
-        public Backend Ollama { get; set; }
-
-        [JsonPropertyName("openai")]
-        public OpenAIBackend OpenAI { get; set; }
-
-        [JsonPropertyName("openaiapi")]
-        public OpenAIAPIBackend OpenAIAPI { get; set; }
-
-        [JsonPropertyName("anthropic")]
-        public AnthropicBackend Anthropic { get; set; }
-
-        [JsonPropertyName("openrouter")]
-        public OpenRouterBackend OpenRouter { get; set; }
-    }
-
     ///<summary>Represents the structure of Ollama's configuration (no BaseUrl or ApiKey).</summary>
     public class Backend
     {

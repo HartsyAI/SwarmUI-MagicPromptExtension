@@ -1,590 +1,708 @@
 /**
- * Event listener for the DOMContentLoaded event. This function is called when the HTML document has been completely loaded and parsed.
- *
- * It checks for the existence of the Utilities tab and adds the MagicPrompt tab if found.
- * It also creates the MagicPrompt button in the Generate tab.
- *
- * @returns {void}
+ * magicprompt.js
+ * Core functionality and utilities for the MagicPrompt extension.
  */
-document.addEventListener("DOMContentLoaded", function () {
 
-    function checkForMagicPrompt() {
-        const utilities = document.getElementById('utilities_tab');
-        if (utilities) {
-            // Utilities tab found, add the MagicPrompt tab
-            addMagicPromptTab(utilities);
-        } else {
-            console.log('Utilities tab not found, something has gone very wrong!');
-            return;
-        }
-    }
-    checkForMagicPrompt();
-    // Create the MagicPrompt button in the Generate tab
-    const generateButton = document.getElementById('alt_generate_button');
-    const promptTextArea = document.getElementById('alt_prompt_textbox');
-    if (generateButton) {
-        const magicPromptContainer = document.createElement('div');
-        const magicPromptButton = document.createElement('img');
-        magicPromptButton.id = 'magic_prompt_button';
-        magicPromptButton.className = 'alt-prompt-buttons magic-prompt-button basic-button translate';
-        magicPromptButton.src = 'https://raw.githubusercontent.com/HartsyAI/SwarmUI-MagicPromptExtension/refs/heads/master/Images/mp_button.webp';
-        magicPromptButton.alt = 'MagicPrompt';
-        magicPromptButton.style.cursor = 'pointer'; // Make the image clickable.
-        magicPromptButton.style.border = 'none';
-        magicPromptButton.style.background = 'none';
+'use strict';
 
-        // Add hover effect
-        magicPromptButton.addEventListener('mouseenter', function () {
-            magicPromptButton.style.opacity = '0.8'; // Slightly dim the button on hover
-            magicPromptButton.style.transform = 'scale(1.05)'; // Slightly enlarge the button on hover
-        });
-        magicPromptButton.addEventListener('mouseleave', function () {
-            magicPromptButton.style.opacity = '1'; // Reset opacity
-            magicPromptButton.style.transform = 'scale(1)'; // Reset scale
-        });
-
-        magicPromptButton.addEventListener('click', function () {
-            const promptText = promptTextArea.value;
-            submitInput(promptText, "magic");
-        });
-        magicPromptContainer.appendChild(magicPromptButton);
-        generateButton.parentNode.appendChild(magicPromptContainer);
-    }
-});
-
-/**
- * Adds the MagicPrompt tab under the Utilities tab.
- *
- * This function creates the MagicPrompt tab and its content, including the model selector, text area, and buttons.
- * It also initializes the tab content and fetches the list of available models.
- *
- * @param {HTMLElement} utilitiesTab - The Utilities tab element.
- * @returns {void}
- */
-async function addMagicPromptTab(utilitiesTab) {
-    // Add MagicPrompt tab under the Utilities tab
-    let tabList = utilitiesTab.querySelector('.nav-tabs');
-    let tabContentContainer = utilitiesTab.querySelector('.tab-content');
-    //console.log('tabList:', tabList); // debug
-    //console.log('tabContentContainer:', tabContentContainer); // debug
-    if (!tabList && !tabContentContainer) {
-        console.error('Tab content container not found.');
-        return;
-    }
-    // Create the tab link
-    const magicPromptTabButton = `
-        <li class="nav-item" role="presentation" data-requiredpermission="use_magicprompt">
-            <a class="nav-link translate" id="magicprompt_tab" data-bs-toggle="tab" href="#Utilities-MagicPrompt-Tab" role="tab" tabindex="-1" aria-selected="false">MagicPrompt</a>
-        </li>`;
-    tabList.insertAdjacentHTML('beforeend', magicPromptTabButton);
-    // Create the tab content
-    const magicPromptTabContent = `
-        <!-- Choose a Model Section -->
-        <div class="tab-pane" id="Utilities-MagicPrompt-Tab" role="tabpanel">
-        <div class="card border-secondary mb-3 card-center-container" style="width: 287.5px; float: left; margin-left: 200px; margin-right: 20px; box-sizing: border-box;">
-            <div class="card-header translate">Choose a Model to Load (3B works well)</div>
-            <div class="card-body">
-                <div class="form-group" style="display: flex; align-items: center;">
-                    <label for="modelSelect" class="translate" style="margin-right: 10px;">Models:</label>
-                    <select id="modelSelect" class="form-control auto-dropdown" style="margin-right: 20px;">
-                        <option value="" selected disabled>Loading models...</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-        <!-- MagicPrompt Section -->
-        <div class="card border-secondary mb-3 card-center-container" style="width: 60%; margin-left: 20px; margin-right: 20px;">
-            <div class="card-header translate">MagicPrompt</div>
-            <div class="card-body">
-                <p class="card-text translate">Enter a prompt and let your AI do its magic:</p>
-                <textarea id="chat_llm_textarea" placeholder="A photo of Steve Irwin finding a mcmonkey in the wild, with text in a speech bubble that says aint she a beaute" style="width: 100%; height: 100px;"></textarea>
-                <button id="chat_llm_submit_button" class="basic-button translate" style="margin-top: 10px;">Submit</button>
-                <button id="send_to_prompt_button" class="basic-button translate" style="margin-top: 10px;">Send to Prompt</button>
-                <button id="regenerate" class="basic-button translate" style="margin-top: 10px;">Regenerate</button>
-                <button id="settingsButton" class="basic-button translate" style="margin-right: 10px;">Settings</button>
-                <div id="original_prompt" style="margin-top: 40px; white-space: pre-wrap;"></div>
-                <div id="chat_llm_response" style="margin-top: 20px; white-space: pre-wrap;"></div>
-            </div>
-        </div>
-        <!-- Modal Structure -->
-        <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title translate" id="settingsModalLabel">Settings</h5>
-                        <button type="button" class="btn-close translate" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <div class="modal-body">
-                        <ul class="nav nav-tabs" id="myTab" role="tablist">
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link active" id="backend-tab" data-bs-toggle="tab" data-bs-target="#backend" type="button" role="tab" aria-controls="backend" aria-selected="true">LLM Backend</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="instructions-tab" data-bs-toggle="tab" data-bs-target="#instructions" type="button" role="tab" aria-controls="instructions" aria-selected="false">Response Instructions</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="api-key-tab" data-bs-toggle="tab" data-bs-target="#api" type="button" role="tab" aria-controls="api" aria-selected="false">API Key (optional)</button>
-                            </li>
-                        </ul>
-                        <div class="tab-content" id="myTabContent">
-                            <div class="tab-pane fade show active" id="backend" role="tabpanel" aria-labelledby="backend-tab">
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <div class="form-group">
-                                            <div class="d-flex align-items-center">
-                                                <label for="llmBackendSelect" class="translate" style="margin-right: 15px; white-space: nowrap;">Choose LLM Backend:</label>
-                                                <select id="llmBackendSelect" class="nogrow auto-dropdown" style="margin-right: 10px; width: auto;">
-                                                    <option value="ollama" selected>Ollama</option>
-                                                    <option value="openaiapi">OpenAIAPI (local)</option>
-                                                    <option value="openai">OpenAI (ChatGPT)</option>
-                                                    <option value="anthropic">Anthropic</option>
-                                                    <option value="openrouter">OpenRouter</option>
-                                                </select>
-                                                <div class="d-flex align-items-center" style="margin-right: 10px;">
-                                                    <input type="checkbox" id="unloadModelCheckbox" />
-                                                    <label for="unloadModelCheckbox" class="translate" style="margin-left: 5px;">Unload Model?</label>
-                                                </div>
-                                            </div>
-                                            <div class="form-group translate" style="display: flex; align-items: center;">
-                                                <label for="backendUrl" class="translate" style="margin-right: 10px;">Custom Endpoint:</label>
-                                                <input type="text" id="backendUrl" class="form-control" placeholder="http://localhost:11434" style="background-color: inherit; color: inherit;" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="tab-pane fade" id="instructions" role="tabpanel" aria-labelledby="instructions-tab">
-                                <textarea id="responseInstructions" class="form-control" rows="3" placeholder="Response instructions for the LLM" style="background-color: inherit; color: inherit;"></textarea>
-                            </div>
-                            <div class="tab-pane fade" id="api" role="tabpanel" aria-labelledby="api-key-tab">
-                                    <div class="row">
-                                        <div class="col-md-6">
-                                            <div class="form-group d-flex align-items-center">
-                                                <label for="apiBackendSelect" class="translate" style="margin-right: 10px;">Choose API Backend:</label>
-                                                <select id="apiBackendSelect" class="nogrow auto-dropdown"  style="width: 60%;">
-                                                    <option value="openai">OpenAI</option>
-                                                    <option value="anthropic">Anthropic</option>
-                                                    <option value="openrouter">OpenRouter</option>
-                                                    <!-- Add more backends -->
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="form-group d-flex align-items-center">
-                                                <label for="apiKeyInput" class="translate" style="margin-right: 10px; white-space: nowrap;">API Key:</label>
-                                                <textarea id="apiKeyInput" class="form-control" rows="1" style="width: 100%; background-color: inherit; color: inherit;" placeholder="Enter API key"></textarea>
-                                                <button id="saveApiKeyButton" type="button" class="basic-button translate" style="margin-left: 10px;">Submit</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="basic-button translate" data-bs-dismiss="modal">Close</button>
-                            <button id="saveChanges" type="button" class="basic-button translate" data-bs-dismiss="modal">Save changes</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-    tabContentContainer.insertAdjacentHTML('beforeend', magicPromptTabContent);
-    initializeTabContent();
-    try {
-        await fetchModels();
-    } catch (error) {
-        console.error("Error fetching models:", error);
-        showMessage('error', 'Unable to fetch available models. Please ensure you have a compatible LLM backend (like Ollama)' +
-            'installed and running.Check our setup guide: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
-    }
-}
-
-/**
- * Initializes the MagicPrompt tab content by attaching event listeners to the buttons and setting up the model selector.
- *
- * This function is called when the tab content is loaded. It sets up the event listeners for the submit button, 
- * send to prompt button, and regenerate button. It also populates the model selector dropdown list with available models.
- *
- * @returns {void}
- */
-function initializeTabContent() {
-    // Attach listeners or manipulate tab content
-    const submitButton = document.getElementById("chat_llm_submit_button");
-    const sendToPromptButton = document.getElementById("send_to_prompt_button");
-    const regenerateButton = document.getElementById("regenerate");
-    const modelSelect = document.getElementById("modelSelect");
-    const textArea = document.getElementById("chat_llm_textarea");
-    const settingsModal = new bootstrap.Modal(document.getElementById('settingsModal'));
-    const saveApiKeyButton = document.getElementById("saveApiKeyButton");
-    if (submitButton) {
-        submitButton.addEventListener("click", function () {
-            submitInput(textArea.value, "submit");
-        });
-        regenerateButton.addEventListener("click", function () {
-            submitInput(null, "regenerate");
-        });
-        sendToPromptButton.addEventListener("click", sendToPrompt);
-        textArea.addEventListener("keypress", function (event) {
-            if (event.key === "Enter") {
-                event.preventDefault(); // Prevent the default action, which is to insert a newline
-                submitInput(textArea.value, "submit");
+// Initialize MagicPrompt global namespace if it doesn't exist
+if (!window.MagicPrompt) {
+    window.MagicPrompt = {
+        initialized: false,
+        settings: {
+            backend: 'ollama',
+            baseurl: 'http://localhost:11434',
+            model: '',
+            visionbackend: 'ollama',
+            visionbaseurl: 'http://localhost:11434',
+            visionmodel: '',
+            unloadmodel: false,
+            backends: {
+                openai: { apikey: '' },
+                anthropic: { apikey: '' },
+                openrouter: { apikey: '' }
+            },
+            instructions: {
+                chat: '',
+                vision: '',
+                caption: ''
             }
-        });
-        document.getElementById("settingsButton").addEventListener("click", function () {
-            settingsModal.show();
-        });
-        saveApiKeyButton.addEventListener("click", function () {
-            const apiKeyInput = document.getElementById("apiKeyInput").value;
-            const apiProvider = document.getElementById("apiBackendSelect").value;
-            if (apiKeyInput && apiProvider) {
-                submitApiKey(apiKeyInput, apiProvider);
-            } else {
-                showMessage('error', 'Configuration incomplete: Please enter your API key and select a provider. If you need help getting started,' +
-                'visit our documentation: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
-            }
-        });
-        document.getElementById("saveChanges").addEventListener("click", function () {
-            saveSettings();
-        });
-        modelSelect.addEventListener("change", function () {
-            let selectedModel = modelSelect.value;
-            loadModel(selectedModel);
-        });
-    } else {
-        console.log('Submit button not found.');
-    }
-}
-
-/**
- * Saves the API key and provider to the backend by making an API request to the 'SaveApiKeyAsync' method.
- *
- * This function is called when the user clicks the "Submit" button in the API Key settings.
- *
- * @param {string} apiKey - The API key to save.
- * @param {string} apiProvider - The API provider to save (e.g., "OpenAI", "Anthropic").
- * @returns {void}
- */
-function submitApiKey(apiKey, apiProvider) {
-    genericRequest('SaveApiKeyAsync',
-        { "apiKey": apiKey, "apiProvider": apiProvider },
-        data => {
-            if (data.success) {
-                console.log("API key saved successfully:", data.response);
-                showMessage('success', 'API key saved successfully! You can now start using the extension.');
-            } else {
-                console.error("Failed to save API key:", data.error);
-                showMessage('error', 'Unable to save API key. Please ensure you have the correct permissions and your LLM backend is properly configured.' +
-                'For troubleshooting steps, visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
-            }
-        }
-    );
-}
-
-/**
- * Loads a selected model from the dropdown list.
- *
- * This function is called when the user selects a model from the dropdown list. It retrieves the selected model ID 
- * and makes an API request to load the model.
- *
- * @param {string} modelId - The ID of the selected model.
- * @returns {void}
- */
-function loadModel(modelId) {
-    try {
-        genericRequest('LoadModelAsync', { "modelId": modelId }, data => {
-            if (data.success) {
-                console.log("Model loaded successfully:", data.response);
-                showMessage('success', 'Model loaded successfully! Ready to create some magic!');
-            } else {
-                console.error("Failed to load model:", data.error);
-                showMessage('error', 'Failed to load model. This could be because: \n1. You have not installed an LLM backend (It does not get installed automatically)\n' +
-                    '2. Your LLM backend(e.g., Ollama) is not running\n3.You have insufficient system resources\n\nPlease check ' +
-                    'our setup guide: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
-            }
-        });
-    } catch (error) {
-        console.error("Error loading model:", error);
-        showMessage('error', 'Unable to load the model. Please ensure your LLM backend is installed and running, your perferred model is installed., and you have entered the URL into settings. ' +
-        'For setup instructions, visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
-    }
-}
-
-/**
- * Fetches the list of available models from the backend and populates the dropdown list.
- *
- * This function is called when the tab content is loaded. It makes an API request to retrieve the list of available 
- * models and populates the dropdown list with the model names.
- *
- * @returns {void}
- */
-async function fetchModels() {
-    const modelSelect = document.getElementById("modelSelect");
-    modelSelect.style.color = "inherit"; // Reset colors to default
-    try {
-        const response = await genericRequest('GetModelsAsync', {}, data => {
-            if (!data.success) {
-                showMessage('error', 'Unable to load models. Please ensure you have:\n1. Installed and configured a compatible LLM backend (e.g., Ollama) That is not automatically done for you.\n' +
-                '2. Started your LLM backend service\n3.Properly set up your API keys\n\nFor detailed setup instructions, ' +
-                'visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
-                console.error("Failed to load configuration or models.");
-                throw new Error("Failed to load configuration or models.");
-            }
-            const llmBackend = data.config.LLMBackend;
-            if (!llmBackend || llmBackend.trim() === "") {
-                showMessage('error', 'No LLM backend configured. Please click the settings button in the MagicPrompt tab and configure your ' +
-                'preferred backend(e.g., Ollama). First time setup? An LLM backend is not installed for you make sure you have one installed. ' +
-                'Check our guide: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
-                console.error("LLM Backend is not configured. User needs to set up the backend.");
-                return false;
-            }
-            const models = data.models;
-            const selectedModel = data.config.Model;
-            console.log("Models:", models); // debug
-            modelSelect.innerHTML = ''; // Clear any existing options in the dropdown
-            if (!models || models.length === 0) {
-                console.error("No models available.");
-                showMessage('error', 'No models found. Please ensure you have:\n1. Downloaded at least one model\n2. Properly configured your LLM backend' +
-                '\n3.Have sufficient system resources\n\nNeed help ? Visit : https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
-            } else {
-                // Populate the dropdown with model names
-                models.forEach(model => {
-                    const option = document.createElement("option");
-                    option.value = model.model;
-                    option.textContent = model.name;
-                    if (model.model === selectedModel) {
-                        option.selected = true;
+        },
+        APIClient: {
+            /**
+             * Makes an API request using SwarmUI's genericRequest
+             * @param {Object} payload - Request payload
+             * @returns {Promise<Object>} API response
+             */
+            async makeRequest(payload) {
+                if (!payload) {
+                    throw new Error('Invalid payload');
+                }
+                // Allow handling of existing requests for vision mode
+                const isVisionRequest = payload.messageType === 'Vision';
+                const currentMode = document.getElementById('vision_mode')?.checked;
+                if (!isVisionRequest && currentMode) {
+                    const currentImage = window.visionHandler?.getCurrentImage();
+                    if (currentImage) {
+                        payload.messageContent.media = [{
+                            type: "base64",
+                            data: currentImage
+                        }];
+                        payload.messageType = 'Vision';
                     }
-                    modelSelect.appendChild(option);
-                });
-            }
-            return true;
-        });
-        if (!response) {
-            return;
-        }
-    }
-    catch (error) {
-        console.error("Error fetching models:", error);
-        showMessage('error', 'Failed to fetch models. This usually means:\n1. Your LLM backend is not running or not installed.' +
-            '\n2.You haven\'t installed any models yet\n3. There\'s a network or system issue\n\nPlease follow our troubleshooting ' +
-            'guide: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension');
-    }
-}
-
-/**
- * Submits the input text to the LLM API, either by clicking the submit button or by pressing Enter in the text area.
- *
- * This function is called when the user submits the input text. It retrieves the input text from the text area, 
- * determines the text to use based on which button was clicked, and makes an API request to the LLM backend.
- *
- * @param {string} inputText - The input text to submit.
- * @param {string} buttonType - The type of button that was clicked (e.g., "submit", "regenerate").
- * @returns {void}
- */
-function submitInput(inputText, buttonType)
-{
-    try
-    {
-        const fallbackText = "A futuristic company logo made of giant bold letters that read \"HARTSY.AI\"";
-        const originalPrompt = document.getElementById("original_prompt");
-        const textArea = document.getElementById("chat_llm_textarea");
-        // Determine the text to use based on which button was clicked
-        let textToUse;
-        if (buttonType === "magic")
-        {
-            textToUse = inputText || fallbackText;
-            originalPrompt.textContent = textToUse;
-        }
-        if (buttonType === "regenerate")
-        {
-            textToUse = originalPrompt.textContent || fallbackText;
-        }
-        else
-        {
-            textToUse = inputText || fallbackText;
-            originalPrompt.textContent = textToUse;
-        }
-        if (textToUse === fallbackText)
-        {
-            console.log("No text entered, using default prompt.");
-            showMessage('info', 'You did not enter any text... I guess I will just make some crap up..');
-        }
-        // Get the selected model ID from the dropdown
-        const modelSelect = document.getElementById("modelSelect");
-        const modelId = modelSelect.value;
-        // Call the API with both input text and selected model ID
-        makeLLMAPIRequest(textToUse, modelId);
-        // Clear the text area only when the submit button is clicked
-        if (buttonType === "submit") {
-            textArea.value = "";
-        }
-        const chatLLMResponse = document.getElementById("chat_llm_response");
-        chatLLMResponse.style.color = "rgba(144, 238, 144, 0.8)"; // Light green color
-        chatLLMResponse.textContent = `Loading ${modelId} and rewriting the prompt: "${textToUse}"...`;
-    }
-    catch (error)
-    {
-        console.error("Unexpected error in submitInput function:", error);
-        showMessage('error', 'Unexpected error in submitInput function: ' + error);
-    }
-}
-
-/**
- * Sends the LLM response to the prompt box in the Generate tab.
- *
- * This function is called when the user clicks the "Send to Prompt" button. It retrieves the LLM response from the 
- * response div and sets the value of the prompt box in the Generate tab.
- *
- * @returns {void}
- */
-function sendToPrompt()
-{
-    try
-    {
-        const fallbackText = "A futuristic company logo made of giant bold letters that read \"HARTSY.AI\"";
-        const responseDiv = document.getElementById("chat_llm_response");
-        let llmResponse = responseDiv.textContent;
-        if (llmResponse.trim() === "")
-        {
-            llmResponse = fallbackText;
-            console.log("No LLM response available, using default prompt.");
-        }
-        // Switch to the Generate tab and enter the response in the prompt box
-        document.getElementById('text2imagetabbutton').click();
-        const generatePromptTextarea = document.getElementById("input_prompt");
-        if (generatePromptTextarea)
-        {
-            generatePromptTextarea.value = llmResponse;
-            generatePromptTextarea.dispatchEvent(new Event('input'));
-        }
-        else
-        {
-            console.error("Prompt textarea not found in Generate tab.");
-            showError("error", "Prompt textarea not found in Generate tab.");
-        }
-    }
-    catch (error)
-    {
-        console.error("Unexpected error in sendToPrompt function:", error);
-        showMessage('error', 'Unexpected error in sendToPrompt function: ' + error);
-
-    }
-}
-
-/**
- * Makes an API request to the LLM backend with the input text and selected model ID.
- *
- * This function is called when the user submits the input text. It makes an API request to the LLM backend with the 
- * input text and selected model ID, and displays the response in the response div.
- *
- * @param {string} inputText - The input text to submit.
- * @param {string} modelId - The ID of the selected model.
- * @returns {void}
- */
-function makeLLMAPIRequest(inputText, modelId)
-{
-    genericRequest('PhoneHomeAsync',
-        { "inputText": inputText, "modelId": modelId },
-        data =>
-        {
-            if (data.success)
-            {
-                const chatLLMResponse = document.getElementById("chat_llm_response");
-                const promptTextArea = document.getElementById('alt_prompt_textbox');
-                chatLLMResponse.style.color = "inherit"; // Reset the color to default. Needed if there was an error message before.
-                chatLLMResponse.textContent = data.response;
-                promptTextArea.value = data.response; // TODO: This should only trigger when we are in the Generate tab and use the MagicPrompt button there
-                // Set the value and trigger necessary events
-                if (promptTextArea) {
-                    promptTextArea.value = data.response;
-                    // Trigger input event
-                    const inputEvent = new Event('input', {
-                        bubbles: true,
-                        cancelable: true,
+                }
+                try {
+                    return new Promise((resolve, reject) => {
+                        genericRequest('PhoneHomeAsync', payload,
+                            data => {
+                                if (data.success) {
+                                    console.log('API request successful:', data);
+                                    resolve(data);
+                                } else {
+                                    console.error('API request failed:', data.error);
+                                    reject(new Error(data.error || 'API request failed'));
+                                }
+                            }
+                        );
                     });
-                    promptTextArea.dispatchEvent(inputEvent);
-                    // Trigger change event
-                    const changeEvent = new Event('change', {
-                        bubbles: true,
-                        cancelable: true,
-                    });
-                    promptTextArea.dispatchEvent(changeEvent);
+                } catch (error) {
+                    console.error('API request error:', error);
+                    throw error;
                 }
             }
-            else
-            {
-                console.error("Call to C# method PhoneHomeAsync() failed:", data.error);
-                showMessage('error', 'An error occurred while calling PhoneHomeAsync(): ' + data.error);
+        },
+
+        RequestBuilder: {
+            /**
+             * Creates a request payload for API calls
+             * @param {string} input - User input text
+             * @param {string|null} image - Base64 image data
+             * @param {string} action - Action type
+             * @returns {Object} Formatted request payload
+             */
+            createRequestPayload(input, image, action) {
+                if (!input?.trim()) {
+                    throw new Error('Input is required');
+                }
+                const isVisionRequest = Boolean(image);
+                const visionMode = document.getElementById('vision_mode')?.checked;
+                if (action !== "magic" && visionMode && !image) {
+                    return {
+                        text: "Please upload an image first to use vision mode.",
+                        error: true
+                    };
+                }
+                try {
+                    const modelId = this.getModelId(isVisionRequest);
+                    const backend = isVisionRequest ? MP.settings.visionbackend : MP.settings.backend;
+                    const instructions = this.getInstructions(action, isVisionRequest);
+                    const text = instructions ? `${instructions}\n\nUser: ${input}` : input;
+                    return {
+                        messageContent: {
+                            text,
+                            systemPrompt: this.getSystemPrompt(action, visionMode),
+                            media: image ? [{
+                                type: "base64",
+                                data: image,
+                                mediaType: "image/jpeg"
+                            }] : null
+                        },
+                        modelId,
+                        messageType: isVisionRequest ? "Vision" : "Text",
+                        action,
+                        keep_alive: backend === 'ollama' && MP.settings.unloadmodel ? 0 : null
+                    };
+                } catch (error) {
+                    console.error('Error creating request payload:', error);
+                    throw error;
+                }
+            },
+            getModelId(isVision) {
+                const modelId = isVision
+                    ? document.getElementById('visionModel')?.value
+                    : document.getElementById('modelSelect')?.value;
+
+                if (!modelId) {
+                    throw new Error('Please select a model first');
+                }
+                return modelId;
+            },
+            getSystemPrompt(action, visionMode) {
+                if (action === "magic") {
+                    return "You are an AI assistant specialized in improving image generation prompts. Help users create more detailed and effective prompts.";
+                }
+                return visionMode
+                    ? "You are an AI assistant with advanced vision capabilities. When the user provides an image, analyze it in detail and respond to their questions about the image."
+                    : "You are a helpful AI assistant. Engage in natural conversation and provide assistance with any questions or tasks the user has.";
+            },
+            getInstructions(action, isVision) {
+                const instructions = MP.settings.instructions || {};
+                if (action === 'magic') {
+                    return null; // No instructions for magic action
+                }
+                if (isVision && instructions.vision) {
+                    return instructions.vision;
+                }
+                if (!isVision && instructions.chat) {
+                    return instructions.chat;
+                }
+                return null;
+            }
+        },
+
+        ResponseHandler: {
+            handleResponse(response, action) {
+                if (!response) {
+                    console.error('No response received');
+                    return this.showError('No response received from LLM');
+                }
+                if (response.error) {
+                    console.error('Response error:', response.error);
+                    return this.showError(response.error);
+                }
+                if (!response.response) {
+                    console.error('Response missing content');
+                    return this.showError('Empty response received from LLM');
+                }
+                try {
+                    if (action === "magic") {
+                        this.handleMagicResponse(response.response);
+                    }
+                    return response.response;
+                } catch (error) {
+                    console.error('Error handling response:', error);
+                    this.showError(error.message);
+                    return null;
+                }
+            },
+            handleMagicResponse(response) {
+                const promptBox = document.getElementById('alt_prompt_textbox');
+                if (promptBox) {
+                    promptBox.value = response;
+                    triggerChangeFor(promptBox);
+                    promptBox.focus();
+                    promptBox.setSelectionRange(0, promptBox.value.length);
+                }
+            },
+            showError(error) {
+                let errorMessage = error;
+                if (typeof error === 'string' && error.includes('Provider returned error')) {
+                    const match = error.match(/Provider returned error.*?:(.*)/);
+                    if (match?.[1]) {
+                        errorMessage = match[1].trim();
+                    }
+                }
+                showError(errorMessage);
+                return null;
             }
         }
-    );
+    }
+};
+
+// Use existing MP or create new reference
+window.MP = window.MP || window.MagicPrompt;
+
+/**
+ * Loads settings from the backend
+ * @returns {Promise<Object>} Settings object
+ * @throws {Error} If settings cannot be loaded
+ */
+async function loadSettings() {
+    try {
+        const response = await new Promise((resolve, reject) => {
+            genericRequest('GetSettingsAsync', {}, response => {
+                if (response.success) {
+                    console.log('Raw settings from backend:', response.settings);
+
+                    // Get raw settings directly from response
+                    const serverSettings = response.settings;
+
+                    // Create settings object preserving server values
+                    const settings = {
+                        backend: serverSettings.backend || 'ollama',
+                        model: serverSettings.model || '',
+                        visionbackend: serverSettings.visionbackend || serverSettings.backend || 'ollama',
+                        visionmodel: serverSettings.visionmodel || '',
+                        unloadmodel: serverSettings.unloadmodel || false,
+                        baseurl: serverSettings.baseurl || 'http://localhost:11434',
+                        visionbaseurl: serverSettings.visionbaseurl || serverSettings.baseurl || 'http://localhost:11434',
+                        backends: serverSettings.backends || {
+                            openai: { apikey: '' },
+                            anthropic: { apikey: '' },
+                            openrouter: { apikey: '' }
+                        },
+                        instructions: {
+                            chat: serverSettings.instructions?.chat || '',
+                            vision: serverSettings.instructions?.vision || '',
+                            caption: serverSettings.instructions?.caption || ''
+                        }
+                    };
+
+                    console.log('Structured settings:', settings);
+                    MP.settings = settings;
+                    resolve(settings);
+                } else {
+                    const error = new Error(response.error || 'Failed to load settings');
+                    console.error('Settings load error:', error);
+                    reject(error);
+                }
+            });
+        });
+
+        return response;
+    } catch (error) {
+        console.error('Settings load error:', error);
+        throw error;
+    }
 }
 
 /**
- * Saves the current settings, including the selected backend, model unload, and API URL.
- *
- * This function is called when the user clicks the "Save Changes" button. It retrieves the current settings from the 
- * form fields and makes an API request to save the settings.
- *
- * @returns {void}
+ * Saves current settings to the backend
+ * @returns {Promise<void>}
  */
 async function saveSettings() {
     try {
-        const llmBackendSelect = document.getElementById("llmBackendSelect");
-        const modelUnloadCheckbox = document.getElementById("unloadModelCheckbox");
-        const apiUrlInput = document.getElementById("backendUrl");
-        const responseInstructions = document.getElementById("responseInstructions");
-        const settings = {
-            selectedBackend: llmBackendSelect.value,
-            modelUnload: modelUnloadCheckbox.checked,
-            apiUrl: apiUrlInput.value,
-            instructions: responseInstructions.value
+        const backendMap = {
+            'ollamaLLMBtn': 'ollama',
+            'openrouterLLMBtn': 'openrouter',
+            'openaiLLMBtn': 'openai',
+            'openaiAPILLMBtn': 'openaiapi',
+            'anthropicLLMBtn': 'anthropic'
         };
-        genericRequest('SaveSettingsAsync', settings,
-            data => {
-                if (data.success) {
-                    showMessage('success', 'Settings saved successfully!');
-                } else {
-                    console.error("Error saving settings:", data.error);
-                    showMessage('error', 'An error occurred while saving settings: ' + data.error);
-                }
+        // Get selected chat and vision backends
+        const selectedChatBackend = document.querySelector('input[name="llmBackend"]:checked');
+        const selectedVisionBackend = document.querySelector('input[name="visionBackendSelect"]:checked');
+        // Get selected models
+        const chatModel = document.getElementById('modelSelect')?.value;
+        const visionModel = document.getElementById('visionModel')?.value;
+        // Debug current selections
+        console.log('Current selections:', {
+            chatBackend: selectedChatBackend?.id,
+            visionBackend: selectedVisionBackend?.id,
+            chatModel,
+            visionModel
+        });
+        // Match exact structure expected by C# DefaultSettings
+        const settings = {
+            backend: selectedChatBackend ? backendMap[selectedChatBackend.id] : MP.settings.backend,
+            model: chatModel || MP.settings.model,
+            visionbackend: selectedVisionBackend ? backendMap[selectedVisionBackend.id.replace('VisionBtn', 'LLMBtn')] : MP.settings.visionbackend,
+            visionmodel: visionModel || MP.settings.visionmodel,
+            unloadmodel: document.getElementById('unload_models_toggle')?.checked,
+            baseurl: document.getElementById('backendUrl')?.value || MP.settings.baseurl,
+            visionbaseurl: document.getElementById('visionBackendUrl')?.value || MP.settings.visionbaseurl,
+            instructions: {
+                chat: document.getElementById('chatInstructions')?.value || MP.settings.instructions?.chat || '',
+                vision: document.getElementById('visionInstructions')?.value || MP.settings.instructions?.vision || '',
+                caption: document.getElementById('captionInstructions')?.value || MP.settings.instructions?.caption || ''
+            },
+            backends: {
+                ...MP.settings.backends // Preserve existing backend configurations
             }
-        );
-        await fetchModels(); // Refresh the models dropdown
+        };
+        console.log('Saving settings with structure:', settings);
+        const response = await new Promise((resolve, reject) => {
+            genericRequest('SaveSettingsAsync', { settings }, data => {
+                if (data.success) {
+                    resolve(data);
+                } else {
+                    reject(new Error(data.error || 'Failed to save settings'));
+                }
+            });
+        });
+        // Update local settings
+        MP.settings = {
+            ...response.settings
+        };
+        console.log('Settings saved successfully:', MP.settings);
+        // Refresh models
+        await fetchModels();
     } catch (error) {
-        console.error("Error in saveSettings:", error);
-        showMessage('error', 'An error occurred while saving settings: ' + error);
+        console.error('Settings save error:', error);
+        showError(`Failed to save settings: ${error.message}`);
+        throw error;
     }
 }
 
 /**
- * Displays a message to the user with the specified type and text.
- *
- * This function is used to display error messages, success messages, and other types of messages to the user.
- *
- * @param {string} type - The type of message (e.g., "error", "success", "info", "warning").
- * @param {string} message - The text of the message.
- * @returns {void}
+ * Resets settings to defaults
+ * @returns {Promise<void>}
  */
-function showMessage(type, message) {
-    const responseDiv = document.getElementById("chat_llm_response");
-    responseDiv.textContent = message;
-    switch (type) {
-        case 'error':
-            responseDiv.style.color = "red";
-            break;
-        case 'success':
-            responseDiv.style.color = "green";
-            break;
-        case 'info':
-            responseDiv.style.color = "blue";
-            break;
-        case 'warning':
-            responseDiv.style.color = "orange";
-            break;
-        default:
-            responseDiv.style.color = "black";
-            break;
+async function resetSettings() {
+    try {
+        if (!confirm('This will reset all settings to defaults. Any custom API keys will be cleared. Are you sure?')) {
+            return;
+        }
+        const response = await new Promise((resolve, reject) => {
+            genericRequest('ResetSettingsAsync', {}, response => {
+                if (response.success) {
+                    resolve(response);
+                } else {
+                    reject(new Error(response.error || 'Failed to reset settings'));
+                }
+            });
+        });
+        MP.settings = response.settings;
+        await fetchModels();
+        // Reset UI elements
+        document.getElementById('chatInstructions').value = '';
+        document.getElementById('visionInstructions').value = '';
+        document.getElementById('captionInstructions').value = '';
+        closeSettingsModal();
+    } catch (error) {
+        console.error('Settings reset error:', error);
+        showError(`Failed to reset settings: ${error.message}`);
     }
 }
+
+/**
+ * Fetches available models from the backend
+ * @returns {Promise<void>}
+ */
+async function fetchModels() {
+    const modelSelect = document.getElementById("modelSelect");
+    const visionModelSelect = document.getElementById("visionModel");
+    
+    if (!modelSelect || !visionModelSelect) {
+        console.error('Model select elements not found');
+        return;
+    }
+
+    console.log('Starting fetchModels with settings:', {
+        backend: MP.settings.backend,
+        visionbackend: MP.settings.visionbackend,
+        model: MP.settings.model,
+        visionmodel: MP.settings.visionmodel
+    });
+
+    try {
+        // Clear existing options
+        modelSelect.innerHTML = '';
+        visionModelSelect.innerHTML = '';
+
+        // Add default options
+        const defaultOption = new Option('-- Select a model --', '');
+        modelSelect.add(defaultOption.cloneNode(true));
+        visionModelSelect.add(defaultOption.cloneNode(true));
+
+        // Fetch models for both backends
+        console.log('Fetching models for backends:', MP.settings.backend, MP.settings.visionbackend);
+        const response = await new Promise((resolve, reject) => {
+            genericRequest('GetModelsAsync', {}, data => {
+                if (data.success) {
+                    console.log('Received models response:', {
+                        chatModels: data.models,
+                        visionModels: data.visionmodels
+                    });
+                    resolve(data);
+                } else {
+                    reject(new Error(data.error || 'Failed to fetch models'));
+                }
+            });
+        });
+
+        // Add chat models
+        if (Array.isArray(response.models)) {
+            console.log('Adding chat models to modelSelect');
+            response.models.forEach(model => {
+                if (!model.model) {
+                    console.warn('Chat model missing model field:', model);
+                    return;
+                }
+                const option = new Option(model.name || model.model, model.model);
+                modelSelect.add(option);
+            });
+            if (MP.settings.model) {
+                console.log('Setting saved chat model:', MP.settings.model);
+                setModelIfExists(modelSelect, MP.settings.model);
+            }
+        }
+
+        // Add vision models
+        if (Array.isArray(response.visionmodels)) {
+            console.log('Adding vision models to visionModelSelect');
+            response.visionmodels.forEach(model => {
+                if (!model.model) {
+                    console.warn('Vision model missing model field:', model);
+                    return;
+                }
+                const option = new Option(model.name || model.model, model.model);
+                visionModelSelect.add(option);
+            });
+            if (MP.settings.visionmodel) {
+                console.log('Setting saved vision model:', MP.settings.visionmodel);
+                setModelIfExists(visionModelSelect, MP.settings.visionmodel);
+            }
+        }
+
+        console.log('Final model select contents:', {
+            chat: Array.from(modelSelect.options).map(o => o.value),
+            vision: Array.from(visionModelSelect.options).map(o => o.value)
+        });
+
+    } catch (error) {
+        console.error('Error fetching models:', error);
+        showError(`Failed to fetch models: ${error.message}`);
+    }
+}
+
+/**
+ * Updates model select elements with fetched models
+ * @private
+ * @param {HTMLSelectElement} modelSelect - LLM model select element
+ * @param {HTMLSelectElement} visionModelSelect - Vision model select element
+ * @param {Array} models - Array of model data
+ */
+function updateModelSelects(modelSelect, visionModelSelect, models) {
+    // Clear existing options
+    modelSelect.innerHTML = '';
+    visionModelSelect.innerHTML = '';
+    // Add default option
+    const defaultOption = new Option('-- Select a model --', '');
+    modelSelect.add(defaultOption.cloneNode(true));
+    visionModelSelect.add(defaultOption);
+    // Add models to select elements
+    if (Array.isArray(models)) {
+        models.forEach(model => {
+            if (!model.model) {
+                console.warn('Model missing model field:', model);
+                return;
+            }
+            const option = new Option(model.name || model.model, model.model);
+            modelSelect.add(option.cloneNode(true));
+            visionModelSelect.add(option);
+        });
+        // Restore selected models
+        if (MP.settings.model) {
+            setModelIfExists(modelSelect, MP.settings.model);
+        }
+        if (MP.settings.visionmodel) {
+            setModelIfExists(visionModelSelect, MP.settings.visionmodel);
+        }
+    }
+}
+
+/**
+ * Sets model selection if it exists in options
+ * @private
+ * @param {HTMLSelectElement} select - Select element
+ * @param {string} modelId - Model ID to select
+ */
+function setModelIfExists(select, modelId) {
+    const modelExists = Array.from(select.options).some(opt => opt.value === modelId);
+    if (modelExists) {
+        select.value = modelId;
+        console.log(`Set ${select.id} to:`, modelId);
+    } else {
+        console.log(`Model not found in options:`, modelId);
+    }
+}
+
+/**
+ * Loads a selected model
+ * @param {string} modelId - ID of model to load
+ * @returns {Promise<void>}
+ */
+async function loadModel(modelId) {
+    if (!modelId) return;
+
+    try {
+        MP.settings.model = modelId;
+        const response = await new Promise((resolve, reject) => {
+            genericRequest('LoadModelAsync', { modelId }, data => {
+                if (data.success) {
+                    resolve(data);
+                } else {
+                    reject(new Error(data.error || 'Failed to load model'));
+                }
+            });
+        });
+    } catch (error) {
+        console.error('Error loading model:', error);
+        showError(`Failed to load model: ${error.message}`);
+    }
+}
+
+/**
+ * Initializes settings modal with saved values
+ * @private
+ */
+function initSettingsModal() {
+    try {
+        console.log('Initializing settings modal with:', MP.settings);
+        
+        // Set backend radios
+        const backendMap = {
+            'ollama': 'ollamaLLMBtn',
+            'openrouter': 'openrouterLLMBtn',
+            'openai': 'openaiLLMBtn',
+            'openaiapi': 'openaiAPILLMBtn',
+            'anthropic': 'anthropicLLMBtn'
+        };
+
+        // Set chat backend
+        const chatBackendBtn = document.getElementById(backendMap[MP.settings.backend]);
+        if (chatBackendBtn) {
+            chatBackendBtn.checked = true;
+        }
+
+        // Set vision backend
+        const visionBackendBtn = document.getElementById(backendMap[MP.settings.visionbackend]?.replace('LLM', 'Vision'));
+        if (visionBackendBtn) {
+            visionBackendBtn.checked = true;
+        }
+
+        // Set URLs
+        const backendUrl = document.getElementById('backendUrl');
+        if (backendUrl) {
+            backendUrl.value = MP.settings.baseurl || '';
+        }
+
+        const visionBackendUrl = document.getElementById('visionBackendUrl');
+        if (visionBackendUrl) {
+            visionBackendUrl.value = MP.settings.visionbaseurl || '';
+        }
+
+        // Set API Key section
+        const apiKeyBackendMap = {
+            'ollama': 'ollamaKeyBtn',
+            'openrouter': 'openrouterKeyBtn',
+            'openai': 'openaiKeyBtn',
+            'openaiapi': 'openaiAPIKeyBtn',
+            'anthropic': 'anthropicApiBtn'
+        };
+
+        // Ensure instructions object exists
+        if (!MP.settings.instructions) {
+            MP.settings.instructions = {
+                chat: '',
+                vision: '',
+                caption: ''
+            };
+        }
+        // Set Instructions
+        const chatInstructions = document.getElementById('chatInstructions');
+        if (chatInstructions) {
+            chatInstructions.value = MP.settings.instructions.chat || '';
+        }
+        const visionInstructions = document.getElementById('visionInstructions');
+        if (visionInstructions) {
+            visionInstructions.value = MP.settings.instructions.vision || '';
+        }
+        const captionInstructions = document.getElementById('captionInstructions');
+        if (captionInstructions) {
+            captionInstructions.value = MP.settings.instructions.caption || '';
+        }
+
+        // Add event listener for API key backend selection
+        const apiKeyBackendRadios = document.querySelectorAll('input[name="apiKeyBackend"]');
+        apiKeyBackendRadios.forEach(radio => {
+            radio.addEventListener('change', updateApiKeyInput);
+        });
+
+        fetchModels();
+    } catch (error) {
+        console.error('Error initializing settings modal:', error);
+        showError('Error initializing settings modal:', error);
+    }
+}
+
+/**
+ * Updates API key input when backend selection changes
+ * @private
+ */
+function updateApiKeyInput() {
+    const selectedBackend = document.querySelector('input[name="apiKeyBackend"]:checked');
+    if (!selectedBackend) return;
+
+    const backendToProvider = {
+        'ollamaKeyBtn': 'ollama',
+        'openrouterKeyBtn': 'openrouter',
+        'openaiKeyBtn': 'openai',
+        'openaiAPIKeyBtn': 'openaiapi',
+        'anthropicApiBtn': 'anthropic'
+    };
+
+    const provider = backendToProvider[selectedBackend.id];
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    if (apiKeyInput && provider) {
+        apiKeyInput.value = MP.settings.backends?.[provider]?.apikey || '';
+        apiKeyInput.placeholder = `Enter ${provider} API key`;
+    }
+}
+
+/**
+ * Saves API key for the selected backend
+ */
+function saveApiKey() {
+    const selectedBackend = document.querySelector('input[name="apiKeyBackend"]:checked');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    if (!selectedBackend || !apiKeyInput) {
+        showMessage('error', 'Please select a backend and enter an API key');
+        showError('Please select a backend and enter an API key if applicible')
+        return;
+    }
+    const backendToProvider = {
+        'ollamaKeyBtn': 'ollama',
+        'openrouterKeyBtn': 'openrouter',
+        'openaiKeyBtn': 'openai',
+        'openaiAPIKeyBtn': 'openaiapi',
+        'anthropicApiBtn': 'anthropic'
+    };
+    const provider = backendToProvider[selectedBackend.id];
+    if (!provider) {
+        showError('Invalid backend selected')
+        console.Error('Invalid backend selected')
+        return;
+    }
+    // Update the settings object
+    if (!MP.settings.backends) {
+        MP.settings.backends = {};
+    }
+    if (!MP.settings.backends[provider]) {
+        MP.settings.backends[provider] = {};
+    }
+    MP.settings.backends[provider].apikey = apiKeyInput.value;
+    saveSettings();
+}
+
+/**
+ * Closes the settings modal
+ */
+function closeSettingsModal() {
+    const modal = document.getElementById('settingsModal');
+    if (!modal) return;
+    const modalInstance = bootstrap.Modal.getInstance(modal);
+    if (modalInstance) {
+        modalInstance.hide();
+    }
+    // Clean up backdrop and body classes
+    const backdrop = document.querySelector('.modal-backdrop');
+    if (backdrop) backdrop.remove();
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = '';
+    document.body.style.paddingRight = '';
+}
+
+// Initialize on DOM load
+document.addEventListener("DOMContentLoaded", async function () {
+    try {
+        if (MP.initialized) return;
+        MP.initialized = true;
+        // Initialize settings
+        await loadSettings();
+        // Add event listener for settings modal
+        const settingsModal = document.getElementById('settingsModal');
+        settingsModal.addEventListener('show.bs.modal', initSettingsModal);
+        // Initialize models once
+        await fetchModels();
+        MP.modelsInitialized = true;
+        // Initialize chat and vision handlers
+        window.visionHandler?.initialize();
+        window.chatHandler?.initialize();
+        console.log('MagicPrompt initialization complete');
+    } catch (error) {
+        console.error('Error initializing MagicPrompt:', error);
+        showError('Failed to initialize MagicPrompt: ' + error.message);
+    }
+});

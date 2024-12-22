@@ -1,5 +1,5 @@
-﻿using Newtonsoft.Json;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
 {
@@ -14,16 +14,16 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
         [JsonProperty("data")]
         public List<OpenRouterModel> Data { get; set; }
 
-        [JsonPropertyName("id")]
+        [JsonProperty("id")]
         public string Id { get; set; }
 
-        [JsonPropertyName("choices")]
+        [JsonProperty("choices")]
         public List<OpenRouterChoice> Choices { get; set; }
 
-        [JsonPropertyName("usage")]
+        [JsonProperty("usage")]
         public OpenRouterUsage Usage { get; set; }
 
-        [JsonPropertyName("model")]
+        [JsonProperty("model")]
         public string Model { get; set; }
     }
 
@@ -95,31 +95,66 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
 
     public class OpenRouterChoice
     {
-        [JsonPropertyName("finish_reason")]
+        [JsonProperty("finish_reason")]
         public string FinishReason { get; set; }
 
-        [JsonPropertyName("message")]
+        [JsonProperty("message")]
         public OpenRouterMessage Message { get; set; }
     }
 
     public class OpenRouterMessage
     {
-        [JsonPropertyName("role")]
+        [JsonProperty("role")]
         public string Role { get; set; }
 
-        [JsonPropertyName("content")]
-        public string Content { get; set; }
+        [JsonProperty("content")]
+        [JsonConverter(typeof(OpenRouterContentConverter))]
+        public object Content { get; set; }
+    }
+
+    public class OpenRouterContentConverter : JsonConverter
+    {
+        public override bool CanConvert(Type objectType)
+        {
+            return true;
+        }
+
+        public override object ReadJson(JsonReader reader, Type objectType, object existingValue, JsonSerializer serializer)
+        {
+            try
+            {
+                if (reader.TokenType == JsonToken.String)
+                {
+                    return reader.Value as string;
+                }
+                else if (reader.TokenType == JsonToken.StartObject)
+                {
+                    JObject obj = JObject.Load(reader);
+                    return obj.ToString(Formatting.None);
+                }
+                return null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
+        {
+            serializer.Serialize(writer, value);
+        }
     }
 
     public class OpenRouterUsage
     {
-        [JsonPropertyName("prompt_tokens")]
+        [JsonProperty("prompt_tokens")]
         public int PromptTokens { get; set; }
 
-        [JsonPropertyName("completion_tokens")]
+        [JsonProperty("completion_tokens")]
         public int CompletionTokens { get; set; }
 
-        [JsonPropertyName("total_tokens")]
+        [JsonProperty("total_tokens")]
         public int TotalTokens { get; set; }
     }
 
@@ -127,6 +162,9 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
     {
         [JsonProperty("error")]
         public OpenRouterErrorDetails Error { get; set; }
+
+        [JsonProperty("user_id")]
+        public string UserId { get; set; }
     }
 
     public class OpenRouterErrorDetails
@@ -136,5 +174,17 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
 
         [JsonProperty("message")]
         public string Message { get; set; }
+
+        [JsonProperty("metadata")]
+        public OpenRouterErrorMetadata Metadata { get; set; }
+    }
+
+    public class OpenRouterErrorMetadata
+    {
+        [JsonProperty("raw")]
+        public string Raw { get; set; }
+
+        [JsonProperty("provider_name")]
+        public string ProviderName { get; set; }
     }
 }

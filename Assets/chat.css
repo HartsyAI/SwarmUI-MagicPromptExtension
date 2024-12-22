@@ -1,0 +1,227 @@
+/* Chat Interface Styles
+   This file contains styles specific to the chat interface of MagicPrompt
+   Including message bubbles, input area, and chat-specific animations */
+
+/* Chat Section Layout */
+#chat_section {
+    flex: 1;
+    min-width: 300px;
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+.section-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+}
+
+/* Messages Area - Scrollable */
+#chat_messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 1rem;
+    position: absolute;
+    top: 40px; /* Height of the header */
+    bottom: 160px; /* Height of the input container */
+    left: 0;
+    right: 0;
+    background: var(--background);
+    min-height: 0; /* Important for Firefox */
+}
+
+/* Chat Input Area - Fixed */
+.chat-input-container {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: var(--background);
+    padding: 1rem;
+}
+
+.chat-input-wrapper {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 1rem;
+    background: var(--background);
+}
+
+#chat_llm_textarea {
+    flex: 1;
+    height: 60px;
+    resize: none;
+    background: var(--background-gray);
+    color: var(--text);
+    border: 1px solid var(--shadow);
+    border-radius: 4px;
+    padding: 8px;
+    margin: 0;
+}
+
+#submit_button {
+    width: 60px;
+    height: 60px;
+    flex: 0 0 60px;
+    border-radius: 4px;
+    background: var(--button-background);
+    color: var(--button-text);
+    border: 1px solid var(--shadow);
+    cursor: pointer;
+    transition: all 0.2s;
+    padding: 0;
+    margin: 0;
+}
+
+#submit_button:hover {
+    background: var(--button-background-hover);
+    transform: scale(1.05);
+}
+
+/* Message Bubbles and Content
+   Styling for chat bubbles including user and assistant messages */
+.message-content {
+    background-color: var(--background-gray);
+    padding: 16px;
+    border-radius: 4px;
+    max-width: calc(100% - 80px);
+    min-width: 50px;
+    width: fit-content;
+    flex-grow: 0;
+    word-wrap: break-word;
+    color: var(--text);
+}
+
+.user-message .message-content {
+    background-color: var(--background-soft);
+}
+
+/* Avatar Styling
+   Circular avatars for user and assistant */
+.avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--emphasis);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 12px;
+    flex-shrink: 0;
+    font-weight: 500;
+    color: var(--button-foreground-hover);
+}
+
+/* Message Actions
+   Buttons and controls for each message */
+.message-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    justify-content: flex-end;
+    opacity: 0.7;
+}
+
+.message-actions:hover {
+    opacity: 1;
+}
+
+.action-button {
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    color: var(--text);
+    position: relative;
+}
+
+.action-button:hover {
+    background: var(--button-background-hover);
+}
+
+/* Tooltips for Action Buttons */
+.action-button[data-tooltip]:hover::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background: var(--background-gray);
+    color: var(--text);
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    margin-bottom: 4px;
+    border: 1px solid var(--shadow);
+}
+
+/* Loading Indicator */
+#loading_indicator {
+    display: none;
+    position: absolute;
+    bottom: 160px; /* Position above the input container accounting for its height */
+    right: 20px; /* Position at the right instead of center */
+    transform: none; /* Remove the center transform */
+    padding: 0.5rem 1rem;
+    background: var(--background-gray);
+    border: 1px solid var(--shadow);
+    border-radius: 4px;
+    z-index: 2;
+    box-shadow: 0 2px 4px var(--shadow);
+}
+
+    #loading_indicator.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
+
+    #loading_indicator .dot {
+        width: 8px;
+        height: 8px;
+        background: var(--text);
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out;
+    }
+
+        #loading_indicator .dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        #loading_indicator .dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+@keyframes bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+        opacity: 0.3;
+    }
+
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Chat Message Layout */
+.chat-message {
+    display: flex;
+    margin-bottom: 20px;
+    align-items: flex-start;
+    padding: 0 1rem;
+}
+
+.user-message {
+    flex-direction: row-reverse;
+    margin-right: 18%;
+}

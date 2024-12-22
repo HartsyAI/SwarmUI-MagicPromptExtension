@@ -1,0 +1,679 @@
+/* MagicPrompt Core Styles
+   This file contains shared styles used across the MagicPrompt extension
+   Including layout, buttons, and common components */
+
+/* Main Layout
+   Core container and structural elements */
+#magicprompt_container {
+    position: absolute;
+    top: 40px;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    background: var(--background);
+    color: var(--text);
+    display: flex;
+    overflow: hidden;
+}
+
+/* Chat Section
+   Styles for the chat interface */
+#chat_section {
+    min-width: 300px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#chat_section .section-content {
+    height: 100%;
+}
+
+#chat_messages {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: 1rem 0;
+    background: var(--background);
+    color: var(--text);
+    border: 1px solid var(--shadow);
+    margin-bottom: 1rem;
+    border-radius: 4px;
+}
+
+.chat-input-container {
+    flex: 0 0 auto;
+}
+
+#chat_llm_textarea {
+    resize: none;
+    height: 60px;
+    background: var(--background-gray);
+    color: var(--text);
+    border: 1px solid var(--shadow);
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+#submit_button {
+    min-width: 60px;
+    height: 60px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    background: var(--button-background);
+    color: var(--button-text);
+    border: 1px solid var(--button-border);
+    margin-left: 8px;
+    box-shadow: 0 2px 4px var(--shadow);
+}
+
+/* Common UI Elements
+   Reusable components and shared styles */
+.section-header {
+    flex: 0 0 auto;
+    background-color: var(--background-gray);
+    padding: 12px;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    font-weight: 500;
+    text-align: center;
+    color: var(--text);
+}
+
+.section-content {
+    padding: 0 1rem;
+}
+
+/* Settings Button
+   Global settings control */
+#settings_button {
+    position: absolute;
+    top: 5px;
+    right: 25px;
+    width: 35px;
+    height: 35px;
+    border-radius: 4px;
+    background: var(--background-gray);
+    color: var(--text);
+    border: 1px solid var(--shadow);
+    z-index: 1000;
+}
+
+/* Resize Handle
+   Used for resizable panels */
+.resize-handle {
+    width: 12px;
+    background: var(--shadow);
+    cursor: col-resize;
+    margin: 0 4px;
+    position: relative;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.resize-handle:hover {
+    background: var(--button-background-hover);
+}
+
+.resize-handle.resizing {
+    background: var(--emphasis);
+}
+
+.resize-handle::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    height: 40px;
+    width: 4px;
+    background: var(--shadow);
+    border-radius: 2px;
+}
+
+.resize-handle:hover::after {
+    background: var(--button-background-hover);
+}
+
+/* Typing Animation
+   Shared animation for chat and vision loading states */
+.typing-animation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+.typing-animation .dot {
+    width: 8px;
+    height: 8px;
+    background: var(--button-text);
+    border-radius: 50%;
+    opacity: 0.3;
+    animation: typingDot 1s infinite;
+    margin: 0 2px;
+}
+
+.typing-animation .dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-animation .dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes typingDot {
+    0%, 100% {
+        opacity: 0.3;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 1;
+        transform: scale(1.2);
+    }
+}
+
+/* Loading Animation
+   Shared loading indicator */
+.loading-indicator {
+    display: none; /* Hide this since we're using the typing-animation instead */
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Button Styles
+   Common button styling */
+.submit-button {
+    font-size: 24px;
+    transform: scale(1);
+    background: var(--button-background);
+    color: var(--button-text);
+    border: 1px solid var(--shadow);
+    border-radius: 4px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.submit-button:hover {
+    transform: scale(1.05);
+    background: var(--button-background-hover);
+}
+
+/* Toggle Switches
+   Shared toggle switch styling */
+.toggle-switch {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toggle-switch input[type="checkbox"] {
+    appearance: none;
+    width: 40px;
+    height: 20px;
+    background: var(--background-gray);
+    border-radius: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.toggle-switch input[type="checkbox"]:checked {
+    background: var(--emphasis);
+}
+
+.toggle-switch input[type="checkbox"]::before {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: var(--text);
+    border-radius: 50%;
+    top: 2px;
+    left: 2px;
+    transition: transform 0.3s;
+}
+
+.toggle-switch input[type="checkbox"]:checked::before {
+    transform: translateX(20px);
+}
+
+/* Chat Message Styles
+   Styles for individual chat messages */
+.chat-message {
+    display: flex;
+    margin-bottom: 20px;
+    align-items: flex-start;
+    padding: 0 1rem;
+}
+
+.user-message {
+    flex-direction: row-reverse;
+    margin-right: 18%;
+}
+
+.avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--emphasis);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 12px;
+    flex-shrink: 0;
+    font-weight: 500;
+    color: var(--button-foreground-hover);
+}
+
+.message-content {
+    background-color: var(--background-gray);
+    padding: 16px;
+    border-radius: 4px;
+    max-width: calc(100% - 80px);
+    min-width: 50px;
+    width: fit-content;
+    flex-grow: 0;
+    word-wrap: break-word;
+    color: var(--text);
+}
+
+.user-message .message-content {
+    background-color: var(--background-soft);
+}
+
+.message-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    justify-content: flex-end;
+    opacity: 0.7;
+}
+
+.message-actions:hover {
+    opacity: 1;
+}
+
+.action-button {
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    border-radius: 4px;
+    color: var(--text);
+    position: relative;
+}
+
+.action-button:hover {
+    background: var(--button-background-hover);
+}
+
+.action-button[data-tooltip]:hover::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background: var(--background-gray);
+    color: var(--text);
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    margin-bottom: 4px;
+    border: 1px solid var(--shadow);
+}
+
+/* Settings Modal
+   Styles for the settings modal */
+.modal-dialog {
+    max-width: 800px;
+}
+
+.modal-content {
+    background: var(--background) !important;
+    color: var(--text);
+}
+
+.modal-body {
+    padding: 0.75rem;
+}
+
+.settings-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.settings-card {
+    border: 1px solid var(--shadow);
+    border-radius: 4px;
+    padding: 0.35rem 0.75rem;
+    background: var(--background-gray);
+    min-width: 100%;
+    position: relative;
+}
+
+.settings-header {
+    cursor: pointer;
+    justify-content: space-between;
+    margin: 0;
+    padding: 0.15rem 0;
+    min-height: 32px;
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+}
+
+.settings-header .d-flex {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 0;
+    margin: 0;
+}
+
+.settings-header-icon {
+    font-size: 1em;
+    margin-right: 0.5rem;
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.settings-section-title {
+    margin: 0;
+    font-size: 0.95em;
+    font-weight: 600;
+    position: relative;
+    color: var(--text);
+}
+
+.collapse-toggle {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 0.8em;
+    padding: 0.25rem;
+    transition: transform 0.2s;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+
+.collapse-toggle[aria-expanded="true"] {
+    transform: rotate(180deg);
+}
+
+.settings-grid {
+    display: grid;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    width: 100%;
+}
+
+/* Input Controls
+   Styles for input fields and controls */
+.input-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding: 0.5rem 0;
+}
+
+.input-controls .form-check.form-switch {
+    padding-left: 2.5em;
+    min-width: max-content;
+}
+
+.form-check-input {
+    cursor: pointer;
+}
+
+.form-check-label {
+    cursor: pointer;
+    user-select: none;
+    white-space: nowrap;
+}
+
+.input-controls .form-label {
+    white-space: nowrap;
+    display: inline-block;
+}
+
+.mode-selector {
+    display: flex;
+    gap: 10px;
+}
+
+.mode-label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: var(--background-color);
+    transition: background-color 0.2s;
+}
+
+.mode-label:hover {
+    background-color: var(--hover-color);
+}
+
+.mode-label input[type="radio"] {
+    margin-right: 5px;
+}
+
+.mode-label span {
+    font-size: 14px;
+    color: var(--text-color);
+}
+
+/* Form Controls - Using SwarmUI styles */
+.form-control, .form-select {
+    background-color: var(--background-soft);
+    color: var(--text);
+    border: 1px solid var(--shadow);
+    border-radius: 4px;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.9em;
+}
+
+.form-control::placeholder {
+    color: var(--text-soft);
+    opacity: 0.7;
+}
+
+/* Button Groups
+   Styles for button groups */
+.btn-group {
+    display: flex;
+    gap: 0.25rem;
+    font-size: 0.85em;
+    width: 100%;
+    flex-wrap: nowrap;
+}
+
+.btn-group .btn {
+    flex: 1;
+    white-space: nowrap;
+}
+
+.btn-outline-primary {
+    border: 1px solid var(--shadow);
+    background: var(--background-soft);
+    color: var(--text);
+    padding: 0.25rem 0.5rem;
+}
+
+.btn-outline-primary:hover {
+    background: var(--button-background-hover);
+    color: var(--button-foreground-hover);
+}
+
+.btn-check:checked + .btn-outline-primary {
+    background: var(--emphasis);
+    border-color: var(--emphasis);
+    color: var(--button-foreground-hover);
+}
+
+/* Using SwarmUI's basic-button class */
+.basic-button {
+    padding: 0.35rem 0.75rem;
+    border-radius: 4px;
+    background-color: var(--button-background);
+    color: var(--button-text);
+    border: 1px solid var(--button-border);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9em;
+}
+
+.basic-button:hover {
+    background-color: var(--button-background-hover);
+    color: var(--button-foreground-hover);
+}
+
+/* Modal Footer
+   Styles for the modal footer */
+.modal-footer {
+    border-top: 1px solid var(--shadow);
+    padding: 0.75rem;
+}
+
+/* Collapse Animation
+   Styles for the collapse animation */
+.collapse {
+    transition: height 0.2s ease-out;
+}
+
+.collapse:not(.show) {
+    display: block;
+    height: 0 !important;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+}
+
+.collapse.show {
+    padding-top: 0.5rem;
+}
+
+/* Add spacing between textareas */
+#visionInstructionsContainer .form-control {
+    margin-bottom: 0.5rem;
+}
+
+.unload-models-toggle {
+    padding: 5px 10px;
+    margin: 0;
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-color);
+    font-size: 0.9em;
+    cursor: pointer;
+}
+
+.toggle-label input[type="checkbox"] {
+    margin: 0;
+}
+
+.form-check.form-switch {
+    padding-left: 2.5em;
+}
+
+.form-check-input {
+    cursor: pointer;
+}
+
+.form-check-label {
+    cursor: pointer;
+    user-select: none;
+}
+
+.input-controls .form-group {
+    margin-bottom: 0.75rem;
+}
+
+.chat-mode-control {
+    display: flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+}
+
+.chat-mode-control span {
+    display: inline-block;
+    margin-right: 8px;
+}
+
+/* Image Editor Positioning
+   Styles for the image editor */
+#image_editor_container {
+    position: fixed;
+    top: 40px; /* Account for the header */
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
+    background: var(--background);
+    z-index: 1000;
+    display: none;
+    padding: 20px;
+    max-width: 1400px; /* Limit maximum width */
+    margin: 0 auto; /* Center horizontally */
+}
+
+.image-editor-main {
+    width: 100% !important;
+    height: 100% !important;
+    display: flex !important;
+    gap: 20px;
+    background: var(--background);
+    max-height: calc(100vh - 100px); /* Prevent overflow */
+}
+
+/* Editor specific overrides */
+.image-editor-main > div {
+    display: flex !important;
+}
+
+.image-editor-main .center-panel {
+    flex: 1 1 auto; /* Allow flexible sizing */
+    min-width: 0; /* Allow panel to shrink */
+    max-width: calc(100% - 350px); /* Ensure space for right panel */
+    display: flex;
+    flex-direction: column;
+    background: var(--background-alt);
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.image-editor-main .right-panel {
+    flex: 0 0 320px; /* Slightly wider fixed width */
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+    background: var(--background-alt);
+    overflow-y: auto;
+    padding: 10px;
+    margin-right: 10px; /* Ensure it's not touching the edge */
+}
+
+/* Ensure the canvas fits properly */
+.image-editor-main .canvas-container {
+    max-width: 100%;
+    max-height: calc(100vh - 150px);
+    overflow: hidden;
+}

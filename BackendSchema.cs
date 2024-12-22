@@ -1,114 +1,194 @@
-﻿using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
 using SwarmUI.Utils;
-using System.Text.Json;
+using System.Linq;
+using Hartsy.Extensions.MagicPromptExtension.WebAPI;
 
 namespace Hartsy.Extensions.MagicPromptExtension
 {
     public static class BackendSchema
     {
-        /// <summary>Get the schema type for the backend.</summary>
-        /// <param name="type"></param>
-        /// <param name="inputText"></param>
-        /// <param name="model"></param>
-        /// <returns>Returns an object with the schema type for the backend.</returns>
-        public static object GetSchemaType(string type, string inputText, string model)
+        public enum MessageType
         {
-            type = type.ToLower();
-            switch (type)
-            {
-                case "ollama":
-                    return OllamaRequestBody(inputText, model);
-                case "openai":
-                case "openaiapi":
-                case "openrouter":
-                    return OpenAICompatibleRequestBody(inputText, model);
-                case "anthropic":
-                    return AnthropicRequestBody(inputText, model);
-                default:
-                    Logs.Error("Unsupported or null backend. Check the config.json");
-                    return null;
-            }
+            Text,
+            Vision
         }
 
-        /// <summary> </summary>
-        /// <param name="inputText"></param>
-        /// <param name="currentModel"></param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentException"></exception>
-        public static object OllamaRequestBody(string inputText, string currentModel)
+        public class MessageContent
         {
-            if (string.IsNullOrEmpty(inputText) || string.IsNullOrEmpty(currentModel))
+            public string Text { get; set; }
+            public List<MediaContent> Media { get; set; }
+        }
+
+        public class MediaContent
+        {
+            public string Type { get; set; }  // "base64" or "url"
+            public string Data { get; set; }
+            public string MediaType { get; set; }  // "image/jpeg", "image/png", etc.
+        }
+
+        /// <summary>Get the schema type for the backend.</summary>
+        /// <param name="type">Backend type (ollama, openai, anthropic, etc.)</param>
+        /// <param name="content">Message content including text and media</param>
+        /// <param name="model">Model name to use</param>
+        /// <param name="messageType">Type of message (Text or Vision)</param>
+        /// <returns>Returns an object with the schema type for the backend.</returns>
+        public static object GetSchemaType(string type, MessageContent content, string model, MessageType messageType = MessageType.Text)
+        {
+            if (content == null || string.IsNullOrEmpty(model))
             {
-                throw new ArgumentException("Input text or model cannot be null or empty.");
+                throw new ArgumentException("Content or model cannot be null or empty.");
+            }
+            type = type.ToLower();
+            return type switch
+            {
+                "ollama" => OllamaRequestBody(content, model, messageType),
+                "openai" or "openaiapi" or "openrouter" => OpenAICompatibleRequestBody(content, model, messageType),
+                "anthropic" => AnthropicRequestBody(content, model, messageType),
+                _ => throw new ArgumentException($"Unsupported backend type: {type}")
+            };
+        }
+
+        /// <summary>Generates a request body for Ollama backend.</summary>
+        private static object OllamaRequestBody(MessageContent content, string model, MessageType messageType)
+        {
+            if (messageType == MessageType.Vision && content.Media?.Any() == true)
+            {
+                return new
+                {
+                    model = model,
+                    messages = new[]
+                    {
+                        new
+                        {
+                            role = "user",
+                            content = content.Text,
+                            images = content.Media.Select(m => m.Data.Replace("data:image/jpeg;base64,", "")
+                                                              .Replace("data:image/png;base64,", ""))
+                                                              .ToArray()
+                        }
+                    },
+                    stream = false
+                };
             }
             return new
             {
-                model = currentModel,
+                model = model,
                 messages = new[]
                 {
-                    new
-                    {
-                        role = "user",
-                        content = inputText
-                    }
+                    new { role = "user", content = content.Text }
                 },
                 stream = false
             };
         }
 
-        /// <summary>Generates a request body for OpenAI and similar backends (Oogabooga).</summary>
-        /// <param name="inputText"></param>
-        /// <param name="currentModel"></param>
-        /// <returns></returns>
-        public static object OpenAICompatibleRequestBody(string inputText, string currentModel)
+        /// <summary>Generates a request body for OpenAI and compatible backends.</summary>
+        private static object OpenAICompatibleRequestBody(MessageContent content, string model, MessageType messageType)
         {
-            if (string.IsNullOrEmpty(inputText) || string.IsNullOrEmpty(currentModel))
+            if (messageType == MessageType.Vision && content.Media?.Any() == true)
             {
-                throw new ArgumentException("Input text or model cannot be null or empty.");
+                var messageContent = new List<object>
+                {
+                    // Add text content first
+                    new { type = "text", text = content.Text }
+                };
+                // Add image content
+                foreach (MediaContent media in content.Media)
+                {
+                    var imageUrl = media.Type == "base64" 
+                        ? $"data:{media.MediaType};base64,{media.Data}"  // Format as data URL for base64
+                        : media.Data;  // Use as-is for regular URLs
+                        
+                    messageContent.Add(new
+                    {
+                        type = "image_url",
+                        image_url = new { url = imageUrl }
+                    });
+                }
+                return new
+                {
+                    model = model,
+                    messages = new[]
+                    {
+                        new
+                        {
+                            role = "user",
+                            content = messageContent
+                        }
+                    },
+                    max_tokens = 300
+                };
             }
             return new
             {
-                model = currentModel,
+                model = model,
                 messages = new[]
                 {
-                    new
-                    {
-                        role = "user",
-                        content = inputText
-                    }
+                    new { role = "user", content = content.Text }
                 },
                 temperature = 1.0,
-                max_tokens = 200,
+                max_tokens = 300,
                 top_p = 0.9,
                 stream = false
             };
         }
 
-        /// <summary>Generates a request body for the Claude (Anthropic API) based on the input text and model.</summary>
-        /// <param name="inputText">The text input provided by the user.</param>
-        /// <param name="currentModel">The Claude model being used (e.g., "claude-3-5-sonnet-20241022").</param>
-        /// <returns>An anonymous object representing the request body for the Claude API.</returns>
-        /// <exception cref="ArgumentException">Thrown when the input text or model is null or empty.</exception>
-        public static object AnthropicRequestBody(string inputText, string currentModel)
+        /// <summary>Generates a request body for the Anthropic (Claude) API.</summary>
+        private static object AnthropicRequestBody(MessageContent content, string model, MessageType messageType)
         {
-            if (string.IsNullOrEmpty(inputText) || string.IsNullOrEmpty(currentModel))
+            if (messageType == MessageType.Vision && content.Media?.Any() == true)
             {
-                throw new ArgumentException("Input text or model cannot be null or empty.");
+                var messageContent = new List<object>();
+                // Add images first (Claude's format)
+                foreach (var media in content.Media)
+                {
+                    messageContent.Add(new
+                    {
+                        type = "image",
+                        source = new
+                        {
+                            type = "base64",
+                            media_type = media.MediaType ?? "image/jpeg",
+                            data = media.Data
+                        }
+                    });
+                }
+                // Add text after images
+                messageContent.Add(new
+                {
+                    type = "text",
+                    text = content.Text
+                });
+                return new
+                {
+                    model = model,
+                    messages = new[]
+                    {
+                        new
+                        {
+                            role = "user",
+                            content = messageContent.ToArray()
+                        }
+                    },
+                    max_tokens = 1024
+                };
             }
-
             return new
             {
-                model = currentModel,
-                max_tokens = 1024,
+                model = model,
                 messages = new[]
-                {
-                    new
                     {
-                        role = "user",
-                        content = inputText
-                    }
-                }
+                        new { role = "user", content = content.Text }
+                    },
+                max_tokens = 1024
             };
+        }
+
+        /// <summary>Validates the input parameters.</summary>
+        private static void ValidateInput(MessageContent content, string model)
+        {
+            if (content == null || string.IsNullOrEmpty(model))
+            {
+                throw new ArgumentException("Content or model cannot be null or empty.");
+            }
         }
     }
 }

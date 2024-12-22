@@ -1,11 +1,11 @@
-﻿using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Linq;
 using SwarmUI.Utils;
 using SwarmUI.WebAPI;
-using System.Net.Http;
+using SwarmUI.Accounts;
 using System.Text.Json;
 using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
-using Hartsy.Extensions.MagicPromptExtension.WebAPI.Config;
-using SwarmUI.Accounts;
+using System.Net.Http;
+using Newtonsoft.Json;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
 {
@@ -15,10 +15,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
         public static readonly PermInfoGroup MagicPromptPermGroup = new("MagicPrompt", "Permissions related to MagicPrompt functionality for API calls and settings.");
         public static readonly PermInfo PermPhoneHome = Permissions.Register(new("magicprompt_phone_home", "Phone Home", "Allows the extension to make outbound calls to retrieve external data.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
         public static readonly PermInfo PermSaveConfig = Permissions.Register(new("magicprompt_save_config", "Save Configuration", "Allows the user to save configuration settings.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
-        public static readonly PermInfo PermSaveApiKey = Permissions.Register(new("magicprompt_save_api_key", "Save API Key", "Allows the user to save API keys.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
         public static readonly PermInfo PermReadConfig = Permissions.Register(new("magicprompt_read_config", "Read Configuration", "Allows the user to read configuration settings.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
         public static readonly PermInfo PermGetModels = Permissions.Register(new("magicprompt_get_models", "Get Models", "Allows the user to retrieve the list of available models.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
         public static readonly PermInfo PermLoadModel = Permissions.Register(new("magicprompt_load_model", "Load Model", "Allows the user to load a model for usage.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
+        public static readonly PermInfo PermResetConfig = Permissions.Register(new("magicprompt_reset_config", "Reset Configuration", "Allows the user to reset configuration settings.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
     }
 
     [API.APIClass("API routes related to MagicPromptExtension extension")]
@@ -29,16 +29,16 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
         {
             // Register API calls with permissions
             API.RegisterAPICall(LLMAPICalls.PhoneHomeAsync, true, MagicPromptPermissions.PermPhoneHome);
-            API.RegisterAPICall(SaveConfigSettings.SaveSettingsAsync, false, MagicPromptPermissions.PermSaveConfig);
-            API.RegisterAPICall(SaveConfigSettings.SaveApiKeyAsync, false, MagicPromptPermissions.PermSaveApiKey);
-            API.RegisterAPICall(SaveConfigSettings.ReadConfigAsync, false, MagicPromptPermissions.PermReadConfig);
+            API.RegisterAPICall(SessionSettings.GetSettingsAsync, false, MagicPromptPermissions.PermReadConfig);
+            API.RegisterAPICall(SessionSettings.SaveSettingsAsync, false, MagicPromptPermissions.PermSaveConfig);
+            API.RegisterAPICall(SessionSettings.ResetSettingsAsync, false, MagicPromptPermissions.PermResetConfig);
             API.RegisterAPICall(LLMAPICalls.GetModelsAsync, false, MagicPromptPermissions.PermGetModels);
             API.RegisterAPICall(LLMAPICalls.LoadModelAsync, true, MagicPromptPermissions.PermLoadModel);
         }
 
-    /// <summary>Makes the JSON response into a structured object and extracts the message content based on the backend type.</summary>
-    /// <returns>The rewritten prompt, or null if deserialization fails.</returns>
-    public static async Task<string> DeserializeResponse(HttpResponseMessage response, string llmBackend)
+        /// <summary>Makes the JSON response into a structured object and extracts the message content based on the backend type.</summary>
+        /// <returns>The rewritten prompt, or null if deserialization fails.</returns>
+        public static async Task<string> DeserializeResponse(HttpResponseMessage response, string llmBackend)
         {
             try
             {
@@ -52,7 +52,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 switch (llmBackend.ToLower())
                 {
                     case "openai":
-                        OpenAIResponse openAIResponse = JsonSerializer.Deserialize<OpenAIResponse>(responseContent, jsonSerializerOptions);
+                        OpenAIResponse openAIResponse = System.Text.Json.JsonSerializer.Deserialize<OpenAIResponse>(responseContent, jsonSerializerOptions);
                         if (openAIResponse?.Choices != null && openAIResponse.Choices.Count > 0)
                         {
                             messageContent = openAIResponse.Choices[0].Message.Content;
@@ -64,7 +64,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         }
                         break;
                     case "anthropic":
-                        AnthropicResponse anthropicResponse = JsonSerializer.Deserialize<AnthropicResponse>(responseContent, jsonSerializerOptions);
+                        AnthropicResponse anthropicResponse = System.Text.Json.JsonSerializer.Deserialize<AnthropicResponse>(responseContent, jsonSerializerOptions);
                         if (anthropicResponse?.Content != null && anthropicResponse.Content.Length > 0)
                         {
                             messageContent = anthropicResponse.Content[0].Text;
@@ -76,7 +76,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         }
                         break;
                     case "ollama":
-                        OllamaResponse ollamaResponse = JsonSerializer.Deserialize<OllamaResponse>(responseContent, jsonSerializerOptions);
+                        OllamaResponse ollamaResponse = System.Text.Json.JsonSerializer.Deserialize<OllamaResponse>(responseContent, jsonSerializerOptions);
                         if (ollamaResponse?.Message != null)
                         {
                             messageContent = ollamaResponse.Message.Content;
@@ -88,7 +88,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         }
                         break;
                     case "openaiapi":
-                        OpenAIAPIResponse openAIAPIResponse = JsonSerializer.Deserialize<OpenAIAPIResponse>(responseContent, jsonSerializerOptions);
+                        OpenAIAPIResponse openAIAPIResponse = System.Text.Json.JsonSerializer.Deserialize<OpenAIAPIResponse>(responseContent, jsonSerializerOptions);
                         if (openAIAPIResponse?.Choices != null && openAIAPIResponse.Choices.Count > 0)
                         {
                             messageContent = openAIAPIResponse.Choices[0].Message.Content;
@@ -100,12 +100,69 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         }
                         break;
                     case "openrouter":
-                        OpenRouterResponse openRouterResponse = JsonSerializer.Deserialize<OpenRouterResponse>(responseContent, jsonSerializerOptions);
+                        // First check for error response
+                        try 
+                        {
+                            var errorResponse = JsonConvert.DeserializeObject<OpenRouterError>(responseContent);
+                            if (errorResponse?.Error != null)
+                            {
+                                var errorMessage = errorResponse.Error.Message;
+                                if (errorResponse.Error.Metadata != null)
+                                {
+                                    // For maintenance errors, show the detailed message
+                                    if (errorResponse.Error.Metadata.Raw?.Contains("maintenance") == true)
+                                    {
+                                        errorMessage = errorResponse.Error.Metadata.Raw;
+                                    }
+                                    // For other errors, just show a clean user-friendly message
+                                    else if (errorMessage == "Invalid URL")
+                                    {
+                                        errorMessage = "The provided image appears to be invalid or corrupted. Please try uploading a different image.";
+                                    }
+                                    else if (!string.IsNullOrEmpty(errorResponse.Error.Metadata.Raw))
+                                    {
+                                        // Log the full error for debugging but return a clean message
+                                        Logs.Debug($"Full OpenRouter error: {errorResponse.Error.Metadata.Raw}");
+                                        errorMessage = $"Error from {errorResponse.Error.Metadata.ProviderName}: {errorMessage}";
+                                    }
+                                }
+                                Logs.Error($"OpenRouter API error: {errorMessage}");
+                                return null;
+                            }
+                        }
+                        catch
+                        {
+                            // Not an error response, continue with normal processing
+                        }
+
+                        OpenRouterResponse openRouterResponse = JsonConvert.DeserializeObject<OpenRouterResponse>(responseContent);
                         if (openRouterResponse?.Choices != null && openRouterResponse.Choices.Count > 0)
                         {
-                            messageContent = openRouterResponse.Choices[0].Message.Content;
+                            var message = openRouterResponse.Choices[0].Message;
+                            if (message != null)
+                            {
+                                // Handle both string and object content
+                                messageContent = message.Content?.ToString();
+                                if (string.IsNullOrEmpty(messageContent) && message.Content != null)
+                                {
+                                    // Try to extract content from a structured response
+                                    try
+                                    {
+                                        var contentObj = JsonConvert.DeserializeObject<Dictionary<string, string>>(message.Content.ToString());
+                                        if (contentObj != null && contentObj.ContainsKey("text"))
+                                        {
+                                            messageContent = contentObj["text"];
+                                        }
+                                    }
+                                    catch
+                                    {
+                                        // If we can't parse as JSON, use the content as is
+                                        messageContent = message.Content.ToString();
+                                    }
+                                }
+                            }
                         }
-                        else
+                        if (string.IsNullOrEmpty(messageContent))
                         {
                             Logs.Error("OpenRouter response is null or has no choices.");
                             return null;
@@ -185,7 +242,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                             return null;
                         }
                     case "openrouter":
-                        Logs.Debug($"Raw OpenRouter Response: {responseContent}");
+                        //Logs.Debug($"Raw OpenRouter Response: {responseContent}");
                         try
                         {
                             var errorResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenRouterError>(responseContent);
@@ -225,14 +282,14 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
 
         /// <summary>Creates a JSON object for a success, includes models and config data.</summary>
         /// <returns>The success bool, models, and config data to the JavaScript function that called it.</returns>
-        public static JObject CreateSuccessResponse(string response, List<ModelData> models = null, ConfigData configData = null)
+        public static JObject CreateSuccessResponse(string response, List<ModelData> models = null, JObject settings = null)
         {
             return new JObject
             {
                 ["success"] = true,
                 ["response"] = response,
                 ["models"] = models != null ? JArray.FromObject(models) : null,
-                ["config"] = configData != null ? JObject.FromObject(configData) : null,
+                ["settings"] = settings,
                 ["error"] = null
             };
         }
