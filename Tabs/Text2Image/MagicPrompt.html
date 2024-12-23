@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="/ExtensionFile/MagicPromptExtension/Assets/chat.css">
 </head>
 <body>
-    <div id="magicprompt_container" class="d-flex flex-column">
+    <div id="magicprompt_container" class="d-flex flex-column magicprompt">
         <!-- Image Editor Container -->
         <div id="image_editor_container"></div>
         <!-- Main Content Area -->
@@ -70,35 +70,38 @@
             </div>
 
             <!-- Resize Handle -->
-            <div class="resize-handle" id="resize_handle"></div>
+            <div class="resize-handle magicprompt" id="resize_handle"></div>
 
             <!-- Right Side - Chat Area -->
             <div id="chat_section" class="d-flex flex-column flex-grow-1">
                 <div class="section-content d-flex flex-column">
-                    <div class="section-header">MagicPrompt Chat</div>
-                    <button id="settings_button" class="action-button" data-tooltip="Settings"> 
-                    ⚙️
-                    </button>
-
+                    <div class="section-header">
+                        MagicPrompt Chat
+                        <button id="settings_button" class="action-button" data-tooltip="Settings">
+                            ⚙️
+                        </button>
+                    </div>
                     <!-- Chat Messages Area -->
                     <div id="chat_messages"></div>
 
                     <!-- Bottom Action Area -->
                     <div class="chat-input-container">
                         <div class="input-controls d-flex align-items-center gap-3">
-                            <div class="form-check form-switch mb-0">
-                                <input class="form-check-input" type="checkbox" role="switch" id="unload_models_toggle">
-                                <label class="form-check-label" for="unload_models_toggle">
-                                    Unload Models After Response (Ollama Only)
-                                </label>
-                            </div>
-                            <div class="chat-mode-control d-flex align-items-center">
-                                <span class="me-2">Chat Mode:</span>
-                                <div class="btn-group" role="group">
-                                    <input type="radio" class="btn-check" name="chat_mode" id="chat_mode" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="chat_mode">Chat</label>
-                                    <input type="radio" class="btn-check" name="chat_mode" id="vision_mode" autocomplete="on" checked>
-                                    <label class="btn btn-outline-primary" for="vision_mode">Vision</label>
+                            <div class="d-flex justify-content-between w-100">
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="unload_models_toggle">
+                                    <label class="form-check-label" for="unload_models_toggle">
+                                        Unload Models After Response (Ollama Only)
+                                    </label>
+                                </div>
+                                <div class="chat-mode-control">
+                                    <span class="me-2">Chat Mode:</span>
+                                    <div class="btn-group" role="group">
+                                        <input type="radio" class="btn-check" name="chat_mode" id="chat_mode" autocomplete="off">
+                                        <label class="btn btn-outline-primary" for="chat_mode">Chat</label>
+                                        <input type="radio" class="btn-check" name="chat_mode" id="vision_mode" autocomplete="on" checked>
+                                        <label class="btn btn-outline-primary" for="vision_mode">Vision</label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -286,8 +289,10 @@
                 <!-- Footer Buttons -->
                 <div class="modal-footer">
                     <button type="button" class="basic-button danger" onclick="resetSettings()">Reset to Defaults</button>
-                    <button type="button" class="basic-button" data-bs-dismiss="modal" onclick="saveSettings(); closeSettingsModal()">Save and Close</button>
-                    <button id="saveChanges" type="button" class="basic-button" onclick="saveSettings()">Save and Refresh</button>
+                    <div class="save-buttons">
+                        <button type="button" class="basic-button" data-bs-dismiss="modal" onclick="saveSettings(); closeSettingsModal()">Save and Close</button>
+                        <button type="button" class="basic-button" onclick="saveSettings()">Save and Refresh</button>
+                    </div>
                 </div>
             </div>
         </div>

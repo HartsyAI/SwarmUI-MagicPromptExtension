@@ -4,7 +4,7 @@
 
 /* Main Layout
    Core container and structural elements */
-#magicprompt_container {
+.magicprompt#magicprompt_container {
     position: absolute;
     top: 40px;
     left: 20px;
@@ -18,18 +18,18 @@
 
 /* Chat Section
    Styles for the chat interface */
-#chat_section {
+.magicprompt#chat_section {
     min-width: 300px;
     flex: 1;
     display: flex;
     flex-direction: column;
 }
 
-#chat_section .section-content {
+.magicprompt#chat_section .section-content {
     height: 100%;
 }
 
-#chat_messages {
+.magicprompt#chat_messages {
     flex: 1 1 auto;
     overflow-y: auto;
     padding: 1rem 0;
@@ -40,11 +40,11 @@
     border-radius: 4px;
 }
 
-.chat-input-container {
+.magicprompt.chat-input-container {
     flex: 0 0 auto;
 }
 
-#chat_llm_textarea {
+.magicprompt#chat_llm_textarea {
     resize: none;
     height: 60px;
     background: var(--background-gray);
@@ -54,7 +54,7 @@
     padding: 1rem;
 }
 
-#submit_button {
+.magicprompt#submit_button {
     min-width: 60px;
     height: 60px;
     border-radius: 4px;
@@ -68,58 +68,90 @@
 
 /* Common UI Elements
    Reusable components and shared styles */
-.section-header {
-    flex: 0 0 auto;
-    background-color: var(--background-gray);
-    padding: 12px;
-    margin-bottom: 1rem;
-    border-radius: 4px;
-    font-weight: 500;
-    text-align: center;
+.magicprompt .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;  /* Fixed height for consistency */
+    padding: 0 0.75rem;
+    background: var(--background-gray);
     color: var(--text);
+    border-bottom: 1px solid var(--border-color);
+    position: relative;
+    flex-shrink: 0;
+    font-weight: 500;
 }
 
-.section-content {
+.magicprompt .section-header .form-check {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 1;
+    margin: 0;
+}
+
+.magicprompt .section-header .form-check-label {
+    color: var(--text);
+    font-size: 0.9em;
+    white-space: nowrap;
+}
+
+.magicprompt.section-content {
     padding: 0 1rem;
 }
 
 /* Settings Button
    Global settings control */
-#settings_button {
+.magicprompt #settings_button {
     position: absolute;
-    top: 5px;
-    right: 25px;
-    width: 35px;
-    height: 35px;
-    border-radius: 4px;
-    background: var(--background-gray);
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 4px 8px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 1.2em;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--text);
-    border: 1px solid var(--shadow);
-    z-index: 1000;
+    z-index: 2;
+}
+
+.magicprompt #settings_button:hover {
+    opacity: 0.8;
 }
 
 /* Resize Handle
    Used for resizable panels */
-.resize-handle {
-    width: 12px;
-    background: var(--shadow);
+.magicprompt.resize-handle {
+    width: 8px;
+    background: var(--border-color);
     cursor: col-resize;
-    margin: 0 4px;
+    margin: 0 8px;
     position: relative;
     touch-action: none;
     user-select: none;
     -webkit-user-select: none;
+    transition: background-color 0.2s ease;
+    height: 100%;
 }
 
-.resize-handle:hover {
-    background: var(--button-background-hover);
-}
-
-.resize-handle.resizing {
+.magicprompt.resize-handle:hover {
     background: var(--emphasis);
+    width: 12px;
+    margin: 0 6px;
 }
 
-.resize-handle::after {
+.magicprompt.resize-handle.resizing {
+    background: var(--emphasis);
+    width: 12px;
+    margin: 0 6px;
+}
+
+.magicprompt.resize-handle::after {
     content: '';
     position: absolute;
     left: 50%;
@@ -127,24 +159,26 @@
     transform: translate(-50%, -50%);
     height: 40px;
     width: 4px;
-    background: var(--shadow);
+    background: var(--text);
     border-radius: 2px;
+    opacity: 0.5;
 }
 
-.resize-handle:hover::after {
-    background: var(--button-background-hover);
+.magicprompt.resize-handle:hover::after,
+.magicprompt.resize-handle.resizing::after {
+    opacity: 1;
 }
 
 /* Typing Animation
    Shared animation for chat and vision loading states */
-.typing-animation {
+.magicprompt.typing-animation {
     display: flex;
     justify-content: center;
     align-items: center;
     padding: 1rem;
 }
 
-.typing-animation .dot {
+.magicprompt.typing-animation .dot {
     width: 8px;
     height: 8px;
     background: var(--button-text);
@@ -154,11 +188,11 @@
     margin: 0 2px;
 }
 
-.typing-animation .dot:nth-child(2) {
+.magicprompt.typing-animation .dot:nth-child(2) {
     animation-delay: 0.2s;
 }
 
-.typing-animation .dot:nth-child(3) {
+.magicprompt.typing-animation .dot:nth-child(3) {
     animation-delay: 0.4s;
 }
 
@@ -175,7 +209,7 @@
 
 /* Loading Animation
    Shared loading indicator */
-.loading-indicator {
+.magicprompt.loading-indicator {
     display: none; /* Hide this since we're using the typing-animation instead */
 }
 
@@ -187,7 +221,7 @@
 
 /* Button Styles
    Common button styling */
-.submit-button {
+.magicprompt.submit-button {
     font-size: 24px;
     transform: scale(1);
     background: var(--button-background);
@@ -199,20 +233,20 @@
     transition: transform 0.2s;
 }
 
-.submit-button:hover {
+.magicprompt.submit-button:hover {
     transform: scale(1.05);
     background: var(--button-background-hover);
 }
 
 /* Toggle Switches
    Shared toggle switch styling */
-.toggle-switch {
+.magicprompt.toggle-switch {
     display: inline-flex;
     align-items: center;
     gap: 8px;
 }
 
-.toggle-switch input[type="checkbox"] {
+.magicprompt.toggle-switch input[type="checkbox"] {
     appearance: none;
     width: 40px;
     height: 20px;
@@ -223,11 +257,11 @@
     transition: background 0.3s;
 }
 
-.toggle-switch input[type="checkbox"]:checked {
+.magicprompt.toggle-switch input[type="checkbox"]:checked {
     background: var(--emphasis);
 }
 
-.toggle-switch input[type="checkbox"]::before {
+.magicprompt.toggle-switch input[type="checkbox"]::before {
     content: '';
     position: absolute;
     width: 16px;
@@ -239,25 +273,25 @@
     transition: transform 0.3s;
 }
 
-.toggle-switch input[type="checkbox"]:checked::before {
+.magicprompt.toggle-switch input[type="checkbox"]:checked::before {
     transform: translateX(20px);
 }
 
 /* Chat Message Styles
    Styles for individual chat messages */
-.chat-message {
+.magicprompt.chat-message {
     display: flex;
     margin-bottom: 20px;
     align-items: flex-start;
     padding: 0 1rem;
 }
 
-.user-message {
+.magicprompt.user-message {
     flex-direction: row-reverse;
     margin-right: 18%;
 }
 
-.avatar {
+.magicprompt.avatar {
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -271,7 +305,7 @@
     color: var(--button-foreground-hover);
 }
 
-.message-content {
+.magicprompt.message-content {
     background-color: var(--background-gray);
     padding: 16px;
     border-radius: 4px;
@@ -283,11 +317,11 @@
     color: var(--text);
 }
 
-.user-message .message-content {
+.magicprompt.user-message .message-content {
     background-color: var(--background-soft);
 }
 
-.message-actions {
+.magicprompt.message-actions {
     display: flex;
     gap: 8px;
     margin-top: 8px;
@@ -295,11 +329,11 @@
     opacity: 0.7;
 }
 
-.message-actions:hover {
+.magicprompt.message-actions:hover {
     opacity: 1;
 }
 
-.action-button {
+.magicprompt.action-button {
     background: none;
     border: none;
     padding: 4px 8px;
@@ -309,11 +343,11 @@
     position: relative;
 }
 
-.action-button:hover {
+.magicprompt.action-button:hover {
     background: var(--button-background-hover);
 }
 
-.action-button[data-tooltip]:hover::before {
+.magicprompt.action-button[data-tooltip]:hover::before {
     content: attr(data-tooltip);
     position: absolute;
     bottom: 100%;
@@ -329,49 +363,48 @@
     border: 1px solid var(--shadow);
 }
 
-/* Settings Modal
-   Styles for the settings modal */
-.modal-dialog {
+/* Settings Modal */
+#settingsModal .modal-dialog {
+    width: 800px;  /* Set fixed width */
     max-width: 800px;
+    min-width: 800px;  /* Ensure minimum width */
+    margin: 1.75rem auto;  /* Center the modal */
 }
 
-.modal-content {
-    background: var(--background) !important;
-    color: var(--text);
+#settingsModal .modal-content {
+    width: 100%;  /* Take full width of dialog */
+    min-height: 600px;
+    background: var(--background);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
 }
 
-.modal-body {
-    padding: 0.75rem;
+#settingsModal .modal-body {
+    padding: 1.5rem;
+    min-height: 450px;
 }
 
-.settings-container {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+#settingsModal .settings-container {
+    width: 100%;  /* Take full width */
 }
 
-.settings-card {
-    border: 1px solid var(--shadow);
+#settingsModal .settings-card {
+    width: 100%;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
-    padding: 0.35rem 0.75rem;
     background: var(--background-gray);
-    min-width: 100%;
-    position: relative;
 }
 
-.settings-header {
-    cursor: pointer;
-    justify-content: space-between;
-    margin: 0;
-    padding: 0.15rem 0;
-    min-height: 32px;
-    position: relative;
-    z-index: 1;
+#settingsModal .settings-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    cursor: pointer;
 }
 
-.settings-header .d-flex {
+#settingsModal .settings-header .d-flex {
     position: relative;
     display: flex;
     align-items: center;
@@ -379,7 +412,7 @@
     margin: 0;
 }
 
-.settings-header-icon {
+#settingsModal .settings-header-icon {
     font-size: 1em;
     margin-right: 0.5rem;
     display: flex;
@@ -387,7 +420,7 @@
     position: relative;
 }
 
-.settings-section-title {
+#settingsModal .settings-section-title {
     margin: 0;
     font-size: 0.95em;
     font-weight: 600;
@@ -395,7 +428,7 @@
     color: var(--text);
 }
 
-.collapse-toggle {
+#settingsModal .collapse-toggle {
     background: none;
     border: none;
     color: inherit;
@@ -410,77 +443,149 @@
     height: 24px;
 }
 
-.collapse-toggle[aria-expanded="true"] {
+#settingsModal .collapse-toggle[aria-expanded="true"] {
     transform: rotate(180deg);
 }
 
-.settings-grid {
+#settingsModal .settings-grid {
     display: grid;
     gap: 0.5rem;
     padding-top: 0.5rem;
     width: 100%;
 }
 
-/* Input Controls
-   Styles for input fields and controls */
-.input-controls {
+#settingsModal .collapse {
+    padding: 0.75rem;
+    background: var(--background);  /* Keep the expanded content on regular background */
+    border-top: 1px solid var(--border-color);
+    border-radius: 0 0 4px 4px;
+}
+
+/* Form Controls in Settings */
+#settingsModal .form-group {
+    margin-bottom: 1rem;
+}
+
+#settingsModal .form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--text);
+}
+
+#settingsModal .form-control,
+#settingsModal .form-select {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background: var(--background);
+    color: var(--text);
+}
+
+#settingsModal .btn-group {
+    display: flex;
+    gap: 0.25rem;
+}
+
+#settingsModal .btn-outline-primary {
+    border: 1px solid var(--border-color);
+    background: var(--background);
+    color: var(--text);
+    padding: 0.5rem 1rem;
+}
+
+#settingsModal .btn-outline-primary:hover {
+    background: var(--button-background-hover);
+}
+
+#settingsModal .btn-check:checked + .btn-outline-primary {
+    background: var(--accent-color);
+    border-color: var(--accent-color);
+    color: var(--button-text);
+}
+
+#settingsModal .modal-footer {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+#settingsModal .modal-footer .save-buttons {
+    display: flex;
+    gap: 0.5rem;
+}
+
+#settingsModal .modal-footer .danger {
+    margin-right: auto;
+}
+
+#settingsModal .basic-button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--button-background);
+    color: var(--button-text);
+    cursor: pointer;
+}
+
+#settingsModal .basic-button:hover {
+    background-color: var(--button-background-hover);
+}
+
+#settingsModal .basic-button.danger {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+}
+
+#settingsModal .basic-button.danger:hover {
+    background-color: #c82333;
+}
+
+#settingsModal .basic-button.danger:active {
+    background-color: #bd2130;
+}
+
+/* Input Controls
+   Styles for input fields and controls */
+.magicprompt.input-controls {
     padding: 0.5rem 0;
 }
 
-.input-controls .form-check.form-switch {
-    padding-left: 2.5em;
-    min-width: max-content;
+.magicprompt.form-check.form-switch {
+    margin-bottom: 0;
 }
 
-.form-check-input {
-    cursor: pointer;
-}
-
-.form-check-label {
-    cursor: pointer;
-    user-select: none;
-    white-space: nowrap;
-}
-
-.input-controls .form-label {
-    white-space: nowrap;
-    display: inline-block;
-}
-
-.mode-selector {
+.magicprompt.chat-mode-control {
     display: flex;
-    gap: 10px;
-}
-
-.mode-label {
-    display: inline-flex;
     align-items: center;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    background-color: var(--background-color);
-    transition: background-color 0.2s;
 }
 
-.mode-label:hover {
-    background-color: var(--hover-color);
+.magicprompt.chat-mode-control .btn-group {
+    margin-left: 0.5rem;
 }
 
-.mode-label input[type="radio"] {
-    margin-right: 5px;
+.magicprompt.chat-mode-control .btn {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.9em;
 }
 
-.mode-label span {
-    font-size: 14px;
-    color: var(--text-color);
+.magicprompt.btn-outline-primary {
+    border: 1px solid var(--border-color);
+    background: var(--background);
+    color: var(--text);
+}
+
+.magicprompt.btn-outline-primary:hover,
+.magicprompt.btn-check:checked + .btn-outline-primary {
+    background: var(--emphasis);
+    color: var(--text);
+    border-color: var(--emphasis);
 }
 
 /* Form Controls - Using SwarmUI styles */
-.form-control, .form-select {
+.magicprompt.form-control, .magicprompt.form-select {
     background-color: var(--background-soft);
     color: var(--text);
     border: 1px solid var(--shadow);
@@ -489,14 +594,14 @@
     font-size: 0.9em;
 }
 
-.form-control::placeholder {
+.magicprompt.form-control::placeholder {
     color: var(--text-soft);
     opacity: 0.7;
 }
 
 /* Button Groups
    Styles for button groups */
-.btn-group {
+.magicprompt.btn-group {
     display: flex;
     gap: 0.25rem;
     font-size: 0.85em;
@@ -504,31 +609,31 @@
     flex-wrap: nowrap;
 }
 
-.btn-group .btn {
+.magicprompt.btn-group .btn {
     flex: 1;
     white-space: nowrap;
 }
 
-.btn-outline-primary {
+.magicprompt.btn-outline-primary {
     border: 1px solid var(--shadow);
     background: var(--background-soft);
     color: var(--text);
     padding: 0.25rem 0.5rem;
 }
 
-.btn-outline-primary:hover {
+.magicprompt.btn-outline-primary:hover {
     background: var(--button-background-hover);
     color: var(--button-foreground-hover);
 }
 
-.btn-check:checked + .btn-outline-primary {
+.magicprompt.btn-check:checked + .magicprompt.btn-outline-primary {
     background: var(--emphasis);
     border-color: var(--emphasis);
     color: var(--button-foreground-hover);
 }
 
 /* Using SwarmUI's basic-button class */
-.basic-button {
+.magicprompt.basic-button {
     padding: 0.35rem 0.75rem;
     border-radius: 4px;
     background-color: var(--button-background);
@@ -539,25 +644,25 @@
     font-size: 0.9em;
 }
 
-.basic-button:hover {
+.magicprompt.basic-button:hover {
     background-color: var(--button-background-hover);
     color: var(--button-foreground-hover);
 }
 
 /* Modal Footer
    Styles for the modal footer */
-.modal-footer {
+.magicprompt.modal-footer {
     border-top: 1px solid var(--shadow);
     padding: 0.75rem;
 }
 
 /* Collapse Animation
    Styles for the collapse animation */
-.collapse {
+.magicprompt.collapse {
     transition: height 0.2s ease-out;
 }
 
-.collapse:not(.show) {
+.magicprompt.collapse:not(.show) {
     display: block;
     height: 0 !important;
     padding: 0;
@@ -565,21 +670,21 @@
     overflow: hidden;
 }
 
-.collapse.show {
+.magicprompt.collapse.show {
     padding-top: 0.5rem;
 }
 
 /* Add spacing between textareas */
-#visionInstructionsContainer .form-control {
+.magicprompt#visionInstructionsContainer .form-control {
     margin-bottom: 0.5rem;
 }
 
-.unload-models-toggle {
+.magicprompt.unload-models-toggle {
     padding: 5px 10px;
     margin: 0;
 }
 
-.toggle-label {
+.magicprompt.toggle-label {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -588,41 +693,30 @@
     cursor: pointer;
 }
 
-.toggle-label input[type="checkbox"] {
+.magicprompt.toggle-label input[type="checkbox"] {
     margin: 0;
 }
 
-.form-check.form-switch {
+.magicprompt.form-check.form-switch {
     padding-left: 2.5em;
 }
 
-.form-check-input {
+.magicprompt.form-check-input {
     cursor: pointer;
 }
 
-.form-check-label {
+.magicprompt.form-check-label {
     cursor: pointer;
     user-select: none;
 }
 
-.input-controls .form-group {
+.magicprompt.input-controls .form-group {
     margin-bottom: 0.75rem;
-}
-
-.chat-mode-control {
-    display: flex !important;
-    align-items: center !important;
-    white-space: nowrap !important;
-}
-
-.chat-mode-control span {
-    display: inline-block;
-    margin-right: 8px;
 }
 
 /* Image Editor Positioning
    Styles for the image editor */
-#image_editor_container {
+.magicprompt#image_editor_container {
     position: fixed;
     top: 40px; /* Account for the header */
     left: 20px;
@@ -636,7 +730,7 @@
     margin: 0 auto; /* Center horizontally */
 }
 
-.image-editor-main {
+.magicprompt.image-editor-main {
     width: 100% !important;
     height: 100% !important;
     display: flex !important;
@@ -646,11 +740,11 @@
 }
 
 /* Editor specific overrides */
-.image-editor-main > div {
+.magicprompt.image-editor-main > div {
     display: flex !important;
 }
 
-.image-editor-main .center-panel {
+.magicprompt.image-editor-main .center-panel {
     flex: 1 1 auto; /* Allow flexible sizing */
     min-width: 0; /* Allow panel to shrink */
     max-width: calc(100% - 350px); /* Ensure space for right panel */
@@ -661,7 +755,7 @@
     border: 1px solid var(--border-color);
 }
 
-.image-editor-main .right-panel {
+.magicprompt.image-editor-main .right-panel {
     flex: 0 0 320px; /* Slightly wider fixed width */
     border-radius: 4px;
     border: 1px solid var(--border-color);
@@ -672,8 +766,35 @@
 }
 
 /* Ensure the canvas fits properly */
-.image-editor-main .canvas-container {
+.magicprompt.image-editor-main .canvas-container {
     max-width: 100%;
     max-height: calc(100vh - 150px);
     overflow: hidden;
+}
+
+/* Button Group Radio Styling */
+.magicprompt .btn-check,
+#settingsModal .btn-check {
+    position: absolute;
+    clip: rect(0,0,0,0);
+    pointer-events: none;
+}
+
+.magicprompt .btn-check:checked + .btn-outline-primary,
+#settingsModal .btn-check:checked + .btn-outline-primary {
+    background: var(--emphasis) !important;
+    border-color: var(--emphasis) !important;
+    color: white !important;
+}
+
+.magicprompt .btn-outline-primary:hover,
+#settingsModal .btn-outline-primary:hover {
+    background: var(--button-background-hover) !important;
+    border-color: var(--button-background-hover) !important;
+    color: var(--button-text) !important;
+}
+
+.magicprompt .btn-outline-primary,
+#settingsModal .btn-outline-primary {
+    transition: all 0.2s ease;
 }

@@ -3,7 +3,7 @@
    Including message bubbles, input area, and chat-specific animations */
 
 /* Chat Section Layout */
-#chat_section {
+.magicprompt #chat_section {
     flex: 1;
     min-width: 300px;
     display: flex;
@@ -12,7 +12,7 @@
     overflow: hidden;
 }
 
-.section-content {
+.magicprompt .section-content {
     flex: 1;
     display: flex;
     flex-direction: column;
@@ -22,7 +22,7 @@
 }
 
 /* Messages Area - Scrollable */
-#chat_messages {
+.magicprompt #chat_messages {
     flex: 1 1 auto;
     overflow-y: auto;
     padding: 1rem;
@@ -36,7 +36,7 @@
 }
 
 /* Chat Input Area - Fixed */
-.chat-input-container {
+.magicprompt .chat-input-container {
     position: absolute;
     bottom: 0;
     left: 0;
@@ -45,7 +45,7 @@
     padding: 1rem;
 }
 
-.chat-input-wrapper {
+.magicprompt .chat-input-wrapper {
     display: flex;
     align-items: flex-start;
     gap: 10px;
@@ -53,7 +53,7 @@
     background: var(--background);
 }
 
-#chat_llm_textarea {
+.magicprompt #chat_llm_textarea {
     flex: 1;
     height: 60px;
     resize: none;
@@ -65,28 +65,36 @@
     margin: 0;
 }
 
-#submit_button {
-    width: 60px;
+/* Submit Button */
+.magicprompt #submit_button {
     height: 60px;
-    flex: 0 0 60px;
+    width: 60px;  
     border-radius: 4px;
-    background: var(--button-background);
-    color: var(--button-text);
-    border: 1px solid var(--shadow);
+    background: var(--emphasis);  
+    color: var(--text);
+    border: none;
     cursor: pointer;
     transition: all 0.2s;
+    font-size: 1.5em;  
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 0;
-    margin: 0;
+    margin-left: 8px;
 }
 
-#submit_button:hover {
-    background: var(--button-background-hover);
-    transform: scale(1.05);
+.magicprompt #submit_button:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+}
+
+.magicprompt #submit_button:active {
+    transform: scale(0.98);
 }
 
 /* Message Bubbles and Content
    Styling for chat bubbles including user and assistant messages */
-.message-content {
+.magicprompt .message-content {
     background-color: var(--background-gray);
     padding: 16px;
     border-radius: 4px;
@@ -98,13 +106,13 @@
     color: var(--text);
 }
 
-.user-message .message-content {
+.magicprompt .user-message .message-content {
     background-color: var(--background-soft);
 }
 
 /* Avatar Styling
    Circular avatars for user and assistant */
-.avatar {
+.magicprompt .avatar {
     width: 32px;
     height: 32px;
     border-radius: 50%;
@@ -120,7 +128,7 @@
 
 /* Message Actions
    Buttons and controls for each message */
-.message-actions {
+.magicprompt .message-actions {
     display: flex;
     gap: 8px;
     margin-top: 8px;
@@ -128,11 +136,11 @@
     opacity: 0.7;
 }
 
-.message-actions:hover {
+.magicprompt .message-actions:hover {
     opacity: 1;
 }
 
-.action-button {
+.magicprompt .action-button {
     background: none;
     border: none;
     padding: 4px 8px;
@@ -142,12 +150,12 @@
     position: relative;
 }
 
-.action-button:hover {
+.magicprompt .action-button:hover {
     background: var(--button-background-hover);
 }
 
 /* Tooltips for Action Buttons */
-.action-button[data-tooltip]:hover::before {
+.magicprompt .action-button[data-tooltip]:hover::before {
     content: attr(data-tooltip);
     position: absolute;
     bottom: 100%;
@@ -163,7 +171,7 @@
     border: 1px solid var(--shadow);
 }
 
-#loading_indicator {
+.magicprompt #loading_indicator {
     display: none;
     position: absolute;
     bottom: 180px;
@@ -175,33 +183,33 @@
     z-index: 10;
 }
 
-    #loading_indicator.active {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 4px;
-    }
+.magicprompt #loading_indicator.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
 
-    #loading_indicator .dot {
-        width: 8px;
-        height: 8px;
-        background: var(--text);
-        border-radius: 50%;
-        animation: pulse 1.4s infinite ease-in-out;
-        display: inline-block;
-    }
+.magicprompt #loading_indicator .dot {
+    width: 8px;
+    height: 8px;
+    background: var(--text);
+    border-radius: 50%;
+    animation: pulse 1.4s infinite ease-in-out;
+    display: inline-block;
+}
 
-        #loading_indicator .dot:nth-child(1) {
-            animation-delay: 0s;
-        }
+.magicprompt #loading_indicator .dot:nth-child(1) {
+    animation-delay: 0s;
+}
 
-        #loading_indicator .dot:nth-child(2) {
-            animation-delay: 0.2s;
-        }
+.magicprompt #loading_indicator .dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
 
-        #loading_indicator .dot:nth-child(3) {
-            animation-delay: 0.4s;
-        }
+.magicprompt #loading_indicator .dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
 
 @keyframes pulse {
     0% {
@@ -219,14 +227,14 @@
 }
 
 /* Chat Message Layout */
-.chat-message {
+.magicprompt .chat-message {
     display: flex;
     margin-bottom: 20px;
     align-items: flex-start;
     padding: 0 1rem;
 }
 
-.user-message {
+.magicprompt .user-message {
     flex-direction: row-reverse;
     margin-right: 18%;
 }
