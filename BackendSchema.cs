@@ -1,6 +1,4 @@
 using SwarmUI.Utils;
-using System.Linq;
-using Hartsy.Extensions.MagicPromptExtension.WebAPI;
 
 namespace Hartsy.Extensions.MagicPromptExtension
 {
@@ -85,18 +83,17 @@ namespace Hartsy.Extensions.MagicPromptExtension
         {
             if (messageType == MessageType.Vision && content.Media?.Any() == true)
             {
-                var messageContent = new List<object>
-                {
+                List<object> messageContent =
+                [
                     // Add text content first
                     new { type = "text", text = content.Text }
-                };
+                ];
                 // Add image content
                 foreach (MediaContent media in content.Media)
                 {
-                    var imageUrl = media.Type == "base64" 
+                    string imageUrl = media.Type == "base64" 
                         ? $"data:{media.MediaType};base64,{media.Data}"  // Format as data URL for base64
                         : media.Data;  // Use as-is for regular URLs
-                        
                     messageContent.Add(new
                     {
                         type = "image_url",
@@ -136,18 +133,32 @@ namespace Hartsy.Extensions.MagicPromptExtension
         {
             if (messageType == MessageType.Vision && content.Media?.Any() == true)
             {
-                var messageContent = new List<object>();
+                List<object> messageContent = [];
                 // Add images first (Claude's format)
-                foreach (var media in content.Media)
+                foreach (MediaContent media in content.Media)
                 {
+                    // Ensure a valid media type
+                    string mediaType = media.MediaType;
+                    Logs.Debug($"\n\nMediaType: {mediaType}\n\n");
+                    if (string.IsNullOrEmpty(mediaType))
+                    {
+                        mediaType = "image/jpeg";
+                        Logs.Debug($"\n\nMediaType was null changed to: {mediaType}\n\n");
+                    }
+                    // Clean base64 data if needed
+                    string imageData = media.Data;
+                    if (imageData.Contains("base64,"))
+                    {
+                        imageData = imageData.Substring(imageData.IndexOf("base64,") + 7);
+                    }
                     messageContent.Add(new
                     {
                         type = "image",
                         source = new
                         {
                             type = "base64",
-                            media_type = media.MediaType ?? "image/jpeg",
-                            data = media.Data
+                            media_type = mediaType,
+                            data = imageData
                         }
                     });
                 }
@@ -175,20 +186,11 @@ namespace Hartsy.Extensions.MagicPromptExtension
             {
                 model = model,
                 messages = new[]
-                    {
-                        new { role = "user", content = content.Text }
-                    },
+                {
+                    new { role = "user", content = content.Text }
+                },
                 max_tokens = 1024
             };
-        }
-
-        /// <summary>Validates the input parameters.</summary>
-        private static void ValidateInput(MessageContent content, string model)
-        {
-            if (content == null || string.IsNullOrEmpty(model))
-            {
-                throw new ArgumentException("Content or model cannot be null or empty.");
-            }
         }
     }
 }

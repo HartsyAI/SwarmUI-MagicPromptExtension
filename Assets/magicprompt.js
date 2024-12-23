@@ -104,7 +104,7 @@ if (!window.MagicPrompt) {
                             media: image ? [{
                                 type: "base64",
                                 data: image,
-                                mediaType: "image/jpeg"
+                                mediaType: window.visionHandler?.currentMediaType || "image/jpeg"
                             }] : null
                         },
                         modelId,

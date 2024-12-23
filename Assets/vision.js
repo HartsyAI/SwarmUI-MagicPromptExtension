@@ -201,6 +201,7 @@ if (!window.VisionHandler) {
         }
 
         setCurrentImage(imageData, mediaType, metadata = {}) {
+            console.log('Setting image with media type:', mediaType);
             this.currentImage = imageData.includes('base64,') ?
                 imageData.split('base64,')[1] : imageData;
             this.currentMediaType = mediaType;
@@ -287,13 +288,19 @@ if (!window.VisionHandler) {
                         const container = new DataTransfer();
                         container.items.add(file);
                         initImageParam.files = container.files;
-                        triggerChangeFor(initImageParam);
-                        // Enable init image group
+                        // First toggle the group open
+                        if (typeof toggleGroupOpen === 'function') {
+                            toggleGroupOpen(initImageParam, true);
+                        }
+                        // Then set and trigger the content toggle
                         const toggler = document.getElementById('input_group_content_initimage_toggle');
                         if (toggler) {
                             toggler.checked = true;
                             triggerChangeFor(toggler);
                         }
+                        // Finally trigger change on the file input
+                        triggerChangeFor(initImageParam);
+                        // TODO: Add nav to Genpage
                     });
             }
             catch (error) {
