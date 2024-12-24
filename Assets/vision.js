@@ -5,307 +5,190 @@
 
 'use strict';
 
-// Initialize VisionHandler only if it doesn't exist
-if (!window.VisionHandler) {
-    window.VisionHandler = class VisionHandler {
+// Initialize VisionTab only if it doesn't exist
+if (!window.VisionTab) {
+    window.VisionTab = class VisionTab {
         constructor() {
-            // Image state
-            this.currentImage = null;
-            this.currentPreview = null;
-            this.currentMediaType = null;
-            this.metadata = {};
-
-            // Config
-            this.config = {
-                maxSize: 5 * 1024 * 1024,
-                allowedTypes: ['image/jpeg', 'image/png', 'image/webp'],
-                maxDimension: 2048
-            };
-
-            // Bind methods
-            this.handleDragOver = this.handleDragOver.bind(this);
-            this.handleDragLeave = this.handleDragLeave.bind(this);
-            this.handleDrop = this.handleDrop.bind(this);
-            this.handleFileSelect = this.handleFileSelect.bind(this);
-            this.generateCaption = this.generateCaption.bind(this);
-            this.useAsInit = this.useAsInit.bind(this);
-            this.useAsPrompt = this.useAsPrompt.bind(this);
-            this.editImage = this.editImage.bind(this);
-            this.clearImage = this.clearImage.bind(this);
+            this.elements = {};
+            this.setupElements();
+            this.setupEventListeners();
         }
 
-        initialize() {
-            try {
-                this.setupUIElements();
-                this.bindEvents();
-                console.log('Vision handler initialized');
-            } catch (error) {
-                console.error('Failed to initialize vision handler:', error);
-                showError('Failed to initialize vision interface');
-            }
-        }
-
-        setupUIElements() {
+        setupElements() {
             this.elements = {
-                // Main containers
-                visionSection: getRequiredElementById('vision_section'),
-                uploadArea: getRequiredElementById('image_upload_area'),
-                uploadPlaceholder: document.querySelector('.upload-placeholder'),
-
-                // Image elements
-                imageInput: getRequiredElementById('image_input'),
-                previewContainer: getRequiredElementById('image_preview_container'),
-                previewImage: getRequiredElementById('preview_image'),
-                uploadButton: getRequiredElementById('upload_image_button'),
-
-                // Info section elements
-                infoSection: document.querySelector('.vision-info-section'),
-                visionActions: document.querySelector('.vision-actions'),
-                captionContainer: document.querySelector('.caption-container'),
+                dropZone: document.getElementById('image_upload_area'),
+                imagePreview: document.getElementById('preview_image'),
+                uploadButton: document.getElementById('upload_image_button'),
+                imageInput: document.getElementById('image_input'),
+                captionBtn: document.getElementById('caption_btn'),
+                editBtn: document.getElementById('edit_btn'),
+                useInitBtn: document.getElementById('use_init_btn'),
+                useAsPromptBtn: document.getElementById('use_as_prompt_btn'),
+                clearBtn: document.getElementById('clear_image_btn'),
                 captionContent: document.querySelector('.caption-content'),
-                typingAnimation: document.querySelector('.typing-animation'),
-                metadataContainer: document.querySelector('.metadata-container'),
-
-                // Action buttons
-                captionBtn: getRequiredElementById('caption_btn'),
-                useInitBtn: getRequiredElementById('use_init_btn'),
-                useAsPromptBtn: getRequiredElementById('use_as_prompt_btn'),
-                editBtn: getRequiredElementById('edit_btn'),
-                clearBtn: getRequiredElementById('clear_image_btn')
+                captionContainer: document.querySelector('.caption-container'),
+                loadingSpinner: document.querySelector('.typing-animation'),
+                previewContainer: document.getElementById('image_preview_container'),
+                uploadPlaceholder: document.querySelector('.upload-placeholder'),
+                visionActions: document.querySelector('.vision-actions')
             };
         }
 
-        bindEvents() {
-            const {
-                uploadArea,
-                imageInput,
-                uploadButton,
-                captionBtn,
-                useInitBtn,
-                useAsPromptBtn,
-                editBtn,
-                clearBtn
-            } = this.elements;
+        setupEventListeners() {
+            // Setup drag and drop
+            this.elements.dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.elements.dropZone.classList.add('dragover');
+            });
 
-            // Upload area events
-            uploadArea.addEventListener('dragover', this.handleDragOver);
-            uploadArea.addEventListener('dragleave', this.handleDragLeave);
-            uploadArea.addEventListener('drop', this.handleDrop);
+            this.elements.dropZone.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.elements.dropZone.classList.remove('dragover');
+            });
 
-            // File input events
-            imageInput.addEventListener('change', this.handleFileSelect);
-            uploadButton.addEventListener('click', () => imageInput.click());
+            this.elements.dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.elements.dropZone.classList.remove('dragover');
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    this.handleFile(e.dataTransfer.files[0]);
+                }
+            });
 
-            // Action button events
-            captionBtn.addEventListener('click', this.generateCaption);
-            useInitBtn.addEventListener('click', this.useAsInit);
-            useAsPromptBtn.addEventListener('click', this.useAsPrompt)
-            editBtn.addEventListener('click', this.editImage);
-            clearBtn.addEventListener('click', this.clearImage);
+            // Setup upload button
+            this.elements.uploadButton.addEventListener('click', () => {
+                this.elements.imageInput.click();
+            });
+
+            // Setup file input
+            this.elements.imageInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    this.handleFile(e.target.files[0]);
+                }
+            });
+
+            // Setup other buttons
+            this.elements.captionBtn.addEventListener('click', this.generateCaption.bind(this));
+            this.elements.useInitBtn.addEventListener('click', this.useAsInit.bind(this));
+            this.elements.useAsPromptBtn.addEventListener('click', this.useAsPrompt.bind(this));
+            this.elements.editBtn.addEventListener('click', this.editImage.bind(this));
+            this.elements.clearBtn.addEventListener('click', this.clearImage.bind(this));
 
             // Global paste event
-            document.addEventListener('paste', this.handleImagePaste.bind(this));
-        }
-
-        handleDragOver(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.elements.uploadArea.classList.add('dragover');
-        }
-
-        handleDragLeave(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            this.elements.uploadArea.classList.remove('dragover');
-        }
-
-        handleDrop(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            this.elements.uploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-
-            if (files?.length) {
-                this.handleImageUpload(files[0]);
-            }
-        }
-
-        handleFileSelect(e) {
-            const files = e.target.files;
-            if (files?.length) {
-                this.handleImageUpload(files[0]);
-            }
-        }
-
-        handleImagePaste(e) {
-            const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-            for (let item of items) {
-                if (item.type.startsWith('image/')) {
-                    const file = item.getAsFile();
-                    this.handleImageUpload(file);
-                    break;
+            document.addEventListener('paste', (e) => {
+                const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+                for (const item of items) {
+                    if (item.type.indexOf('image') === 0) {
+                        const file = item.getAsFile();
+                        this.handleFile(file);
+                        break;
+                    }
                 }
-            }
+            });
         }
 
-        async handleImageUpload(file) {
-            if (!this.validateFile(file)) {
+        handleFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showError('Please upload a valid image file');
                 return;
             }
-            try {
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    const image = new Image();
-                    image.onload = async () => {
-                        this.setCurrentImage(
-                            e.target.result,
-                            file.type,
-                            {
-                                width: image.naturalWidth,
-                                height: image.naturalHeight,
-                                size: (file.size / 1024).toFixed(2) + ' KB'
-                            }
-                        );
-                        this.displayImage();
-                        // Auto generate caption if enabled
-                        const autoCaptionCheckbox = document.getElementById('auto_caption_checkbox');
-                        if (autoCaptionCheckbox?.checked) {
-                            await this.generateCaption();
-                        }
-                    };
-                    image.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
-            }
-            catch (error) {
-                console.error('Image upload error:', error);
-                showError(`Failed to upload image: ${error.message}`);
-            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    // Use SwarmUI's parseMetadata function if available
+                    if (typeof window.parseMetadata === 'function') {
+                        window.parseMetadata(e.target.result, (data, metadata) => {
+                            this.setImage(data, metadata);
+                        });
+                    } else {
+                        this.setImage(e.target.result, null);
+                    }
+                } catch (error) {
+                    this.setImage(e.target.result, null);
+                }
+            };
+            reader.readAsDataURL(file);
         }
 
-        validateFile(file) {
-            if (!file) return false;
-
-            if (!this.config.allowedTypes.includes(file.type)) {
-                showError('Invalid file type. Please upload a JPG, PNG, or WebP image.');
-                return false;
-            }
-
-            if (file.size > this.config.maxSize) {
-                showError('File too large. Maximum size is 5MB.');
-                return false;
-            }
-
-            return true;
-        }
-
-        setCurrentImage(imageData, mediaType, metadata = {}) {
-            console.log('Setting image with media type:', mediaType);
-            this.currentImage = imageData.includes('base64,') ?
-                imageData.split('base64,')[1] : imageData;
-            this.currentMediaType = mediaType;
-            this.metadata = metadata;
-
-            // Hide placeholder, show preview
-            this.elements.uploadPlaceholder.style.display = 'none';
+        setImage(dataUrl, metadata) {
+            // Set image in our preview
+            this.elements.imagePreview.src = dataUrl;
+            this.elements.imagePreview.style.display = 'block';
             this.elements.previewContainer.style.display = 'block';
+            this.elements.uploadPlaceholder.style.display = 'none';
             this.elements.visionActions.style.display = 'flex';
+
+            // Set image in SwarmUI's system
+            if (typeof window.setCurrentImage === 'function') {
+                window.setCurrentImage(dataUrl, '', '', false, false, true, false);
+            }
+
+            // Auto generate caption if enabled
+            const autoCaptionCheckbox = document.getElementById('auto_caption_checkbox');
+            if (autoCaptionCheckbox?.checked) {
+                this.generateCaption();
+            }
         }
 
-        displayImage() {
-            const { 
-                previewContainer,
-                previewImage, 
-                metadataContainer,
-                uploadPlaceholder,
-                visionActions
-            } = this.elements;
-            // Hide placeholder and show preview
-            uploadPlaceholder.style.display = 'none';
-            previewContainer.style.display = 'flex';
-            previewImage.style.display = 'block';
-            // Display image
-            previewImage.src = `data:${this.currentMediaType};base64,${this.currentImage}`;
-            // Show actions
-            visionActions.style.display = 'flex';
-            // Display metadata
-            metadataContainer.innerHTML = `
-                <div class="image-metadata">
-                    <span>Width: ${this.metadata.width}px</span>
-                    <span>Height: ${this.metadata.height}px</span>
-                    <span>Size: ${this.metadata.size}</span>
-                </div>
-            `;
-        }
-
-        async generateCaption() {
-            if (!this.currentImage) {
+        generateCaption = async () => {
+            if (!this.elements.imagePreview.src) {
                 showError('No image to caption');
                 return;
             }
+
             try {
-                const { captionContainer, captionContent, typingAnimation } = this.elements;
-                typingAnimation.classList.add('active');
+                const { captionContainer, captionContent, loadingSpinner } = this.elements;
+                loadingSpinner.classList.add('active');
                 captionContent.style.display = 'none';
+
                 const payload = MP.RequestBuilder.createRequestPayload(
                     "Generate a detailed caption for this image",
-                    this.currentImage,
+                    this.elements.imagePreview.src.split(',')[1],
                     "Vision"
                 );
                 const response = await MP.APIClient.makeRequest(payload);
-                typingAnimation.classList.remove('active');
+                loadingSpinner.classList.remove('active');
                 if (response.success && response.response) {
                     captionContent.style.display = 'block';
                     captionContent.textContent = response.response;
                 } else {
                     throw new Error(response.error || 'Failed to generate caption');
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 console.error('Caption generation error:', error);
-                this.elements.typingAnimation.classList.remove('active');
+                this.elements.loadingSpinner.classList.remove('active');
                 showError(`Failed to generate caption: ${error.message}`);
             }
         }
 
-        useAsInit() {
-            if (!this.currentImage) {
-                showError('No image to use');
-                return;
-            }
-            try {
-                const initImageParam = document.getElementById('input_initimage');
-                if (!initImageParam) {
-                    showError('Init image parameter not available');
-                    return;
+        useAsInit = () => {
+            const buttons = document.querySelectorAll('.current-image-buttons button');
+            const initButton = Array.from(buttons).find(btn => btn.textContent.includes('Use As Init'));
+            if (initButton) {
+                initButton.click();
+                const generateTab = document.getElementById('generatetabclickable')
+                    || document.getElementById('text2imagetabbutton');
+                if (generateTab) {
+                    generateTab.click();
+                    generateTab.dispatchEvent(new Event('change', { bubbles: true }));
                 }
-                // Create file from image data
-                fetch(`data:${this.currentMediaType};base64,${this.currentImage}`)
-                    .then(res => res.blob())
-                    .then(blob => {
-                        const file = new File([blob], 'init_image.png', { type: this.currentMediaType });
-                        const container = new DataTransfer();
-                        container.items.add(file);
-                        initImageParam.files = container.files;
-                        // First toggle the group open
-                        if (typeof toggleGroupOpen === 'function') {
-                            toggleGroupOpen(initImageParam, true);
-                        }
-                        // Then set and trigger the content toggle
-                        const toggler = document.getElementById('input_group_content_initimage_toggle');
-                        if (toggler) {
-                            toggler.checked = true;
-                            triggerChangeFor(toggler);
-                        }
-                        // Finally trigger change on the file input
-                        triggerChangeFor(initImageParam);
-                        // TODO: Add nav to Genpage
-                    });
             }
-            catch (error) {
-                console.error('Use as init error:', error);
-                showError(`Failed to set init image: ${error.message}`);
+        }
+
+        editImage = () => {
+            const buttons = document.querySelectorAll('.current-image-buttons button');
+            const editButton = Array.from(buttons).find(btn => btn.textContent.includes('Edit Image'));
+            if (editButton) {
+                editButton.click();
+                const generateTab = document.getElementById('generatetabclickable')
+                    || document.getElementById('text2imagetabbutton');
+                if (generateTab) {
+                    generateTab.click();
+                    generateTab.dispatchEvent(new Event('change', { bubbles: true }));
+                }
             }
         }
 
@@ -316,17 +199,13 @@ if (!window.VisionHandler) {
             }
 
             try {
-                // Get the caption text
                 const captionText = this.elements.captionContent.textContent;
-
-                // Navigate to generate tab if available
                 const generateTab = document.getElementById('generatetabclickable')
                     || document.getElementById('text2imagetabbutton');
                 if (generateTab) {
                     generateTab.click();
                     generateTab.dispatchEvent(new Event('change', { bubbles: true }));
                 }
-                // Set prompt text
                 const promptBox = document.getElementById('alt_prompt_textbox');
                 if (promptBox) {
                     promptBox.value = captionText;
@@ -334,79 +213,26 @@ if (!window.VisionHandler) {
                     promptBox.focus();
                     promptBox.setSelectionRange(0, promptBox.value.length);
                 }
-            }
-            catch (error) {
+            } catch (error) {
                 console.error('Send to prompt error:', error);
                 showError(`Failed to send to prompt: ${error.message}`);
             }
         }
 
-        editImage() {
-            if (!this.currentImage) {
-                showError('No image to edit');
-                return;
-            }
-            try {
-                const image = new Image();
-                image.onload = () => {
-                    window.imageEditor.setBaseImage(image);
-                    window.imageEditor.activate();
-                };
-                image.src = `data:${this.currentMediaType};base64,${this.currentImage}`;
-            }
-            catch (error) {
-                console.error('Failed to open editor:', error);
-                showError(`Failed to open editor: ${error.message}`);
-            }
-        }
-
-        clearImage() {
-            // Reset state
-            this.currentImage = null;
-            this.currentPreview = null;
-            this.currentMediaType = null;
-            this.metadata = {};
-            // Reset UI elements
-            const {
-                uploadPlaceholder,
-                previewContainer,
-                previewImage,
-                visionActions,
-                metadataContainer,
-                captionContent,
-                imageInput
-            } = this.elements;
-            // Reset visibility
-            uploadPlaceholder.style.display = '';
-            previewContainer.style.display = 'none';
-            previewImage.src = '';
-            previewImage.style.display = 'none';
-            visionActions.style.display = 'none';
-            // Clear content but preserve structure
-            metadataContainer.innerHTML = '';
-            if (captionContent) {
-                captionContent.textContent = ''; // Clear text
-                captionContent.style.display = 'none'; // Hide the content
-            }
-            // Reset file input
-            imageInput.value = '';
-        }
-
-        getCurrentImage() {
-            return this.currentImage;
-        }
-
-        getMetadata() {
-            return this.metadata;
+        clearImage = () => {
+            this.elements.imagePreview.src = '';
+            this.elements.imagePreview.style.display = 'none';
+            this.elements.previewContainer.style.display = 'none';
+            this.elements.uploadPlaceholder.style.display = 'block';
+            this.elements.visionActions.style.display = 'none';
+            this.elements.captionContent.textContent = '';
+            this.elements.imageInput.value = '';
         }
     }
+
+    // Create and initialize vision tab
+    const visionTab = new window.VisionTab();
+
+    // Export for use in other modules
+    window.visionTab = visionTab;
 }
-
-// Create and initialize vision handler
-const visionHandler = new window.VisionHandler();
-document.addEventListener('DOMContentLoaded', () => {
-    visionHandler.initialize();
-});
-
-// Export for use in other modules
-window.visionHandler = visionHandler;

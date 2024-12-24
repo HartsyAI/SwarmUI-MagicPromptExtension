@@ -714,64 +714,6 @@
     margin-bottom: 0.75rem;
 }
 
-/* Image Editor Positioning
-   Styles for the image editor */
-.magicprompt#image_editor_container {
-    position: fixed;
-    top: 40px; /* Account for the header */
-    left: 20px;
-    right: 20px;
-    bottom: 20px;
-    background: var(--background);
-    z-index: 1000;
-    display: none;
-    padding: 20px;
-    max-width: 1400px; /* Limit maximum width */
-    margin: 0 auto; /* Center horizontally */
-}
-
-.magicprompt.image-editor-main {
-    width: 100% !important;
-    height: 100% !important;
-    display: flex !important;
-    gap: 20px;
-    background: var(--background);
-    max-height: calc(100vh - 100px); /* Prevent overflow */
-}
-
-/* Editor specific overrides */
-.magicprompt.image-editor-main > div {
-    display: flex !important;
-}
-
-.magicprompt.image-editor-main .center-panel {
-    flex: 1 1 auto; /* Allow flexible sizing */
-    min-width: 0; /* Allow panel to shrink */
-    max-width: calc(100% - 350px); /* Ensure space for right panel */
-    display: flex;
-    flex-direction: column;
-    background: var(--background-alt);
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-}
-
-.magicprompt.image-editor-main .right-panel {
-    flex: 0 0 320px; /* Slightly wider fixed width */
-    border-radius: 4px;
-    border: 1px solid var(--border-color);
-    background: var(--background-alt);
-    overflow-y: auto;
-    padding: 10px;
-    margin-right: 10px; /* Ensure it's not touching the edge */
-}
-
-/* Ensure the canvas fits properly */
-.magicprompt.image-editor-main .canvas-container {
-    max-width: 100%;
-    max-height: calc(100vh - 150px);
-    overflow: hidden;
-}
-
 /* Button Group Radio Styling */
 .magicprompt .btn-check,
 #settingsModal .btn-check {
