@@ -13,7 +13,6 @@ if (!window.ChatHandler) {
             this.messages = [];
             this.isTyping = false;
             this.lastMessageId = 0;
-
             // Bind methods
             this.submitInput = this.submitInput.bind(this);
             this.appendMessage = this.appendMessage.bind(this);
@@ -27,12 +26,12 @@ if (!window.ChatHandler) {
             try {
                 this.setupUIElements();
                 this.bindEvents();
-                console.log('Chat handler initialized');
             } catch (error) {
                 console.error('Failed to initialize chat handler:', error);
                 showError('Failed to initialize chat interface');
             }
         }
+
         setupUIElements() {
             this.elements = {
                 // Main containers
@@ -49,6 +48,7 @@ if (!window.ChatHandler) {
                 unloadModelsToggle: getRequiredElementById('unload_models_toggle'),
                 chatModeRadio: getRequiredElementById('chat_mode'),
                 visionModeRadio: getRequiredElementById('vision_mode'),
+                promptModeRadio: getRequiredElementById('prompt_mode'),
                 // Input controls
                 inputControls: document.querySelector('.input-controls'),
                 chatInputWrapper: document.querySelector('.chat-input-wrapper')
@@ -56,6 +56,7 @@ if (!window.ChatHandler) {
             // Set initial placeholder based on mode
             this.updateInputPlaceholder();
         }
+
         bindEvents() {
             const {
                 chatInput,
@@ -63,7 +64,8 @@ if (!window.ChatHandler) {
                 settingsButton,
                 unloadModelsToggle,
                 chatModeRadio,
-                visionModeRadio
+                visionModeRadio,
+                promptModeRadio
             } = this.elements;
             // Input events
             chatInput.addEventListener('keydown', this.handleKeyPress);
@@ -81,6 +83,7 @@ if (!window.ChatHandler) {
             // Mode events
             chatModeRadio.addEventListener('change', this.handleModeChange);
             visionModeRadio.addEventListener('change', this.handleModeChange);
+            promptModeRadio.addEventListener('change', this.handleModeChange);
             unloadModelsToggle.addEventListener('change', () => {
                 MP.settings.unloadmodel = unloadModelsToggle.checked;
                 localStorage.setItem('unloadmodel', unloadModelsToggle.checked);
@@ -110,18 +113,26 @@ if (!window.ChatHandler) {
                 }
             });
         }
+
         handleModeChange() {
-            const { visionModeRadio } = this.elements;
+            const { visionModeRadio, promptModeRadio } = this.elements;
             this.updateInputPlaceholder();
             // Update any UI elements that depend on mode
             document.dispatchEvent(new Event('modeChanged'));
         }
+
         updateInputPlaceholder() {
-            const { chatInput, visionModeRadio } = this.elements;
-            chatInput.placeholder = visionModeRadio.checked ?
-                "Ask about the uploaded image..." :
-                "Type your message here...";
+            const { chatInput, visionModeRadio, promptModeRadio } = this.elements;
+            
+            if (visionModeRadio.checked) {
+                chatInput.placeholder = "Vision Mode: Ask questions about the uploaded image or request detailed analysis...";
+            } else if (promptModeRadio.checked) {
+                chatInput.placeholder = "Prompt Mode: Describe your image idea and get an enhanced, detailed prompt for generation...";
+            } else {
+                chatInput.placeholder = "Chat Mode: Have a conversation, ask questions, or get assistance with any topic...";
+            }
         }
+
         handleKeyPress(e) {
             // Submit on Enter (without shift)
             if (e.key === 'Enter' && !e.shiftKey) {
@@ -129,10 +140,17 @@ if (!window.ChatHandler) {
                 this.submitInput();
             }
         }
+        
         async submitInput() {
-            const { chatInput, loadingIndicator } = this.elements;
+            const { chatInput, loadingIndicator, visionModeRadio } = this.elements;
             const input = chatInput.value.trim();
             if (!input || this.isTyping) return;
+
+            // Check if we're in vision mode and there's no image
+            if (visionModeRadio.checked && !window.visionHandler?.getCurrentImage()) {
+                this.appendMessage('system', 'Please upload an image first to use vision mode.');
+                return;
+            }
             try {
                 // Show user message
                 this.appendMessage('user', input);
@@ -140,10 +158,22 @@ if (!window.ChatHandler) {
                 chatInput.value = '';
                 this.adjustInputHeight();
                 // Create request payload
+                const promptMode = document.getElementById('prompt_mode')?.checked;
+                const visionMode = document.getElementById('vision_mode')?.checked;
+                const action = visionMode ? 'vision' : (promptMode ? 'prompt' : 'chat');
+                // Log the current state
+                console.log('Mode selection:', {
+                    promptMode,
+                    visionMode,
+                    action,
+                    'prompt_mode_element': document.getElementById('prompt_mode'),
+                    'vision_mode_element': document.getElementById('vision_mode')
+                });
+
                 const payload = MP.RequestBuilder.createRequestPayload(
                     input,
-                    visionHandler?.getCurrentImage(), // Get image if in vision mode
-                    "Text"
+                    window.visionHandler?.getCurrentImage() || null, // Get image if in vision mode
+                    action
                 );
                 // Show typing indicator
                 loadingIndicator.style.display = 'block';
@@ -242,24 +272,37 @@ if (!window.ChatHandler) {
         async regenerateMessage(messageId) {
             const message = this.findMessage(messageId);
             if (!message) return;
+            
             // Find associated user message
             const userMessage = this.findPrecedingUserMessage(messageId);
             if (!userMessage) {
                 showError('Cannot find original message to regenerate');
                 return;
             }
-            // Clear the old response
-            this.clearMessage(messageId);
+            
+            // Remove only the assistant's message
+            const assistantMessageElement = this.elements.chatMessages
+                .querySelector(`.chat-message[data-message-id="${messageId}"]`);
+            assistantMessageElement?.remove();
+            
+            // Remove the assistant message from the messages array
+            const messageIndex = this.messages.findIndex(m => m.id === parseInt(messageId));
+            if (messageIndex !== -1) {
+                this.messages.splice(messageIndex, 1);
+            }
+
             try {
-                // Create request payload
+                // Create request payload using the original user message
                 const payload = MP.RequestBuilder.createRequestPayload(
                     userMessage.content,
                     null,
-                    "Text"
+                    'chat'
                 );
+                
                 // Show typing indicator
                 this.elements.loadingIndicator.style.display = 'block';
                 this.isTyping = true;
+                
                 // Make API request
                 const response = await MP.APIClient.makeRequest(payload);
                 if (response.success && response.response) {
@@ -310,3 +353,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Export for use in other modules
 window.chatHandler = chatHandler;
+
+// Global functions for message actions
+window.clearMessage = function(button) {
+    const messageDiv = button.closest('.chat-message');
+    const messageId = messageDiv?.dataset.messageId;
+    if (messageId) {
+        chatHandler.clearMessage(messageId);
+    }
+};
+
+window.sendToPrompt = function(button) {
+    const messageDiv = button.closest('.chat-message');
+    const messageId = messageDiv?.dataset.messageId;
+    if (messageId) {
+        chatHandler.useAsPrompt(messageId);
+    }
+};
+
+window.regenerate = function(button) {
+    const messageDiv = button.closest('.chat-message');
+    const messageId = messageDiv?.dataset.messageId;
+    if (messageId) {
+        chatHandler.regenerateMessage(messageId);
+    }
+};

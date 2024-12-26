@@ -16,13 +16,23 @@
     overflow: hidden;
 }
 
+.magicprompt .main-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    height: 100%;
+}
+
 /* Chat Section
    Styles for the chat interface */
 .magicprompt#chat_section {
     min-width: 300px;
-    flex: 1;
+    height: 100%;
+    flex: 1 1 auto;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .magicprompt#chat_section .section-content {
@@ -64,6 +74,19 @@
     border: 1px solid var(--button-border);
     margin-left: 8px;
     box-shadow: 0 2px 4px var(--shadow);
+}
+
+/* Vision Section */
+.magicprompt #vision_section {
+    width: 400px; /* Initial width */
+    min-width: 300px;
+    max-width: calc(100% - 300px);
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0; /* Prevent shrinking */
+    overflow: hidden; /* Prevent content overflow */
 }
 
 /* Common UI Elements
@@ -126,47 +149,54 @@
 
 /* Resize Handle
    Used for resizable panels */
-.magicprompt.resize-handle {
-    width: 8px;
-    background: var(--border-color);
+.resize-handle {
+    width: 5px;
     cursor: col-resize;
-    margin: 0 8px;
-    position: relative;
-    touch-action: none;
+    background-color: var(--light-border);
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    flex-shrink: 0; /* Prevent shrinking */
+    z-index: 100; /* Ensure it's above other elements */
+    position: relative; /* Enable z-index */
+}
+
+.resize-handle:hover,
+.resize-handle:active {
+    background-color: var(--emphasis);
+    box-shadow:
+        -0.5rem 0 0.5rem 0 color-mix(in srgb, transparent 50%, var(--emphasis)),
+        0.5rem 0 0.5rem 0 color-mix(in srgb, transparent 50%, var(--emphasis));
+}
+
+/* Dragging state */
+body.dragging {
+    cursor: col-resize !important;
     user-select: none;
     -webkit-user-select: none;
-    transition: background-color 0.2s ease;
-    height: 100%;
 }
 
-.magicprompt.resize-handle:hover {
-    background: var(--emphasis);
-    width: 12px;
-    margin: 0 6px;
+body.dragging * {
+    pointer-events: none !important;
 }
 
+body.dragging .resize-handle {
+    pointer-events: auto !important;
+    background-color: var(--emphasis);
+}
+
+/* Remove any conflicting styles */
+.magicprompt.resize-handle,
+.magicprompt.resize-handle:hover,
 .magicprompt.resize-handle.resizing {
-    background: var(--emphasis);
-    width: 12px;
-    margin: 0 6px;
-}
-
-.magicprompt.resize-handle::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    height: 40px;
-    width: 4px;
-    background: var(--text);
-    border-radius: 2px;
-    opacity: 0.5;
-}
-
-.magicprompt.resize-handle:hover::after,
-.magicprompt.resize-handle.resizing::after {
-    opacity: 1;
+    all: unset;
+    width: 5px !important;
+    cursor: col-resize !important;
+    background-color: var(--light-border);
+    height: 100% !important;
+    flex-shrink: 0;
+    z-index: 100;
+    position: relative;
 }
 
 /* Typing Animation

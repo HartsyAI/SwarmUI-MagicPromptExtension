@@ -41,13 +41,11 @@ if (!window.VisionTab) {
                 e.stopPropagation();
                 this.elements.dropZone.classList.add('dragover');
             });
-
             this.elements.dropZone.addEventListener('dragleave', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 this.elements.dropZone.classList.remove('dragover');
             });
-
             this.elements.dropZone.addEventListener('drop', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -56,26 +54,22 @@ if (!window.VisionTab) {
                     this.handleFile(e.dataTransfer.files[0]);
                 }
             });
-
             // Setup upload button
             this.elements.uploadButton.addEventListener('click', () => {
                 this.elements.imageInput.click();
             });
-
             // Setup file input
             this.elements.imageInput.addEventListener('change', (e) => {
                 if (e.target.files && e.target.files.length > 0) {
                     this.handleFile(e.target.files[0]);
                 }
             });
-
             // Setup other buttons
             this.elements.captionBtn.addEventListener('click', this.generateCaption.bind(this));
             this.elements.useInitBtn.addEventListener('click', this.useAsInit.bind(this));
             this.elements.useAsPromptBtn.addEventListener('click', this.useAsPrompt.bind(this));
             this.elements.editBtn.addEventListener('click', this.editImage.bind(this));
             this.elements.clearBtn.addEventListener('click', this.clearImage.bind(this));
-
             // Global paste event
             document.addEventListener('paste', (e) => {
                 const items = (e.clipboardData || e.originalEvent.clipboardData).items;
@@ -120,12 +114,10 @@ if (!window.VisionTab) {
             this.elements.previewContainer.style.display = 'block';
             this.elements.uploadPlaceholder.style.display = 'none';
             this.elements.visionActions.style.display = 'flex';
-
             // Set image in SwarmUI's system
             if (typeof window.setCurrentImage === 'function') {
                 window.setCurrentImage(dataUrl, '', '', false, false, true, false);
             }
-
             // Auto generate caption if enabled
             const autoCaptionCheckbox = document.getElementById('auto_caption_checkbox');
             if (autoCaptionCheckbox?.checked) {
@@ -138,16 +130,14 @@ if (!window.VisionTab) {
                 showError('No image to caption');
                 return;
             }
-
             try {
                 const { captionContainer, captionContent, loadingSpinner } = this.elements;
                 loadingSpinner.classList.add('active');
                 captionContent.style.display = 'none';
-
                 const payload = MP.RequestBuilder.createRequestPayload(
                     "Generate a detailed caption for this image",
                     this.elements.imagePreview.src.split(',')[1],
-                    "Vision"
+                    "caption"
                 );
                 const response = await MP.APIClient.makeRequest(payload);
                 loadingSpinner.classList.remove('active');
@@ -197,7 +187,6 @@ if (!window.VisionTab) {
                 showError('No caption available to send to prompt');
                 return;
             }
-
             try {
                 const captionText = this.elements.captionContent.textContent;
                 const generateTab = document.getElementById('generatetabclickable')

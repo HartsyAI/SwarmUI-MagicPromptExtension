@@ -32,8 +32,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 }
                 string chatBackend = settings["backend"]?.ToString()?.ToLower() ?? "openrouter";
                 string visionBackend = settings["visionbackend"]?.ToString()?.ToLower() ?? "openrouter";
-                Logs.Debug($"Chat backend: {chatBackend}, Vision backend: {visionBackend}");
-
                 // Get chat models
                 List<ModelData> chatModels = await GetModelsForBackend(chatBackend, settings);
                 // Get vision models
@@ -67,7 +65,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             // Handle Anthropic's hardcoded models
             if (backend == "anthropic")
             {
-                Logs.Debug($"Using Anthropic as {(isVision ? "vision" : "chat")} backend.");
                 List<ModelData> models =
                     [
                         new ModelData
@@ -104,7 +101,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 Logs.Error($"Failed to get endpoint for backend: {backend}");
                 return [];
             }
-            Logs.Debug($"{(isVision ? "Vision" : "Chat")} LLM Endpoint: {endpoint}");
             // Create and configure request
             HttpRequestMessage request = new(HttpMethod.Get, endpoint);
             if (!ConfigureRequest(request, backend, settings, out string error))
@@ -143,15 +139,12 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
         /// <returns>The endpoint URL for model listing.</returns>
         private static string GetEndpoint(string backend, JObject settings, string endpointType)
         {
-            Logs.Debug($"Getting {endpointType} endpoint for backend: {backend}");
-            Logs.Debug($"Settings: {settings}");
             JObject backends = settings["backends"] as JObject;
             if (backends == null)
             {
                 Logs.Error("Backends configuration is null");
                 return string.Empty;
             }
-            Logs.Debug($"Backends config: {backends}");
             // Get the backend configuration
             JObject backendConfig = backends[backend] as JObject;
             if (backendConfig == null)
@@ -159,12 +152,9 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 Logs.Error($"Configuration for backend '{backend}' not found");
                 return string.Empty;
             }
-            Logs.Debug($"Backend config for {backend}: {backendConfig}");
             // Get base URL and endpoints
             string baseUrl = backendConfig["baseurl"]?.ToString();
             JObject endpoints = backendConfig["endpoints"] as JObject;
-            Logs.Debug($"BaseUrl: {baseUrl}");
-            Logs.Debug($"Endpoints: {endpoints}");
             if (string.IsNullOrEmpty(baseUrl) || endpoints == null)
             {
                 Logs.Error($"Invalid configuration for backend {backend}: BaseUrl={baseUrl}, Endpoints={endpoints}");
@@ -181,17 +171,14 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     case "openaiapi":
                         // OpenAI and OpenRouter use the chat endpoint for vision
                         endpoint = endpoints["chat"]?.ToString();
-                        Logs.Debug($"Using chat endpoint for {backend} vision request: {endpoint}");
                         break;
                     case "anthropic":
                         // Anthropic uses the messages endpoint for both chat and vision
                         endpoint = endpoints["messages"]?.ToString() ?? endpoints["chat"]?.ToString();
-                        Logs.Debug($"Using messages/chat endpoint for Anthropic vision request: {endpoint}");
                         break;
                     case "ollama":
                         // Ollama has a dedicated vision endpoint
                         endpoint = endpoints["vision"]?.ToString() ?? endpoints["chat"]?.ToString();
-                        Logs.Debug($"Using vision/chat endpoint for Ollama request: {endpoint}");
                         break;
                     default:
                         endpoint = endpoints[endpointType]?.ToString() ?? endpoints["chat"]?.ToString();
@@ -202,7 +189,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             {
                 endpoint = endpoints[endpointType]?.ToString();
             }
-            Logs.Debug($"Found endpoint for {endpointType}: {endpoint}");
             if (string.IsNullOrEmpty(endpoint))
             {
                 Logs.Error($"{endpointType} endpoint not found for backend {backend}");
@@ -212,7 +198,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             baseUrl = baseUrl.TrimEnd('/');
             endpoint = endpoint.StartsWith("/") ? endpoint : "/" + endpoint;
             string fullUrl = $"{baseUrl}{endpoint}";
-            Logs.Debug($"Generated {endpointType} endpoint for {backend}: {fullUrl}");
             return fullUrl;
         }
 
@@ -419,28 +404,21 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
         {
             try
             {
-                // Debug logging of incoming request
-                Logs.Debug($"Received request data: {requestData?.ToString(Newtonsoft.Json.Formatting.None)}");
-                Logs.Debug($"Request data type: {requestData?.Type}");
-
                 if (requestData == null)
                 {
                     return CreateErrorResponse("Request data is null");
                 }
-
                 // Safely parse message content
                 var messageContentToken = requestData["messageContent"];
                 if (messageContentToken == null)
                 {
                     return CreateErrorResponse("Message content is missing");
                 }
-
                 // Create message content with explicit parsing
                 var messageContent = new MessageContent
                 {
                     Text = messageContentToken["text"]?.ToString()
                 };
-
                 // Safely parse media content if it exists
                 var mediaToken = messageContentToken["media"];
                 if (mediaToken != null && mediaToken.Type == JTokenType.Array)
@@ -455,10 +433,8 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         return CreateErrorResponse("Failed to parse media content");
                     }
                 }
-
                 // Parse model ID
                 string modelId = requestData["modelId"]?.ToString();
-
                 // Parse message type with validation
                 MessageType messageType = MessageType.Text;
                 string messageTypeStr = requestData["messageType"]?.ToString();
@@ -469,13 +445,11 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         messageType = MessageType.Text;
                     }
                 }
-
                 // Validate required data
                 if (string.IsNullOrEmpty(messageContent.Text) || string.IsNullOrEmpty(modelId))
                 {
                     return CreateErrorResponse("Message content or model ID is missing");
                 }
-
                 // Get current settings
                 JObject session = await SessionSettings.GetSettingsAsync();
                 if (!session["success"].Value<bool>())
@@ -502,17 +476,20 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 {
                     return CreateErrorResponse($"Failed to get endpoint for {backend}");
                 }
-
-                // Add instructions if present
-                string instructions = messageType == MessageType.Vision
-                    ? settings["instructions"]?["vision"]?.ToString() ?? ""
-                    : settings["instructions"]?["chat"]?.ToString() ?? "";
-
+                // Get action type from request
+                string action = requestData["action"]?.ToString()?.ToLower() ?? "chat";
+                // Select instructions based on action type
+                string instructions = action switch
+                {
+                    "vision" => settings["instructions"]?["vision"]?.ToString() ?? "",
+                    "prompt" => settings["instructions"]?["prompt"]?.ToString() ?? "",
+                    "caption" => settings["instructions"]?["caption"]?.ToString() ?? "",
+                    _ => settings["instructions"]?["chat"]?.ToString() ?? ""
+                };
                 if (!string.IsNullOrEmpty(instructions))
                 {
                     messageContent.Text = $"{instructions}\n\nUser: {messageContent.Text}";
                 }
-
                 // Create request with proper headers
                 using HttpRequestMessage request = new(HttpMethod.Post, endpoint);
                 if (!ConfigureRequest(request, backend, settings, out string error))
@@ -520,20 +497,13 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     Logs.Error(error);
                     return CreateErrorResponse(error);
                 }
-
                 // Add request body using BackendSchema
                 object requestBody = GetSchemaType(backend, messageContent, modelId, messageType);
                 string jsonContent = JsonSerializer.Serialize(requestBody);
                 request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-                // Log request details for debugging
-                Logs.Debug($"Sending request to endpoint: {endpoint}");
-                Logs.Debug($"Request body: {jsonContent}");
-
                 // Send request
                 HttpResponseMessage response = await _httpClient.SendAsync(request);
                 string responseContent = await response.Content.ReadAsStringAsync();
-
                 if (response.IsSuccessStatusCode)
                 {
                     string llmResponse = await DeserializeResponse(response, backend);
@@ -542,7 +512,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         return CreateSuccessResponse(llmResponse);
                     }
                 }
-
                 // Try to extract detailed error from response
                 try
                 {
@@ -561,7 +530,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 {
                     Logs.Error($"Error parsing API response: {ex.Message}");
                 }
-
                 // Fallback to generic error if we couldn't parse the detailed one
                 return CreateSuccessResponse("I apologize, but something went wrong. Please try again later.");
             }

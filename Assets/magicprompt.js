@@ -25,7 +25,8 @@ if (!window.MagicPrompt) {
             instructions: {
                 chat: '',
                 vision: '',
-                caption: ''
+                caption: '',
+                prompt: ''
             }
         },
         APIClient: {
@@ -77,39 +78,71 @@ if (!window.MagicPrompt) {
              * Creates a request payload for API calls
              * @param {string} input - User input text
              * @param {string|null} image - Base64 image data
-             * @param {string} action - Action type
+             * @param {string} action - Action type ('chat', 'vision', 'prompt', 'caption')
              * @returns {Object} Formatted request payload
              */
             createRequestPayload(input, image, action) {
                 if (!input?.trim()) {
                     throw new Error('Input is required');
                 }
-                const isVisionRequest = Boolean(image);
+
+                console.log('Creating request payload with action:', action);
+                console.log('Current mode states:', {
+                    chatMode: document.getElementById('chat_mode')?.checked,
+                    visionMode: document.getElementById('vision_mode')?.checked,
+                    promptMode: document.getElementById('prompt_mode')?.checked
+                });
+
+                const hasImage = Boolean(image);
+                const chatMode = document.getElementById('chat_mode')?.checked;
                 const visionMode = document.getElementById('vision_mode')?.checked;
-                if (action !== "magic" && visionMode && !image) {
-                    return {
-                        text: "Please upload an image first to use vision mode.",
-                        error: true
-                    };
-                }
+                const promptMode = document.getElementById('prompt_mode')?.checked;
+
+                // Get the appropriate instructions based on action type
+                const getInstructionsForAction = (action) => {
+                    const instructions = MP.settings.instructions || {};
+                    switch (action.toLowerCase()) {
+                        case 'chat':
+                            return instructions.chat;
+                        case 'vision':
+                            return instructions.vision;
+                        case 'prompt':
+                            return instructions.prompt;
+                        case 'caption':
+                            return instructions.caption;
+                        default:
+                            return null;
+                    }
+                };
+
                 try {
-                    const modelId = this.getModelId(isVisionRequest);
-                    const backend = isVisionRequest ? MP.settings.visionbackend : MP.settings.backend;
-                    const instructions = this.getInstructions(action, isVisionRequest);
-                    const text = instructions ? `${instructions}\n\nUser: ${input}` : input;
+                    // Get model and backend based on request type
+                    const modelId = this.getModelId(hasImage);
+                    const backend = hasImage ? MP.settings.visionbackend : MP.settings.backend;
+                    // Get appropriate instructions for this action
+                    const instructions = getInstructionsForAction(action);
+                    // Just use the input text directly, instructions will be sent separately
+                    const text = input;
+                    // Create the message content based on the action type
+                    const messageContent = {
+                        text,
+                        media: image ? [{
+                            type: "base64",
+                            data: image,
+                            mediaType: window.visionHandler?.currentMediaType || "image/jpeg"
+                        }] : null
+                    };
+                    // Add instructions based on action type
+                    if (action.toLowerCase() === 'prompt') {
+                        messageContent.systemPrompt = instructions;
+                    } else {
+                        messageContent.instructions = instructions;
+                    }
                     return {
-                        messageContent: {
-                            text,
-                            systemPrompt: this.getSystemPrompt(action, visionMode),
-                            media: image ? [{
-                                type: "base64",
-                                data: image,
-                                mediaType: window.visionHandler?.currentMediaType || "image/jpeg"
-                            }] : null
-                        },
+                        messageContent,
                         modelId,
-                        messageType: isVisionRequest ? "Vision" : "Text",
-                        action,
+                        messageType: hasImage ? "Vision" : "Text",
+                        action: action.toLowerCase(), // Ensure consistent casing
                         keep_alive: backend === 'ollama' && MP.settings.unloadmodel ? 0 : null
                     };
                 } catch (error) {
@@ -117,6 +150,7 @@ if (!window.MagicPrompt) {
                     throw error;
                 }
             },
+
             getModelId(isVision) {
                 const modelId = isVision
                     ? document.getElementById('visionModel')?.value
@@ -127,27 +161,6 @@ if (!window.MagicPrompt) {
                 }
                 return modelId;
             },
-            getSystemPrompt(action, visionMode) {
-                if (action === "magic") {
-                    return "You are an AI assistant specialized in improving image generation prompts. Help users create more detailed and effective prompts.";
-                }
-                return visionMode
-                    ? "You are an AI assistant with advanced vision capabilities. When the user provides an image, analyze it in detail and respond to their questions about the image."
-                    : "You are a helpful AI assistant. Engage in natural conversation and provide assistance with any questions or tasks the user has.";
-            },
-            getInstructions(action, isVision) {
-                const instructions = MP.settings.instructions || {};
-                if (action === 'magic') {
-                    return null; // No instructions for magic action
-                }
-                if (isVision && instructions.vision) {
-                    return instructions.vision;
-                }
-                if (!isVision && instructions.chat) {
-                    return instructions.chat;
-                }
-                return null;
-            }
         },
 
         ResponseHandler: {
@@ -175,6 +188,7 @@ if (!window.MagicPrompt) {
                     return null;
                 }
             },
+
             handleMagicResponse(response) {
                 const promptBox = document.getElementById('alt_prompt_textbox');
                 if (promptBox) {
@@ -195,6 +209,76 @@ if (!window.MagicPrompt) {
                 showError(errorMessage);
                 return null;
             }
+        },
+
+        ResizeHandler: class {
+            constructor(options) {
+                this.handle = options.handle;
+                this.panel = options.panel;
+                this.storageKey = options.storageKey;
+                this.defaultWidth = options.defaultWidth || 400;
+                this.minWidth = options.minWidth || 300;
+                this.maxWidthOffset = options.maxWidthOffset || 300;
+                this.isDragging = false;
+                this.startX = 0;
+                this.startWidth = 0;
+                // Bind methods
+                this.startDragging = this.startDragging.bind(this);
+                this.doDrag = this.doDrag.bind(this);
+                this.stopDragging = this.stopDragging.bind(this);
+                this.init();
+            }
+
+            init() {
+                // Set initial width from storage or default
+                const storedWidth = localStorage.getItem(this.storageKey);
+                const initialWidth = storedWidth ? parseInt(storedWidth) : this.defaultWidth;
+                this.panel.style.width = `${initialWidth}px`;
+                // Add event listener to handle
+                this.handle.addEventListener('mousedown', this.startDragging);
+                // Add to layout resets if available
+                if (window.layoutResets) {
+                    window.layoutResets.push(() => {
+                        localStorage.removeItem(this.storageKey);
+                        this.panel.style.width = `${this.defaultWidth}px`;
+                    });
+                }
+            }
+
+            startDragging(e) {
+                this.isDragging = true;
+                this.startX = e.pageX;
+                this.startWidth = parseInt(document.defaultView.getComputedStyle(this.panel).width, 10);
+                // Add event listeners
+                document.addEventListener('mousemove', this.doDrag);
+                document.addEventListener('mouseup', this.stopDragging);
+                // Add dragging class
+                document.body.classList.add('dragging');
+                // Prevent text selection
+                e.preventDefault();
+            }
+
+            doDrag(e) {
+                if (!this.isDragging) return;
+                e.preventDefault();
+                const containerWidth = this.panel.parentElement.getBoundingClientRect().width;
+                // Calculate new width
+                let newWidth = this.startWidth + (e.pageX - this.startX);
+                // Clamp the width between min and max
+                newWidth = Math.max(this.minWidth, Math.min(containerWidth - this.maxWidthOffset, newWidth));
+                // Apply the new width
+                this.panel.style.width = `${newWidth}px`;
+                // Save the width
+                localStorage.setItem(this.storageKey, newWidth);
+            }
+
+            stopDragging() {
+                if (!this.isDragging) return;
+                this.isDragging = false;
+                document.removeEventListener('mousemove', this.doDrag);
+                document.removeEventListener('mouseup', this.stopDragging);
+                document.body.classList.remove('dragging');
+            }
         }
     }
 };
@@ -210,12 +294,10 @@ window.MP = window.MP || window.MagicPrompt;
 async function loadSettings() {
     try {
         const response = await new Promise((resolve, reject) => {
-            genericRequest('GetSettingsAsync', {}, response => {
-                if (response.success) {
-                    console.log('Raw settings from backend:', response.settings);
-
-                    // Get raw settings directly from response
-                    const serverSettings = response.settings;
+            genericRequest('GetSettingsAsync', {}, data => {
+                if (data.success) {
+                    console.log('Loaded settings:', data.settings);
+                    const serverSettings = data.settings;
 
                     // Create settings object preserving server values
                     const settings = {
@@ -234,10 +316,10 @@ async function loadSettings() {
                         instructions: {
                             chat: serverSettings.instructions?.chat || '',
                             vision: serverSettings.instructions?.vision || '',
-                            caption: serverSettings.instructions?.caption || ''
+                            caption: serverSettings.instructions?.caption || '',
+                            prompt: serverSettings.instructions?.prompt || ''
                         }
                     };
-
                     console.log('Structured settings:', settings);
                     MP.settings = settings;
                     resolve(settings);
@@ -248,7 +330,6 @@ async function loadSettings() {
                 }
             });
         });
-
         return response;
     } catch (error) {
         console.error('Settings load error:', error);
@@ -262,6 +343,9 @@ async function loadSettings() {
  */
 async function saveSettings() {
     try {
+        // Prevent any form submission
+        event?.preventDefault();
+
         const backendMap = {
             'ollamaLLMBtn': 'ollama',
             'openrouterLLMBtn': 'openrouter',
@@ -275,13 +359,6 @@ async function saveSettings() {
         // Get selected models
         const chatModel = document.getElementById('modelSelect')?.value;
         const visionModel = document.getElementById('visionModel')?.value;
-        // Debug current selections
-        console.log('Current selections:', {
-            chatBackend: selectedChatBackend?.id,
-            visionBackend: selectedVisionBackend?.id,
-            chatModel,
-            visionModel
-        });
         // Match exact structure expected by C# DefaultSettings
         const settings = {
             backend: selectedChatBackend ? backendMap[selectedChatBackend.id] : MP.settings.backend,
@@ -294,13 +371,13 @@ async function saveSettings() {
             instructions: {
                 chat: document.getElementById('chatInstructions')?.value || MP.settings.instructions?.chat || '',
                 vision: document.getElementById('visionInstructions')?.value || MP.settings.instructions?.vision || '',
-                caption: document.getElementById('captionInstructions')?.value || MP.settings.instructions?.caption || ''
+                caption: document.getElementById('captionInstructions')?.value || MP.settings.instructions?.caption || '',
+                prompt: document.getElementById('promptInstructions')?.value || MP.settings.instructions?.prompt || ''
             },
             backends: {
                 ...MP.settings.backends // Preserve existing backend configurations
             }
         };
-        console.log('Saving settings with structure:', settings);
         const response = await new Promise((resolve, reject) => {
             genericRequest('SaveSettingsAsync', { settings }, data => {
                 if (data.success) {
@@ -314,7 +391,6 @@ async function saveSettings() {
         MP.settings = {
             ...response.settings
         };
-        console.log('Settings saved successfully:', MP.settings);
         // Refresh models
         await fetchModels();
     } catch (error) {
@@ -348,6 +424,7 @@ async function resetSettings() {
         document.getElementById('chatInstructions').value = '';
         document.getElementById('visionInstructions').value = '';
         document.getElementById('captionInstructions').value = '';
+        document.getElementById('promptInstructions').value = '';
         closeSettingsModal();
     } catch (error) {
         console.error('Settings reset error:', error);
@@ -367,43 +444,26 @@ async function fetchModels() {
         console.error('Model select elements not found');
         return;
     }
-
-    console.log('Starting fetchModels with settings:', {
-        backend: MP.settings.backend,
-        visionbackend: MP.settings.visionbackend,
-        model: MP.settings.model,
-        visionmodel: MP.settings.visionmodel
-    });
-
     try {
         // Clear existing options
         modelSelect.innerHTML = '';
         visionModelSelect.innerHTML = '';
-
         // Add default options
         const defaultOption = new Option('-- Select a model --', '');
         modelSelect.add(defaultOption.cloneNode(true));
         visionModelSelect.add(defaultOption.cloneNode(true));
-
         // Fetch models for both backends
-        console.log('Fetching models for backends:', MP.settings.backend, MP.settings.visionbackend);
         const response = await new Promise((resolve, reject) => {
             genericRequest('GetModelsAsync', {}, data => {
                 if (data.success) {
-                    console.log('Received models response:', {
-                        chatModels: data.models,
-                        visionModels: data.visionmodels
-                    });
                     resolve(data);
                 } else {
                     reject(new Error(data.error || 'Failed to fetch models'));
                 }
             });
         });
-
         // Add chat models
         if (Array.isArray(response.models)) {
-            console.log('Adding chat models to modelSelect');
             response.models.forEach(model => {
                 if (!model.model) {
                     console.warn('Chat model missing model field:', model);
@@ -413,14 +473,11 @@ async function fetchModels() {
                 modelSelect.add(option);
             });
             if (MP.settings.model) {
-                console.log('Setting saved chat model:', MP.settings.model);
                 setModelIfExists(modelSelect, MP.settings.model);
             }
         }
-
         // Add vision models
         if (Array.isArray(response.visionmodels)) {
-            console.log('Adding vision models to visionModelSelect');
             response.visionmodels.forEach(model => {
                 if (!model.model) {
                     console.warn('Vision model missing model field:', model);
@@ -430,16 +487,9 @@ async function fetchModels() {
                 visionModelSelect.add(option);
             });
             if (MP.settings.visionmodel) {
-                console.log('Setting saved vision model:', MP.settings.visionmodel);
                 setModelIfExists(visionModelSelect, MP.settings.visionmodel);
             }
         }
-
-        console.log('Final model select contents:', {
-            chat: Array.from(modelSelect.options).map(o => o.value),
-            vision: Array.from(visionModelSelect.options).map(o => o.value)
-        });
-
     } catch (error) {
         console.error('Error fetching models:', error);
         showError(`Failed to fetch models: ${error.message}`);
@@ -492,9 +542,6 @@ function setModelIfExists(select, modelId) {
     const modelExists = Array.from(select.options).some(opt => opt.value === modelId);
     if (modelExists) {
         select.value = modelId;
-        console.log(`Set ${select.id} to:`, modelId);
-    } else {
-        console.log(`Model not found in options:`, modelId);
     }
 }
 
@@ -529,8 +576,6 @@ async function loadModel(modelId) {
  */
 function initSettingsModal() {
     try {
-        console.log('Initializing settings modal with:', MP.settings);
-        
         // Set backend radios
         const backendMap = {
             'ollama': 'ollamaLLMBtn',
@@ -539,30 +584,25 @@ function initSettingsModal() {
             'openaiapi': 'openaiAPILLMBtn',
             'anthropic': 'anthropicLLMBtn'
         };
-
         // Set chat backend
         const chatBackendBtn = document.getElementById(backendMap[MP.settings.backend]);
         if (chatBackendBtn) {
             chatBackendBtn.checked = true;
         }
-
         // Set vision backend
         const visionBackendBtn = document.getElementById(backendMap[MP.settings.visionbackend]?.replace('LLM', 'Vision'));
         if (visionBackendBtn) {
             visionBackendBtn.checked = true;
         }
-
         // Set URLs
         const backendUrl = document.getElementById('backendUrl');
         if (backendUrl) {
             backendUrl.value = MP.settings.baseurl || '';
         }
-
         const visionBackendUrl = document.getElementById('visionBackendUrl');
         if (visionBackendUrl) {
             visionBackendUrl.value = MP.settings.visionbaseurl || '';
         }
-
         // Set API Key section
         const apiKeyBackendMap = {
             'ollama': 'ollamaKeyBtn',
@@ -571,13 +611,13 @@ function initSettingsModal() {
             'openaiapi': 'openaiAPIKeyBtn',
             'anthropic': 'anthropicApiBtn'
         };
-
         // Ensure instructions object exists
         if (!MP.settings.instructions) {
             MP.settings.instructions = {
                 chat: '',
                 vision: '',
-                caption: ''
+                caption: '',
+                prompt: ''
             };
         }
         // Set Instructions
@@ -593,13 +633,15 @@ function initSettingsModal() {
         if (captionInstructions) {
             captionInstructions.value = MP.settings.instructions.caption || '';
         }
-
+        const promptInstructions = document.getElementById('promptInstructions');
+        if (promptInstructions) {
+            promptInstructions.value = MP.settings.instructions.prompt || '';
+        }
         // Add event listener for API key backend selection
         const apiKeyBackendRadios = document.querySelectorAll('input[name="apiKeyBackend"]');
         apiKeyBackendRadios.forEach(radio => {
             radio.addEventListener('change', updateApiKeyInput);
         });
-
         fetchModels();
     } catch (error) {
         console.error('Error initializing settings modal:', error);
@@ -622,7 +664,6 @@ function updateApiKeyInput() {
         'openaiAPIKeyBtn': 'openaiapi',
         'anthropicApiBtn': 'anthropic'
     };
-
     const provider = backendToProvider[selectedBackend.id];
     const apiKeyInput = document.getElementById('apiKeyInput');
     if (apiKeyInput && provider) {
@@ -670,18 +711,13 @@ function saveApiKey() {
  * Closes the settings modal
  */
 function closeSettingsModal() {
-    const modal = document.getElementById('settingsModal');
-    if (!modal) return;
-    const modalInstance = bootstrap.Modal.getInstance(modal);
-    if (modalInstance) {
-        modalInstance.hide();
+    try {
+        $('#settingsModal').modal('hide');
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open').css('padding-right', '');
+    } catch (error) {
+        console.error('Error closing settings modal:', error);
     }
-    // Clean up backdrop and body classes
-    const backdrop = document.querySelector('.modal-backdrop');
-    if (backdrop) backdrop.remove();
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = '';
-    document.body.style.paddingRight = '';
 }
 
 // Initialize on DOM load
@@ -689,20 +725,56 @@ document.addEventListener("DOMContentLoaded", async function () {
     try {
         if (MP.initialized) return;
         MP.initialized = true;
+
         // Initialize settings
         await loadSettings();
-        // Add event listener for settings modal
-        const settingsModal = document.getElementById('settingsModal');
-        settingsModal.addEventListener('show.bs.modal', initSettingsModal);
-        // Initialize models once
+
+        // Initialize modal
+        $('#settingsModal').modal({
+            backdrop: 'static',
+            keyboard: false,
+            show: false
+        }).on('show.bs.modal', initSettingsModal);
+
+        // Initialize models
         await fetchModels();
         MP.modelsInitialized = true;
-        // Initialize chat and vision handlers
-        window.visionHandler?.initialize();
-        window.chatHandler?.initialize();
-        console.log('MagicPrompt initialization complete');
+
+        // Initialize handlers
+        if (window.visionHandler) {
+            await window.visionHandler.initialize();
+        }
+        if (window.chatHandler) {
+            await window.chatHandler.initialize();
+        }
+
+        // Initialize resize handler
+        const resizeHandle = document.getElementById('resize_handle');
+        const visionSection = document.getElementById('vision_section');
+        if (resizeHandle && visionSection) {
+            new MP.ResizeHandler({
+                handle: resizeHandle,
+                panel: visionSection,
+                storageKey: 'magicprompt_vision_width',
+                defaultWidth: 400,
+                minWidth: 300,
+                maxWidthOffset: 300
+            });
+        }
+
+        // Handle hash navigation if present
+        const hash = window.location.hash;
+        if (hash && !hash.includes('Error')) {
+            console.log('Processing hash:', hash);
+            // Add your hash handling logic here if needed
+        }
+
     } catch (error) {
         console.error('Error initializing MagicPrompt:', error);
-        showError('Failed to initialize MagicPrompt: ' + error.message);
+        MP.ResponseHandler.showError('Failed to initialize MagicPrompt: ' + error.message);
+        // Prevent navigation to error page
+        if (error.response?.status === 404) {
+            event?.preventDefault();
+        }
     }
 });

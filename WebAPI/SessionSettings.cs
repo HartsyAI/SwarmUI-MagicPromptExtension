@@ -75,7 +75,8 @@ public class SessionSettings : MagicPromptAPI
         {
             ["chat"] = "INSTRUCTIONS: You are a helpful chatbot named Hartsy! talk in a conversational way. At the end of your responses you should include sayings like (Thanks for choosing Hartsy!) USER:",
             ["vision"] = "INSTRUCTIONS: Respond only with a detailed prompt for Stable Diffusion. If there is an image, describe it to me by giving me a detailed prompt I can use to recreate the exact image. IMPORTANT: Only respond with the prompt nothing more. USER:",
-            ["caption"] = "INSTRUCTIONS: Respond only with a caption for the image. or answer the users question only using the format of describing the image as a caption. If there is no image, respond with 'No image found'. USER:"
+            ["caption"] = "INSTRUCTIONS: Respond only with a caption for the image. or answer the users question only using the format of describing the image as a caption. If there is no image, respond with 'No image found'. USER:",
+            ["prompt"] = "INSTRUCTIONS: Respond only with a detailed prompt for Stable Diffusion. If there is an image, describe it to me by giving me a detailed prompt I can use to recreate the exact image. IMPORTANT: Only respond with the prompt nothing more. USER:",
         },
         ["backends"] = DefaultBackendConfig.DeepClone() // TODO: Change the name of this to something more descriptive
     };
@@ -85,19 +86,15 @@ public class SessionSettings : MagicPromptAPI
         try
         {
             string settingsJson = Program.Sessions.GenericSharedUser.GetGenericData(SETTINGS_KEY, SETTINGS_SUBKEY);
-            //Logs.Debug($"Raw settings from storage: {settingsJson}");
-            
             JObject settings;
             if (string.IsNullOrEmpty(settingsJson))
             {
-                Logs.Debug($"No existing settings found for {SETTINGS_KEY}/{SETTINGS_SUBKEY}, using defaults");
                 settings = DefaultSettings.DeepClone() as JObject;
             }
             else
             {
-                Logs.Debug($"Retrieved settings from {SETTINGS_KEY}/{SETTINGS_SUBKEY}: {settingsJson}");
+                Logs.Verbose($"Retrieved settings from {SETTINGS_KEY}/{SETTINGS_SUBKEY}: {settingsJson}");
                 settings = JObject.Parse(settingsJson);
-
                 // Ensure we have all required backend configurations
                 var backendsConfig = settings["backends"] as JObject ?? new JObject();
                 foreach (var backend in DefaultBackendConfig)
@@ -120,10 +117,6 @@ public class SessionSettings : MagicPromptAPI
                                 Logs.Debug($"Added missing property {prop.Key} for backend {backend.Key}");
                             }
                         }
-                        
-                        // Log the API key if it exists
-                        var apiKey = existingBackend["apikey"]?.ToString();
-                        Logs.Debug($"Backend {backend.Key} API key: {(string.IsNullOrEmpty(apiKey) ? "not set" : "is set")}");
                     }
                 }
                 settings["backends"] = backendsConfig;

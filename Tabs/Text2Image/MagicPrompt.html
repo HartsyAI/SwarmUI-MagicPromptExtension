@@ -2,7 +2,6 @@
 <html>
 <head>
     <title>MagicPrompt</title>
-    <script src="/wwwroot/js/genpage/image-editor.js"></script>
     <link rel="stylesheet" href="/ExtensionFile/MagicPromptExtension/Assets/magicprompt.css">
     <link rel="stylesheet" href="/ExtensionFile/MagicPromptExtension/Assets/vision.css">
     <link rel="stylesheet" href="/ExtensionFile/MagicPromptExtension/Assets/chat.css">
@@ -13,7 +12,6 @@
         <div id="image_editor_container"></div>
         <!-- Main Content Area -->
         <div class="d-flex flex-grow-1 main-content">
-
             <!-- Left Side - Image Upload Area -->
             <div id="vision_section">
                 <div class="section-content">
@@ -71,7 +69,7 @@
             </div>
 
             <!-- Resize Handle -->
-            <div class="resize-handle magicprompt" id="resize_handle"></div>
+            <div id="resize_handle" class="resize-handle"></div>
 
             <!-- Right Side - Chat Area -->
             <div id="chat_section" class="d-flex flex-column flex-grow-1">
@@ -98,10 +96,12 @@
                                 <div class="chat-mode-control">
                                     <span class="me-2">Chat Mode:</span>
                                     <div class="btn-group" role="group">
-                                        <input type="radio" class="btn-check" name="chat_mode" id="chat_mode" autocomplete="off">
+                                        <input type="radio" class="btn-check" name="chat_mode" id="chat_mode" autocomplete="on" checked>
                                         <label class="btn btn-outline-primary" for="chat_mode">Chat</label>
-                                        <input type="radio" class="btn-check" name="chat_mode" id="vision_mode" autocomplete="on" checked>
+                                        <input type="radio" class="btn-check" name="chat_mode" id="vision_mode" autocomplete="off">
                                         <label class="btn btn-outline-primary" for="vision_mode">Vision</label>
+                                        <input type="radio" class="btn-check" name="chat_mode" id="prompt_mode" autocomplete="off">
+                                        <label class="btn btn-outline-primary" for="prompt_mode">Prompt</label>
                                     </div>
                                 </div>
                             </div>
@@ -135,18 +135,18 @@
             <div class="message-actions">
                 <button class="action-button" data-tooltip="Clear Message" onclick="clearMessage(this)">🗑️</button>
                 <button class="action-button" data-tooltip="Use as Prompt" onclick="sendToPrompt(this)">📝</button>
-                <button class="action-button" data-tooltip="Regenerate Image" onclick="regenerate(this)">🔄</button>
+                <button class="action-button" data-tooltip="Regenerate" onclick="regenerate(this)">🔄</button>
             </div>
         </div>
     </template>
 
     <!-- Modal Structure -->
-    <div class="modal fade" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal fade magicprompt" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title translate" id="settingsModalLabel">Settings</h5>
-                    <button type="button" class="btn-close translate" data-bs-dismiss="modal" aria-label="Close" onclick="closeSettingsModal()"></button>
+                    <button type="button" class="btn-close translate" aria-label="Close" onclick="closeSettingsModal()"></button>
                 </div>
                 <div class="modal-body">
                     <div class="settings-container">
@@ -270,17 +270,41 @@
                             </div>
                             <div class="collapse" id="instructionsCollapse">
                                 <div class="settings-content">
-                                    <div class="form-group">
-                                        <label for="chatInstructions">Chat Instructions:</label>
-                                        <textarea class="form-control" id="chatInstructions" rows="3"></textarea>
+                                    <div class="mb-3">
+                                        <label for="chatInstructions" class="form-label">
+                                            Chat Instructions
+                                            <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should behave in chat conversations. These define the AI's personality and response style."></i>
+                                        </label>
+                                        <textarea class="form-control" id="chatInstructions" rows="3"
+                                            placeholder="Configure the AI's chat personality and behavior"></textarea>
+                                        <div class="form-text">Define how the AI should behave in chat conversations</div>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="visionInstructions">Vision Instructions:</label>
-                                        <textarea class="form-control" id="visionInstructions" rows="3"></textarea>
+                                    <div class="mb-3">
+                                        <label for="visionInstructions" class="form-label">
+                                            Vision Analysis Instructions
+                                            <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should analyze and describe images in the vision tab. These instructions are used when discussing images."></i>
+                                        </label>
+                                        <textarea class="form-control" id="visionInstructions" rows="3"
+                                            placeholder="Configure how the AI should analyze and describe images"></textarea>
+                                        <div class="form-text">Guide how the AI analyzes and describes images</div>
                                     </div>
-                                    <div class="form-group">
-                                        <label for="captionInstructions">Caption Instructions:</label>
-                                        <textarea class="form-control" id="captionInstructions" rows="3"></textarea>
+                                    <div class="mb-3">
+                                        <label for="captionInstructions" class="form-label">
+                                            Image Caption Instructions
+                                            <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should generate image captions. These instructions are used when clicking the 'Caption' button in the vision tab."></i>
+                                        </label>
+                                        <textarea class="form-control" id="captionInstructions" rows="3"
+                                            placeholder="Configure how the AI should generate image captions"></textarea>
+                                        <div class="form-text">Define how the AI generates captions for images</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="promptInstructions" class="form-label">
+                                            Text-to-Image Prompt Instructions
+                                            <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should format text-to-image prompts when generating images. These instructions are used when clicking 'Use as Prompt' in the vision tab."></i>
+                                        </label>
+                                        <textarea class="form-control" id="promptInstructions" rows="3" 
+                                            placeholder="Configure how the AI should format prompts when generating images"></textarea>
+                                        <div class="form-text">These instructions guide how the AI formats prompts for image generation</div>
                                     </div>
                                 </div>
                             </div>
@@ -289,10 +313,10 @@
                 </div>
                 <!-- Footer Buttons -->
                 <div class="modal-footer">
-                    <button type="button" class="basic-button danger" onclick="resetSettings()">Reset to Defaults</button>
+                    <button type="button" class="basic-button danger" onclick="event.preventDefault(); resetSettings()">Reset to Defaults</button>
                     <div class="save-buttons">
-                        <button type="button" class="basic-button" data-bs-dismiss="modal" onclick="saveSettings(); closeSettingsModal()">Save and Close</button>
-                        <button type="button" class="basic-button" onclick="saveSettings()">Save and Refresh</button>
+                        <button type="button" class="basic-button" onclick="event.preventDefault(); saveSettings().then(() => closeSettingsModal())">Save and Close</button>
+                        <button type="button" class="basic-button" onclick="event.preventDefault(); saveSettings()">Save and Refresh</button>
                     </div>
                 </div>
             </div>
