@@ -645,16 +645,17 @@ body.dragging .resize-handle {
 }
 
 .magicprompt.btn-outline-primary {
+    /* This controls the default unselected state */
     border: 1px solid var(--shadow);
-    background: var(--background-soft);
-    color: var(--text);
+    background: var(--emphasis-soft);
+    color: var(--emphasis-text);
     padding: 0.25rem 0.5rem;
 }
 
-.magicprompt.btn-outline-primary:hover {
-    background: var(--button-background-hover);
-    color: var(--button-foreground-hover);
-}
+    .magicprompt.btn-outline-primary:hover {
+        background: color-mix(in srgb, var(--emphasis-soft) 70%, white);
+        color: var(--emphasis-text);
+    }
 
 .magicprompt.btn-check:checked + .magicprompt.btn-outline-primary {
     background: var(--emphasis);
@@ -744,14 +745,24 @@ body.dragging .resize-handle {
     margin-bottom: 0.75rem;
 }
 
-/* Button Group Radio Styling */
-.magicprompt .btn-check,
-#settingsModal .btn-check {
-    position: absolute;
-    clip: rect(0,0,0,0);
-    pointer-events: none;
+/* Radio Button Styling */
+.magicprompt .btn-check + .btn-outline-primary,
+#settingsModal .btn-check + .btn-outline-primary {
+    /* Unselected state */
+    border: 1px solid var(--shadow);
+    background: var(--shadow);
+    color: var(--emphasis-text);
+    padding: 0.25rem 0.5rem;
 }
 
+    .magicprompt .btn-check + .btn-outline-primary:hover,
+    #settingsModal .btn-check + .btn-outline-primary:hover {
+        /* Hover state */
+        background: color-mix(in srgb, var(--emphasis-soft) 70%, white);
+        color: var(--emphasis-text);
+    }
+
+/* Selected state */
 .magicprompt .btn-check:checked + .btn-outline-primary,
 #settingsModal .btn-check:checked + .btn-outline-primary {
     background: var(--emphasis) !important;
@@ -759,13 +770,7 @@ body.dragging .resize-handle {
     color: white !important;
 }
 
-.magicprompt .btn-outline-primary:hover,
-#settingsModal .btn-outline-primary:hover {
-    background: var(--button-background-hover) !important;
-    border-color: var(--button-background-hover) !important;
-    color: var(--button-text) !important;
-}
-
+/* Ensure transitions are smooth */
 .magicprompt .btn-outline-primary,
 #settingsModal .btn-outline-primary {
     transition: all 0.2s ease;
