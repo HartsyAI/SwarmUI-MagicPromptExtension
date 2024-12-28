@@ -147,7 +147,8 @@ if (!window.ChatHandler) {
             if (!input || this.isTyping) return;
 
             // Check if we're in vision mode and there's no image
-            if (visionModeRadio.checked && !window.visionHandler?.getCurrentImage()) {
+            const previewImage = document.getElementById('preview_image');
+            if (visionModeRadio.checked && (!previewImage || !previewImage.src)) {
                 this.appendMessage('system', 'Please upload an image first to use vision mode.');
                 return;
             }
@@ -160,19 +161,11 @@ if (!window.ChatHandler) {
                 // Create request payload
                 const promptMode = document.getElementById('prompt_mode')?.checked;
                 const visionMode = document.getElementById('vision_mode')?.checked;
+                const currentImage = previewImage?.src ? previewImage.src.split(',')[1] : null;
                 const action = visionMode ? 'vision' : (promptMode ? 'prompt' : 'chat');
-                // Log the current state
-                console.log('Mode selection:', {
-                    promptMode,
-                    visionMode,
-                    action,
-                    'prompt_mode_element': document.getElementById('prompt_mode'),
-                    'vision_mode_element': document.getElementById('vision_mode')
-                });
-
                 const payload = MP.RequestBuilder.createRequestPayload(
                     input,
-                    window.visionHandler?.getCurrentImage() || null, // Get image if in vision mode
+                    currentImage, // Get image if in vision mode
                     action
                 );
                 // Show typing indicator
