@@ -770,3 +770,36 @@ body.dragging .resize-handle {
 #settingsModal .btn-outline-primary {
     transition: all 0.2s ease;
 }
+
+.magicprompt.prompt-buttons-container {
+    position: absolute;
+    /* Calculate position to align with textarea, accounting for the + button width */
+    left: calc(2.5rem + ((100% - 2.5rem - 11rem) / 2));
+    transform: translateX(-50%);
+    top: 0;
+    padding-top: 0.5rem;
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+    white-space: nowrap;
+}
+
+.magicprompt.prompt-button {
+    padding: 0.2rem 0.8rem;
+    display: flex;
+    align-items: center; /* Centers content vertically */
+    justify-content: center; /* Centers content horizontally */
+    background-color: var(--button-background);
+    color: var(--button-text);
+    border: 1px solid var(--button-border);
+    border-radius: 0.7rem;
+    font-weight: bold;
+    font-size: 0.7em;
+    min-width: 2rem;
+    height: 1rem; /* Fixed height */
+}
+
+    .magicprompt.prompt-button:hover {
+        background-color: var(--button-background-hover);
+        color: var(--button-foreground-hover);
+    }

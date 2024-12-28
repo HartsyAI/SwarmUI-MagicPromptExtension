@@ -1,4 +1,4 @@
-/**
+﻿/**
  * magicprompt.js
  * Core functionality and utilities for the MagicPrompt extension.
  */
@@ -287,6 +287,107 @@ if (!window.MagicPrompt) {
 window.MP = window.MP || window.MagicPrompt;
 
 /**
+ * Handles the enhance prompt button click
+ * Takes the current prompt text and enhances it using the LLM
+ */
+async function handleEnhancePrompt() {
+    const promptTextArea = document.getElementById('alt_prompt_textbox');
+    if (!promptTextArea || !promptTextArea.value.trim()) {
+        showError('Please enter a prompt to enhance');
+        return;
+    }
+    try {
+        // Create request payload using built-in RequestBuilder
+        const payload = MP.RequestBuilder.createRequestPayload(
+            promptTextArea.value,
+            null,
+            'prompt'  // Using prompt instructions
+        );
+        const response = await MP.APIClient.makeRequest(payload);
+        if (response.success && response.response) {
+            promptTextArea.value = response.response;
+            triggerChangeFor(promptTextArea);
+            promptTextArea.focus();
+            promptTextArea.setSelectionRange(0, promptTextArea.value.length);
+        } else {
+            throw new Error(response.error || 'Failed to enhance prompt');
+        }
+    } catch (error) {
+        console.error('Prompt enhancement error:', error);
+        showError(`Failed to enhance prompt: ${error.message}`);
+    }
+}
+
+/**
+ * Handles the vision analysis button click
+ * Analyzes the currently selected image using vision LLM
+ */
+async function handleVisionAnalysis() {
+    const currentImage = document.querySelector('#current_image img.current-image-img');
+    if (!currentImage?.src) {
+        showError('No image selected');
+        return;
+    }
+    try {
+        // Fetch the image data and convert to base64
+        const fetchResponse = await fetch(currentImage.src);
+        const blob = await fetchResponse.blob();
+        // Convert blob to base64
+        const reader = new FileReader();
+        const base64Data = await new Promise((resolve) => {
+            reader.onloadend = () => {
+                // Get just the base64 data without the data URL prefix
+                resolve(reader.result.split(',')[1]);
+            };
+            reader.readAsDataURL(blob);
+        });
+        const payload = MP.RequestBuilder.createRequestPayload(
+            MP.settings.instructions.vision, // TODO: Using vision instructions. Should this be prompt?
+            base64Data,
+            'vision'
+        );
+        const response = await MP.APIClient.makeRequest(payload);
+        if (response.success && response.response) {
+            const promptBox = document.getElementById('alt_prompt_textbox');
+            if (promptBox) {
+                promptBox.value = response.response;
+                triggerChangeFor(promptBox);
+                promptBox.focus();
+                promptBox.setSelectionRange(0, promptBox.value.length);
+            }
+        } else {
+            throw new Error(response.error || 'Failed to analyze image');
+        }
+    } catch (error) {
+        console.error('Vision analysis error:', error);
+        showError(`Failed to analyze image: ${error.message}`);
+    }
+}
+
+function addPromptButtons() {
+    const altPromptRegion = document.querySelector('.alt_prompt_region');
+    if (!altPromptRegion) return;
+    // Create container
+    const container = document.createElement('div');
+    container.className = 'magicprompt prompt-buttons-container';
+    // Create enhance button
+    const enhanceButton = document.createElement('button');
+    enhanceButton.className = 'magicprompt prompt-button';
+    enhanceButton.innerHTML = '<i class="fas fa-wand-magic-sparkles"></i> 🪄 Enhance Prompt';
+    enhanceButton.addEventListener('click', handleEnhancePrompt);
+    // Create vision button
+    const visionButton = document.createElement('button');
+    visionButton.className = 'magicprompt prompt-button';
+    visionButton.innerHTML = '<i class="fas fa-eye"></i> 👀 Magic Vision';
+    visionButton.addEventListener('click', handleVisionAnalysis);
+    // Add buttons to container
+    container.appendChild(enhanceButton);
+    container.appendChild(visionButton);
+    // Insert container into the alt prompt region
+    altPromptRegion.insertBefore(container, altPromptRegion.firstChild);
+}
+
+/**
  * Loads settings from the backend
  * @returns {Promise<Object>} Settings object
  * @throws {Error} If settings cannot be loaded
@@ -439,7 +540,7 @@ async function resetSettings() {
 async function fetchModels() {
     const modelSelect = document.getElementById("modelSelect");
     const visionModelSelect = document.getElementById("visionModel");
-    
+
     if (!modelSelect || !visionModelSelect) {
         console.error('Model select elements not found');
         return;
@@ -725,21 +826,16 @@ document.addEventListener("DOMContentLoaded", async function () {
     try {
         if (MP.initialized) return;
         MP.initialized = true;
-
         // Initialize settings
         await loadSettings();
-
+        // Add prompt buttons
+        addPromptButtons();
         // Initialize modal
-        $('#settingsModal').modal({
-            backdrop: 'static',
-            keyboard: false,
-            show: false
+        $('#settingsModal').modal({backdrop: 'static', keyboard: false, show: false
         }).on('show.bs.modal', initSettingsModal);
-
         // Initialize models
         await fetchModels();
         MP.modelsInitialized = true;
-
         // Initialize handlers
         if (window.visionHandler) {
             await window.visionHandler.initialize();
@@ -747,7 +843,6 @@ document.addEventListener("DOMContentLoaded", async function () {
         if (window.chatHandler) {
             await window.chatHandler.initialize();
         }
-
         // Initialize resize handler
         const resizeHandle = document.getElementById('resize_handle');
         const visionSection = document.getElementById('vision_section');
@@ -761,20 +856,8 @@ document.addEventListener("DOMContentLoaded", async function () {
                 maxWidthOffset: 300
             });
         }
-
-        // Handle hash navigation if present
-        const hash = window.location.hash;
-        if (hash && !hash.includes('Error')) {
-            console.log('Processing hash:', hash);
-            // Add your hash handling logic here if needed
-        }
-
     } catch (error) {
         console.error('Error initializing MagicPrompt:', error);
         MP.ResponseHandler.showError('Failed to initialize MagicPrompt: ' + error.message);
-        // Prevent navigation to error page
-        if (error.response?.status === 404) {
-            event?.preventDefault();
-        }
     }
 });
