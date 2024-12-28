@@ -85,19 +85,10 @@ if (!window.MagicPrompt) {
                 if (!input?.trim()) {
                     throw new Error('Input is required');
                 }
-
-                console.log('Creating request payload with action:', action);
-                console.log('Current mode states:', {
-                    chatMode: document.getElementById('chat_mode')?.checked,
-                    visionMode: document.getElementById('vision_mode')?.checked,
-                    promptMode: document.getElementById('prompt_mode')?.checked
-                });
-
                 const hasImage = Boolean(image);
                 const chatMode = document.getElementById('chat_mode')?.checked;
                 const visionMode = document.getElementById('vision_mode')?.checked;
                 const promptMode = document.getElementById('prompt_mode')?.checked;
-
                 // Get the appropriate instructions based on action type
                 const getInstructionsForAction = (action) => {
                     const instructions = MP.settings.instructions || {};
@@ -114,7 +105,6 @@ if (!window.MagicPrompt) {
                             return null;
                     }
                 };
-
                 try {
                     // Get model and backend based on request type
                     const modelId = this.getModelId(hasImage);
@@ -132,6 +122,7 @@ if (!window.MagicPrompt) {
                             mediaType: window.visionHandler?.currentMediaType || "image/jpeg"
                         }] : null
                     };
+                    const keepAlive = (backend.toLowerCase() === 'ollama' && MP.settings.unloadmodel) ? 0 : null;
                     // Add instructions based on action type
                     if (action.toLowerCase() === 'prompt') {
                         messageContent.systemPrompt = instructions;
@@ -143,7 +134,7 @@ if (!window.MagicPrompt) {
                         modelId,
                         messageType: hasImage ? "Vision" : "Text",
                         action: action.toLowerCase(), // Ensure consistent casing
-                        keep_alive: backend === 'ollama' && MP.settings.unloadmodel ? 0 : null
+                        keep_alive: keepAlive
                     };
                 } catch (error) {
                     console.error('Error creating request payload:', error);
