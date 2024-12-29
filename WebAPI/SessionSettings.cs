@@ -66,17 +66,17 @@ public class SessionSettings : MagicPromptAPI
 
     private static readonly JObject DefaultSettings = new()
     {
-        ["backend"] = "openrouter",
-        ["visionbackend"] = "openrouter",
+        ["backend"] = "ollama",
+        ["visionbackend"] = "ollama",
         ["unloadmodel"] = false,
-        ["model"] = "meta-llama/llama-3.2-90b-vision-instruct:free",
-        ["visionmodel"] = "meta-llama/llama-3.2-90b-vision-instruct:free",
+        ["model"] = "llama3.2-vision:latest",
+        ["visionmodel"] = "llama3.2-vision:latest",
         ["instructions"] = new JObject
         {
-            ["chat"] = "INSTRUCTIONS: You are a helpful chatbot named Hartsy! talk in a conversational way. At the end of your responses you should include sayings like (Thanks for choosing Hartsy!) USER:",
-            ["vision"] = "INSTRUCTIONS: Respond only with a detailed prompt for Stable Diffusion. If there is an image, describe it to me by giving me a detailed prompt I can use to recreate the exact image. IMPORTANT: Only respond with the prompt nothing more. USER:",
-            ["caption"] = "INSTRUCTIONS: Respond only with a caption for the image. or answer the users question only using the format of describing the image as a caption. If there is no image, respond with 'No image found'. USER:",
-            ["prompt"] = "INSTRUCTIONS: Respond only with a detailed prompt for Stable Diffusion. If there is an image, describe it to me by giving me a detailed prompt I can use to recreate the exact image. IMPORTANT: Only respond with the prompt nothing more. USER:",
+            ["chat"] = "You are a chatbot named Hartsy. Come up with a random backstory as to why you were created and how you were made to help the user with Stable Diffusion. You will respond to any questions or chats in this character. You will include tips on how to make good prompts for stable diffusion. Never break character and randomly end your response with \"Thank you for choosing Hartsy!\"",
+            ["vision"] = "Analyze the image and respond to any of my requests with the image in mind. If I ask you about something or tell you to do something assume I am wanting you to reference the image in your decision making or response.",
+            ["caption"] = "Respond only with a detailed caption for the image. Only use the format of describing what is in the image without any other text or comments. Describe everything in detail and include anything you can see.",
+            ["prompt"] = "Only respond with an enhanced prompt for stable diffusion based on the users input. Here are some examples:\nUser: beautiful radiating glowing trashcan in a clean immaculate city park\\n\\nAI: surrealistic scene of a trash can emitting bright, colorful light in the middle of an immaculate city park, photorealism, highly detailed, trending on artstation\\n\\nUser: a tasty looking beer in a cool glass with metal surrounding it in an empty beergarten with rustic wooden tables and benches\\n\\nAI: a frosty mug of amber beer sits atop a rustic wooden table, surrounded by empty stools in an old German beer hall, warm wooden benches and walls adorned with vintage beer steins, soft lighting from a hanging pendant lamp illuminates the scene\\n\\nUser: a photo realistic of modern wood house, dark, with high detailed, realistic\\n\\nAI: a beautiful, modern wooden house at dusk, surrounded by tall trees and lush greenery, photo-realistic rendering with intricate details, sharp focus on every element, dramatic lighting creating a warm and inviting atmosphere\\n\\nUser: aang from avatar the last airbender, lightning bending, water bending, earth bending\\n\\nAI: Aang flying on his sky bison, blue aura around him, bending air, water, fire and earth simultaneously, in the style of Kairos, photorealistic, highly detailed\\n\\nUser: Salena Gomez as Deadpool\\n\\nAI: Selena Gomez dressed in red and black Deadpool outfit, holding two guns, posing with a serious face, high-quality portrait photo, studio lighting\\n\\nUser: a realistic photo of England queen\\n\\nAI: portrait photography of Queen Elizabeth II, in her iconic green dress, sitting on the throne, majestic, regal, royal, highly detailed\\n\\nUser: A beautiful Russian woman with bright blue eyes, long blonde hair, and pale white skin, depicted in pointillism style. She is wearing traditional Russian clothing, such as a kokoshnik and sarafan, with intricate embroidery details. The background is a picturesque Russian countryside scene, with towering churches and wheat fields. Art style: Hyperrealism, pointillism. Soft pastel colors.\\n\\nAI: A stunning portrait of a beautiful Russian woman with bright blue eyes, long blonde hair, and pale white skin. She is wearing traditional Russian clothing, including a kokoshnik and sarafan, with intricate embroidery details. The background showcases a picturesque Russian countryside scene, featuring towering churches and wheat fields. Art style: Hyperrealism, pointillism. Soft pastel colors, detailed close-up shot, high-resolution image.\\n\\nUser: Megumin (Konosuba)\\n\\nAI: detailed portrait of Megumin from Konosuba with a serious expression, long brown hair in ponytail, blue eyes, purple magic circle on forehead, highly detailed digital painting, anime style\\n\\nUser: Realistic photo of Taylor Swift with rainbow hair\\n\\nAI: a stunning, high-resolution portrait of Taylor Swift with vibrant rainbow-colored hair, soft lighting, natural environment, serene background, highly detailed, sharp focus",
         },
         ["backends"] = DefaultBackendConfig.DeepClone() // TODO: Change the name of this to something more descriptive
     };
@@ -198,6 +198,26 @@ public class SessionSettings : MagicPromptAPI
 
             // Merge in new settings
             MergeSettings(newSettings, settings["settings"] as JObject);
+
+            // Sync backend base URLs with top-level base URL if it exists
+            if (newSettings["baseurl"] != null && newSettings["backend"] != null)
+            {
+                string backend = newSettings["backend"].ToString();
+                if (newSettings["backends"] != null && newSettings["backends"][backend] != null)
+                {
+                    ((JObject)newSettings["backends"][backend])["baseurl"] = newSettings["baseurl"];
+                    Logs.Debug($"Synced {backend} backend baseurl with top-level baseurl: {newSettings["baseurl"]}");
+                }
+            }
+            if (newSettings["visionbaseurl"] != null && newSettings["visionbackend"] != null)
+            {
+                string visionBackend = newSettings["visionbackend"].ToString();
+                if (newSettings["backends"] != null && newSettings["backends"][visionBackend] != null)
+                {
+                    ((JObject)newSettings["backends"][visionBackend])["baseurl"] = newSettings["visionbaseurl"];
+                    Logs.Debug($"Synced {visionBackend} backend baseurl with top-level visionbaseurl: {newSettings["visionbaseurl"]}");
+                }
+            }
 
             Logs.Debug("[4] Final merged settings structure:");
             Logs.Debug($"- backend (LLM): {newSettings["backend"]}");
