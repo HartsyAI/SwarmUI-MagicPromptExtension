@@ -1,4 +1,4 @@
-﻿/**
+/**
  * magicprompt.js
  * Core functionality and utilities for the MagicPrompt extension.
  */
@@ -273,6 +273,23 @@ if (!window.MagicPrompt) {
         }
     }
 };
+
+// Define backends that don't need base URL configuration
+const FIXED_URL_BACKENDS = ['openai', 'anthropic', 'openrouter'];
+
+// Helper function to check if a backend needs base URL configuration
+function needsBaseUrl(backend) {
+    return !FIXED_URL_BACKENDS.includes(backend);
+}
+
+// Updates base URL visibility based on selected backend
+function updateBaseUrlVisibility(backend, isVision = false) {
+    const containerId = isVision ? 'visionBaseUrlContainer' : 'baseUrlContainer';
+    const container = document.getElementById(containerId);
+    if (container) {
+        container.style.display = needsBaseUrl(backend) ? 'block' : 'none';
+    }
+}
 
 // Use existing MP or create new reference
 window.MP = window.MP || window.MagicPrompt;
@@ -680,11 +697,15 @@ function initSettingsModal() {
         const chatBackendBtn = document.getElementById(backendMap[MP.settings.backend]);
         if (chatBackendBtn) {
             chatBackendBtn.checked = true;
+            // Update base URL visibility for chat backend
+            updateBaseUrlVisibility(MP.settings.backend, false);
         }
         // Set vision backend
         const visionBackendBtn = document.getElementById(backendMap[MP.settings.visionbackend]?.replace('LLM', 'Vision'));
         if (visionBackendBtn) {
             visionBackendBtn.checked = true;
+            // Update base URL visibility for vision backend
+            updateBaseUrlVisibility(MP.settings.visionbackend, true);
         }
         // Set URLs
         const backendUrl = document.getElementById('backendUrl');
@@ -735,6 +756,30 @@ function initSettingsModal() {
             radio.addEventListener('change', updateApiKeyInput);
         });
         fetchModels();
+        // Add event listeners for backend selection
+        const backendRadios = document.querySelectorAll('input[name="llmBackend"]');
+        backendRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const backend = e.target.id.replace('LLMBtn', '').toLowerCase();
+                updateBaseUrlVisibility(backend, false);
+            });
+        });
+
+        // Add event listeners for vision backend selection
+        const visionBackendRadios = document.querySelectorAll('input[name="visionBackendSelect"]');
+        visionBackendRadios.forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const backend = e.target.id.replace('VisionBtn', '').toLowerCase();
+                updateBaseUrlVisibility(backend, true);
+            });
+        });
+
+        // Set API Key section
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        if (apiKeyInput) {
+            apiKeyInput.value = MP.settings.backends?.[MP.settings.backend]?.apikey || '';
+            apiKeyInput.placeholder = `Enter ${MP.settings.backend} API key`;
+        }
     } catch (error) {
         console.error('Error initializing settings modal:', error);
         showError('Error initializing settings modal:', error);

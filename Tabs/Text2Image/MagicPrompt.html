@@ -176,15 +176,15 @@
                                             <label class="btn btn-outline-primary" for="anthropicLLMBtn">Anthropic (Claude)</label>
                                         </div>
                                     </div>
+                                    <div class="form-group" id="baseUrlContainer">
+                                        <label class="form-label">Base URL</label>
+                                        <input type="text" class="form-control" id="backendUrl" placeholder="Enter base URL">
+                                    </div>
                                     <div class="form-group">
                                         <label class="form-label" for="modelSelect">Model</label>
                                         <select id="modelSelect" class="form-select">
                                             <option value="">Loading models...</option>
                                         </select>
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label" for="backendUrl">Endpoint</label>
-                                        <input type="text" id="backendUrl" class="form-control" placeholder="http://localhost:11434">
                                     </div>
                                 </div>
                             </div>
@@ -222,9 +222,9 @@
                                             <option value="">Loading models...</option>
                                         </select>
                                     </div>
-                                    <div class="form-group">
-                                        <label class="form-label" for="visionBackendUrl">Vision Endpoint</label>
-                                        <input type="text" id="visionBackendUrl" class="form-control" placeholder="http://localhost:11434">
+                                    <div class="form-group" id="visionBaseUrlContainer">
+                                        <label class="form-label">Base URL</label>
+                                        <input type="text" class="form-control" id="visionBackendUrl" placeholder="Enter base URL">
                                     </div>
                                 </div>
                             </div>
