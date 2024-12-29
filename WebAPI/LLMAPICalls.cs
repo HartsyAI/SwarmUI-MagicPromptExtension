@@ -298,8 +298,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             {
                 return CreateErrorResponse("Invalid settings format");
             }
-            // Debug logging
-            Logs.Debug($"Current settings: {settings}");
+            Logs.Verbose($"Current settings: {settings}");
             // Create a new settings object preserving the structure
             JObject newSettings = new()
             {
@@ -316,7 +315,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 return CreateErrorResponse("LLMBackend not found in settings");
             }
             string backend = settings["backend"].ToString().ToLower();
-            Logs.Debug($"Using backend: {backend}");
+            Logs.Verbose($"Using backend: {backend}");
             string endpoint;
             switch (backend)
             {
@@ -415,12 +414,12 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     return CreateErrorResponse("Message content is missing");
                 }
                 // Create message content with explicit parsing
-                var messageContent = new MessageContent
+                MessageContent messageContent = new()
                 {
                     Text = messageContentToken["text"]?.ToString()
                 };
                 // Safely parse media content if it exists
-                var mediaToken = messageContentToken["media"];
+                JToken mediaToken = messageContentToken["media"];
                 if (mediaToken != null && mediaToken.Type == JTokenType.Array)
                 {
                     try
@@ -515,7 +514,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 // Try to extract detailed error from response
                 try
                 {
-                    var errorResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenRouterError>(responseContent);
+                    OpenRouterError errorResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenRouterError>(responseContent);
                     if (errorResponse?.Error?.Metadata?.Raw != null)
                     {
                         // Use the detailed error message as the response

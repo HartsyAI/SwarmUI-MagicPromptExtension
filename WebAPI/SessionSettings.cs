@@ -96,25 +96,25 @@ public class SessionSettings : MagicPromptAPI
                 Logs.Verbose($"Retrieved settings from {SETTINGS_KEY}/{SETTINGS_SUBKEY}: {settingsJson}");
                 settings = JObject.Parse(settingsJson);
                 // Ensure we have all required backend configurations
-                var backendsConfig = settings["backends"] as JObject ?? new JObject();
-                foreach (var backend in DefaultBackendConfig)
+                JObject backendsConfig = settings["backends"] as JObject ?? [];
+                foreach (KeyValuePair<string, JToken> backend in DefaultBackendConfig)
                 {
                     if (backendsConfig[backend.Key] == null)
                     {
                         backendsConfig[backend.Key] = backend.Value.DeepClone();
-                        Logs.Debug($"Added missing backend config for {backend.Key}");
+                        Logs.Verbose($"Added missing backend config for {backend.Key}");
                     }
                     else
                     {
                         // Ensure all required fields exist
-                        var defaultBackend = backend.Value as JObject;
-                        var existingBackend = backendsConfig[backend.Key] as JObject;
-                        foreach (var prop in defaultBackend)
+                        JObject defaultBackend = backend.Value as JObject;
+                        JObject existingBackend = backendsConfig[backend.Key] as JObject;
+                        foreach (KeyValuePair<string, JToken> prop in defaultBackend)
                         {
                             if (existingBackend[prop.Key] == null)
                             {
                                 existingBackend[prop.Key] = prop.Value.DeepClone();
-                                Logs.Debug($"Added missing property {prop.Key} for backend {backend.Key}");
+                                Logs.Verbose($"Added missing property {prop.Key} for backend {backend.Key}");
                             }
                         }
                     }
@@ -147,19 +147,19 @@ public class SessionSettings : MagicPromptAPI
             }
 
             // Get existing settings
-            var existingSettings = await GetSettingsAsync();
-            var newSettings = new JObject();
+            JObject existingSettings = await GetSettingsAsync();
+            JObject newSettings = [];
 
             // Helper function to merge objects recursively
             void MergeSettings(JObject target, JObject source, string parentKey = null)
             {
                 if (source == null) return;
 
-                foreach (var prop in source.Properties())
+                foreach (JProperty prop in source.Properties())
                 {
-                    var key = prop.Name;
-                    var value = prop.Value;
-                    var path = parentKey == null ? key : $"{parentKey}.{key}";
+                    string key = prop.Name;
+                    JToken value = prop.Value;
+                    string path = parentKey == null ? key : $"{parentKey}.{key}";
 
                     // Special handling for API keys
                     if (key == "apikey")
@@ -280,9 +280,9 @@ public class SessionSettings : MagicPromptAPI
         try
         {
             JObject settings = DefaultSettings;
-            // Save the settings
+            // Override the user settings with defaults and save
             Program.Sessions.GenericSharedUser.SaveGenericData(SETTINGS_KEY, SETTINGS_SUBKEY, settings.ToString());
-            Logs.Debug($"Reset settings to lowercase defaults: {settings}");
+            Logs.Verbose($"Reset settings to lowercase defaults: {settings}");
             return CreateSuccessResponse(null, null, settings);
         }
         catch (Exception ex)

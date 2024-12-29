@@ -215,7 +215,7 @@
     .magicprompt .typing-animation .dot {
         width: 8px;
         height: 8px;
-        background: var(--button-text);
+        background: var(--emphasis);
         border-radius: 50%;
         animation: bounce 1.4s infinite ease-in-out;
     }
@@ -256,7 +256,7 @@
 }
 
     .magicprompt .vision-actions button:hover {
-        background: var(--background-alt);
+        background: color-mix(in srgb, var(--emphasis-soft) 70%, white);
     }
 
     .magicprompt .vision-actions button.danger {
@@ -265,14 +265,6 @@
     }
 
         .magicprompt .vision-actions button.danger:hover {
-            background: var(--error-color);
-            color: var(--background);
+            background: color-mix(in srgb, var(--emphasis-soft) 70%, white);
+            color: var(--error-color);
         }
-
-/* Remove resize handle styles */
-.resize-handle,
-.resize-handle:hover,
-#vision_section,
-#chat_section {
-    /* These styles are now in magicprompt.css */
-}

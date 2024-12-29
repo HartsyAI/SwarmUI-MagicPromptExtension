@@ -193,7 +193,7 @@
 .magicprompt #loading_indicator .dot {
     width: 8px;
     height: 8px;
-    background: var(--text);
+    background: var(--emphasis);
     border-radius: 50%;
     animation: pulse 1.4s infinite ease-in-out;
     display: inline-block;

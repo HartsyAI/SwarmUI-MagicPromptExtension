@@ -318,11 +318,11 @@ async function handleEnhancePrompt() {
             promptTextArea.focus();
             promptTextArea.setSelectionRange(0, promptTextArea.value.length);
         } else {
-            throw new Error(response.error || 'Failed to enhance prompt');
+            throw new Error(response.error || 'Failed to enhance prompt. Do you have a model loaded?');
         }
     } catch (error) {
         console.error('Prompt enhancement error:', error);
-        showError(`Failed to enhance prompt: ${error.message}`);
+        showError(`Failed to enhance prompt.Do you have a model loaded? Error: ${error.message}`);
     }
 }
 
@@ -368,7 +368,7 @@ async function handleVisionAnalysis() {
         }
     } catch (error) {
         console.error('Vision analysis error:', error);
-        showError(`Failed to analyze image: ${error.message}`);
+        showError(`Failed to analyze image. Have you selected a vision model in settings? Error: ${error.message}`);
     }
 }
 
@@ -405,9 +405,7 @@ async function loadSettings() {
         const response = await new Promise((resolve, reject) => {
             genericRequest('GetSettingsAsync', {}, data => {
                 if (data.success) {
-                    console.log('Loaded settings:', data.settings);
                     const serverSettings = data.settings;
-
                     // Create settings object preserving server values
                     const settings = {
                         backend: serverSettings.backend || 'ollama',
@@ -429,7 +427,6 @@ async function loadSettings() {
                             prompt: serverSettings.instructions?.prompt || ''
                         }
                     };
-                    console.log('Structured settings:', settings);
                     MP.settings = settings;
                     resolve(settings);
                 } else {
@@ -522,6 +519,7 @@ async function resetSettings() {
             genericRequest('ResetSettingsAsync', {}, response => {
                 if (response.success) {
                     resolve(response);
+                    closeSettingsModal()
                 } else {
                     reject(new Error(response.error || 'Failed to reset settings'));
                 }
@@ -534,7 +532,6 @@ async function resetSettings() {
         document.getElementById('visionInstructions').value = '';
         document.getElementById('captionInstructions').value = '';
         document.getElementById('promptInstructions').value = '';
-        closeSettingsModal();
     } catch (error) {
         console.error('Settings reset error:', error);
         showError(`Failed to reset settings: ${error.message}`);
