@@ -24,17 +24,28 @@
 The MagicPrompt Extension provides a simple and intuitive way directly in SwarmUI to generate text prompts for Stable Diffusion images. This uses your local Ollama LLMs. 
 
 > [!WARNING]
-> Uninstall and remove HartsyCore Extension. It was removed to comply with the SwarmUI extension guidelines.
 > Always back up your SwarmUI configuration before making changes.
-> To use 3rd party APIs, you must have an API key. You can get one from OpenAI or Anthropic. Those cost money to use per request.
+> To use 3rd party APIs, you must have an API key. You can get one from OpenAI, OpenRouter or Anthropic. These cost money to use per request but allow you to save precious VRAM.
 
 ## Features
 ------------
 
-* Generate a rewritten prompt with more detail directly in SwarmUI
-* Supports any models you have on your local Ollama LLM server, any local LLM server that uses OpenAI's API format, OpenRouter API (Has free models but requires API key), Open AI (Requires API key), and Anthropic (Requires API key).
-* Easy-to-use interface with a button right in the Generate tab to rewrite the prompt. Or you can use the MagicPrompt tab for more control.
-* Compatible with other SwarmUI extensions from Hartsy.AI
+* Generate and rewrite prompts for text-to-image models.
+* Supports various LLM backends including local Ollama, OpenAI compatible APIs, OpenRouter, OpenAI, and Anthropic.
+* Provides an intuitive interface within SwarmUI, including a button in the Generate tab and a dedicated MagicPrompt tab.
+* Includes vision support, allowing you to upload images, generate captions, and use images as context for prompts.
+* Compatible with other SwarmUI extensions.
+
+## Vision Support
+The extension now includes comprehensive vision support, allowing you to interact with language models using images. Key features include:
+
+* **Image Upload**: Upload images directly within the MagicPrompt tab using drag and drop or the upload button.
+* **Visual Modes**: Interact with uploaded images in different modes each mode uses seperate system instructions:
+    * **Vision Mode**: Ask questions about the image or request detailed analysis.
+    * **Caption Mode**: Generate detailed captions for the uploaded image.
+* **Vision Actions**: A set of actions to perform on the uploaded image, including generating captions, using the image as an init image, sending the image to the prompt, and clearing the image.
+* **Backend Support**: Supports various vision backends, including Ollama, OpenRouter, OpenAI API, OpenAI (ChatGPT), and Anthropic (Claude).
+* **Settings**: Configure vision-specific settings seperate from chat models such as selecting the backend and model, and setting API keys.
 
 ## Prerequisites
 ----------------
@@ -48,12 +59,23 @@ Before you install the MagicPrompt Extension, ensure that you have the following
 
 ## Installation
 --------------
+Automatic Install (recommended):
 
-To install the Extension, read through all the steps before attempting to install. Then, follow these steps:
+Follow these steps to start making magic:
+
+1. Open your SwarmUI instance and navigate to the `Server -> Extensions` tab.
+2. Find the extension on the list. 
+3. Click the install button and let it download.
+4. Follow the prompts to restart Swarm. 
+5. Configure the extension as described in the [Configuration](#configuration) section.
+
+Manual Installation (not recommended):
+
+Read through everything before attempting to install. Then, follow these steps:
 
 1. Close your SwarmUI instance and navigate to `SwarmUI/src/Extensions` directory and clone the repo there. Open cmd `cd` to the directory above and `git clone ` the repo.
 2. Make sure you have run `update-windows.bat` or `update-linuxmac.sh` to recompile SwarmUI. This only needs to be done on first install.
-3. Restart your SwarmUI instance and refresh your browser. You should now have a sub-tab called MagicPrompt inside of the Utilities tab. You will also see a new MagicPrompt button in the Generate tab.
+3. Restart your SwarmUI instance and refresh your browser. You should now have a tab called MagicPrompt. You will also see two new buttons in the Generate tab above the prompt box.
 4. Configure the extension as described in the [Configuration](#configuration) section.
 
 ## Configuration
@@ -63,37 +85,69 @@ The MagicPrompt Extension can be used with any LLM model that works on the suppo
 
 > [!NOTE]
 > Looking for a free LLM API? MagicPrompt supports [OpenRouter](https://openrouter.io/). You will need to sign up to get an API key but you 
-> do NOT have to add any payment details. They have several models available for free.
+> do NOT have to add any payment details. They have several models available for free. (rate limits apply)
 
-1. Open the Utilities/MagicPrompt tab in SwarmUI and find and click the settings button. This will open a window with three tabs (LLM Backend, Response Instructions, and API Key)
-** LLM Backend: 
-* Choose a backend from the dropdown menu. 
-* Check the checkbox if you want to have the model unload after you press send to prompt. This unloads the model from VRAM and will need to be reloaded to make another prompt.
-* Enter your `LlmEndpoint` (LLM API server IP). For most people you should change this to `http://localhost:11434`. You can leave this blank if you are using a paid API.
-** Response Instructions:
-* Enter the instructions you want to give the model. This is what tells the LLM how and what format to rewrite the prompt in. Leave this blank to use the provided instructions.
-** API Key:
-* Choose which API you are using. OpenAI or Anthropic from the dropdown.
-* Enter your API key for your selected API. Then, click save. This will save the key only no other settings are saved.
-2. Save your changes by clicking the button at the bottom right and the window will close.
-3. Check to make sure you did not encounter any errors and that you see a new list of available models in the dropdown menu.
+1. Open the MagicPrompt tab and click the settings button. This will open the settings modal and you will see all of the options. If you are using Ollama with the default localhost and port You can just start by selecting a model for both the chat and vision settings.
+
+**Chat Settings:**
+* **Chat Backend:** Choose your preferred LLM backend (e.g., Ollama, OpenAI, Anthropic).
+* **Chat Model:** Choose the specific model you want to use.
+* **Base URL:** Enter the URL for your LLM API server (e.g., `http://localhost:11434` for local Ollama).
+
+**Vision Settings:**
+* **Vision Backend:** Choose your preferred LLM vision backend (e.g., Ollama, OpenAI, Anthropic).
+* **Vision Model:** Choose the specific vision model you want to use.
+* **Base URL:** Enter the base URL for your vision API if required.
+
+**API Key Management:**
+* **Backend Selection:** Choose the API you are using (OpenAI or Anthropic).
+* **Enter API Key:** Input your API key for the selected service.
+* **Save:** Clicking this button saves the api key only and refreshed the settings.
+
+**Response Instructions:**
+* **Chat Instructions:** Enter or edit the system instructions for chatting with your selected model.
+* **Vision Instructions:** Enter or edit the system instructions for chatting with your selected vision model.
+* **Image Caption Instructions:** Enter or edit the system instructions for how the vision model will caption images.
+* **Text-to-Image Prompt Instructions:** Enter or edit the system instructions for rewriting your prompt. 
+
+2. **Save:**
+* **Save and Refresh:** Save and refresh the settings to allow models to load etc.. without closing the settings.
+* **Save and Close:** Save and close your selected settings.
+* **Reset to Defaults:** This is the something is wrong button. Click it if something is wrong.
+
+3. Verify that your settings have been applied correctly and that you have selected both a chat and vision model.
 
 ## Usage
 --------
 
-1. When you open your SwarmUI instance, you will see a new button called "MagicPrompt" in the generate tab. This button will not work until you have entered your settings.
-![MP Buttton](./Images/Screenshots/mp_button.PNG)
-2. Click the Utilities tab and you should see a new sub-tab called MagicPrompt. Click that tab this is where you can adjust settings or change the model or backend.
-![MP Tab](./Images/Screenshots/mp_tab.PNG)
-2. Choose a model from the dropdown menu. Personally I like StableLM-Zephyr 3B.
-![Model Dropdown](./Images/Screenshots/model.PNG)
-3. Enter your crappy prompt in the box and click submit or hit enter. Or go to the Generate tab and type a prompt in the positive prompt box. Then, click the MagicPrompt button.
-4. It will rewrite the prompt for your review.	
-![Rewritten Prompt](./Images/Screenshots/rewritten.PNG)
-5. If you like the prompt, click send to prompt button and it will yeet it to the Generate tab and fill in your prompt box.
-![Final Image](./Images/Screenshots/final_image.PNG)
-6. If you do not like it enter a new prompt or click the regenerate button to get a new version of your original prompt. 
-7. Profit.
+The MagicPrompt Extension offers two primary ways to enhance your prompts and interact with your LLM: through the "Enhance Prompt" and "Magic Vision" button in the Generate tab and the Chat and Vision sections in the dedicated "MagicPrompt" tab.
+
+**Generate Tab:**
+
+1. **Enter your prompt:** In the Generate tab, type your initial prompt in the positive prompt box.
+2. **Use MagicPrompt:** Click the "Enhance Prompt" button to rewrite and enhance your prompt based on your configured settings. This will rewrite your prompt and replace it in the prompt box.
+
+1. **Caption selected image:** Make sure you have an image selected and your caption instructions are giving you the response from your selected model you desire.
+2. **Use Magic Vision:** Click the "Magic Vision" button and it will caption your image giving you (depending on your instructions) a prompt to generate a similar image.
+
+**MagicPrompt Tab:**
+
+1. **Access the tab:** Click on the tab and you will see how it is seperated into two sections. The Vision and Chat sections.
+2. **Chat:**
+**Select a mode:** Choose between "Prompt", "Chat", and "Vision" modes using the radio buttons at the top. This will switch between your instructions and the vision mode will use the selected vision model.
+**Chat LLM:** Chat with your AI of choice however you want. Just note it has no memory and is not intended to be a comprehensive chat app.
+3. **Vision:**
+**Upload Image:** Click the upload button and choose an image. If you have the auto caption toggle enabled it will start to make the API call using the caption instructions.
+**Select an action:** Choose an action from the available buttons:
+    * **Caption:** Generate a caption for the image.
+    * **Use as Init:** Use the image as an initial image for your generation.
+    * **Send to Prompt:** Send a description of the image to the prompt box.
+    * **Edit Image:**  Edit the uploaded image (functionality details to be added).
+    * **Clear:** Clear the uploaded image.
+
+**Settings:**
+
+* Access the settings by clicking the settings button within the MagicPrompt tab to configure various options, including the LLM backend, API keys, and vision settings.
 
 ## Troubleshooting
 -----------------
@@ -101,7 +155,7 @@ The MagicPrompt Extension can be used with any LLM model that works on the suppo
 If you encounter any issues check these common solutions before you open an issue on GitHub.
 
 * Check the logs for any error messages or warnings.
-* Ensure that the extension is properly installed and configured. Did you add your API URL to the config.json file?
+* Ensure that the extension is properly installed and configured. Did you add your API URL or keys?
 * If you are using any LLM service other than Ollama, I cannot guarantee that it will work. You may need to modify the code to work with your service. Feel free to enter a feature request to add support for your service.
 * Ask me in the SwarmUI Discord server for help by creating a new post in [#help-fourm](https://discord.com/channels/1243166023859961988/1255990493830057995/1255990493830057995). That is one of the places I live.
 * If you still have issues, open an issue on GitHub or join the [Hartsy Discord Community](https://discord.gg/nWfCupjhbm)
@@ -123,6 +177,7 @@ If you encounter any issues check these common solutions before you open an issu
 * Version 1.2: Added settings config window to allow for easier configuration of the extension
 * Version 1.3: Added working Anthropic support and a new button in the Generate tab to rewrite prompts
 * Version 1.4: Added support for OpenRouter API (requires API key)
+* Version 2.0: Vision support and a rewrite of most of the extension
 
 ## License
 ----------
