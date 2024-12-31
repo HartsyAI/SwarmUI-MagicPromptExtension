@@ -86,54 +86,30 @@ if (!window.MagicPrompt) {
                     throw new Error('Input is required');
                 }
                 const hasImage = Boolean(image);
-                const chatMode = document.getElementById('chat_mode')?.checked;
-                const visionMode = document.getElementById('vision_mode')?.checked;
-                const promptMode = document.getElementById('prompt_mode')?.checked;
-                // Get the appropriate instructions based on action type
-                const getInstructionsForAction = (action) => {
-                    const instructions = MP.settings.instructions || {};
-                    switch (action.toLowerCase()) {
-                        case 'chat':
-                            return instructions.chat;
-                        case 'vision':
-                            return instructions.vision;
-                        case 'prompt':
-                            return instructions.prompt;
-                        case 'caption':
-                            return instructions.caption;
-                        default:
-                            return null;
-                    }
-                };
                 try {
                     // Get model and backend based on request type
                     const modelId = this.getModelId(hasImage);
                     const backend = hasImage ? MP.settings.visionbackend : MP.settings.backend;
-                    // Get appropriate instructions for this action
-                    const instructions = getInstructionsForAction(action);
+                    // Get appropriate instructions based on action type
+                    const instructions = MP.settings.instructions?.[action.toLowerCase()];
                     // Just use the input text directly, instructions will be sent separately
                     const text = input;
-                    // Create the message content based on the action type
+                    // Create the message content
                     const messageContent = {
-                        text,
+                        text: input,
                         media: image ? [{
                             type: "base64",
                             data: image,
                             mediaType: window.visionHandler?.currentMediaType || "image/jpeg"
-                        }] : null
+                        }] : null,
+                        instructions: instructions
                     };
                     const keepAlive = (backend.toLowerCase() === 'ollama' && MP.settings.unloadmodel) ? 0 : null;
-                    // Add instructions based on action type
-                    if (action.toLowerCase() === 'prompt') {
-                        messageContent.systemPrompt = instructions;
-                    } else {
-                        messageContent.instructions = instructions;
-                    }
                     return {
                         messageContent,
                         modelId,
                         messageType: hasImage ? "Vision" : "Text",
-                        action: action.toLowerCase(), // Ensure consistent casing
+                        action: action.toLowerCase(),
                         keep_alive: keepAlive
                     };
                 } catch (error) {
@@ -167,16 +143,6 @@ if (!window.MagicPrompt) {
                 if (!response.response) {
                     console.error('Response missing content');
                     return this.showError('Empty response received from LLM');
-                }
-                try {
-                    if (action === "magic") {
-                        this.handleMagicResponse(response.response);
-                    }
-                    return response.response;
-                } catch (error) {
-                    console.error('Error handling response:', error);
-                    this.showError(error.message);
-                    return null;
                 }
             },
 
@@ -304,12 +270,14 @@ async function handleEnhancePrompt() {
         showError('Please enter a prompt to enhance');
         return;
     }
+    if (window.isEnhancing) return;
     try {
-        // Create request payload using built-in RequestBuilder
+        window.isEnhancing = true;
+        const input = promptTextArea.value.trim();
         const payload = MP.RequestBuilder.createRequestPayload(
-            promptTextArea.value,
+            input,
             null,
-            'prompt'  // Using prompt instructions
+            'prompt'
         );
         const response = await MP.APIClient.makeRequest(payload);
         if (response.success && response.response) {
@@ -318,11 +286,13 @@ async function handleEnhancePrompt() {
             promptTextArea.focus();
             promptTextArea.setSelectionRange(0, promptTextArea.value.length);
         } else {
-            throw new Error(response.error || 'Failed to enhance prompt. Do you have a model loaded?');
+            throw new Error(response.error || 'Failed to enhance prompt');
         }
     } catch (error) {
         console.error('Prompt enhancement error:', error);
-        showError(`Failed to enhance prompt.Do you have a model loaded? Error: ${error.message}`);
+        showError(error.message);
+    } finally {
+        window.isEnhancing = false;
     }
 }
 

@@ -13,7 +13,7 @@ public static class BackendSchema
         public string Text { get; set; }
         public string Instructions { get; set; }
         public List<MediaContent> Media { get; set; }
-        public int? keep_alive { get; set; }
+        public int? KeepAlive { get; set; }
     }
 
     public class MediaContent
@@ -36,7 +36,7 @@ public static class BackendSchema
             throw new ArgumentException("Content or model cannot be null or empty.");
         }
         type = type.ToLower();
-        _ = content.keep_alive;
+        _ = content.KeepAlive;
         return type switch
         {
             "ollama" => OllamaRequestBody(content, model, messageType),
@@ -69,8 +69,7 @@ public static class BackendSchema
                 model,
                 messages = messages.ToArray(),
                 stream = false,
-                system = content.Instructions,
-                content.keep_alive,
+                content.KeepAlive,
                 options = new
                 {
                     temperature = 1.0,
@@ -84,8 +83,7 @@ public static class BackendSchema
             model,
             messages = messages.ToArray(),
             stream = false,
-            system = content.Instructions,
-            content.keep_alive,
+            content.KeepAlive,
             options = new
             {
                 temperature = 1.0,

@@ -415,7 +415,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 MessageContent messageContent = new()
                 {
                     Text = messageContentToken["text"]?.ToString(),
-                    keep_alive = requestData["keep_alive"]?.Value<int?>()
+                    KeepAlive = requestData["keep_alive"]?.Value<int?>()
                 };
                 // Safely parse media content if it exists
                 JToken mediaToken = messageContentToken["media"];
