@@ -159,6 +159,9 @@
     flex: 1;
     overflow-y: auto;
     background: var(--background);
+    height: 100%; /* Add full height */
+    display: flex;
+    flex-direction: column;
 }
 
 .magicprompt .caption-content {

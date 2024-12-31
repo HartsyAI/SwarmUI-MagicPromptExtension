@@ -38,8 +38,8 @@ public class SessionSettings : MagicPromptAPI
             ["baseurl"] = "https://api.openai.com",
             ["endpoints"] = new JObject
             {
-                ["chat"] = "/v1/chat/completions",
-                ["models"] = "/v1/models"
+                ["chat"] = "v1/chat/completions",
+                ["models"] = "v1/models"
             },
             ["apikey"] = ""
         },
@@ -151,7 +151,7 @@ public class SessionSettings : MagicPromptAPI
             JObject newSettings = [];
 
             // Helper function to merge objects recursively
-            void MergeSettings(JObject target, JObject source, string parentKey = null)
+            static void MergeSettings(JObject target, JObject source, string parentKey = null)
             {
                 if (source == null) return;
 
@@ -175,7 +175,7 @@ public class SessionSettings : MagicPromptAPI
                     // Handle nested objects
                     if (value is JObject sourceObj)
                     {
-                        if (target[key] == null || !(target[key] is JObject))
+                        if (target[key] == null || target[key] is not JObject)
                         {
                             target[key] = new JObject();
                         }
@@ -192,32 +192,27 @@ public class SessionSettings : MagicPromptAPI
                     }
                 }
             }
-
             // Start with existing settings
-            newSettings = existingSettings["settings"] as JObject ?? new JObject();
-
+            newSettings = existingSettings["settings"] as JObject ?? [];
             // Merge in new settings
             MergeSettings(newSettings, settings["settings"] as JObject);
-
-            // Sync backend base URLs with top-level base URL if it exists
-            if (newSettings["baseurl"] != null && newSettings["backend"] != null)
+            if (newSettings["baseurl"] != null)
             {
-                string backend = newSettings["backend"].ToString();
-                if (newSettings["backends"] != null && newSettings["backends"][backend] != null)
+                string backend = newSettings["backend"]?.ToString();
+                if (backend == "ollama" || backend == "openaiapi")
                 {
-                    ((JObject)newSettings["backends"][backend])["baseurl"] = newSettings["baseurl"];
-                    Logs.Debug($"Synced {backend} backend baseurl with top-level baseurl: {newSettings["baseurl"]}");
+                    // Only sync URL for configurable backends
+                    if (newSettings["backends"]?[backend] != null)
+                    {
+                        ((JObject)newSettings["backends"][backend])["baseurl"] = newSettings["baseurl"];
+                        Logs.Debug($"Synced {backend} backend baseurl with top-level baseurl: {newSettings["baseurl"]}");
+                    }
                 }
             }
-            if (newSettings["visionbaseurl"] != null && newSettings["visionbackend"] != null)
-            {
-                string visionBackend = newSettings["visionbackend"].ToString();
-                if (newSettings["backends"] != null && newSettings["backends"][visionBackend] != null)
-                {
-                    ((JObject)newSettings["backends"][visionBackend])["baseurl"] = newSettings["visionbaseurl"];
-                    Logs.Debug($"Synced {visionBackend} backend baseurl with top-level visionbaseurl: {newSettings["visionbaseurl"]}");
-                }
-            }
+            // Fixed backend URLs should never change
+            newSettings["backends"]["openai"]["baseurl"] = "https://api.openai.com";
+            newSettings["backends"]["anthropic"]["baseurl"] = "https://api.anthropic.com";
+            newSettings["backends"]["openrouter"]["baseurl"] = "https://openrouter.ai";
 
             Logs.Debug("[4] Final merged settings structure:");
             Logs.Debug($"- backend (LLM): {newSettings["backend"]}");

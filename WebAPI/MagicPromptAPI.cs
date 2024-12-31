@@ -134,7 +134,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         {
                             // Not an error response, continue with normal processing
                         }
-
                         OpenRouterResponse openRouterResponse = JsonConvert.DeserializeObject<OpenRouterResponse>(responseContent);
                         if (openRouterResponse?.Choices != null && openRouterResponse.Choices.Count > 0)
                         {
@@ -187,14 +186,14 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
 
         /// <summary>Deserializes the API response into a list of models.</summary>
         /// <returns>A list of models or null if deserialization fails.</returns>
-        public static List<ModelData> DeserializeModels(string responseContent, string backendType)
+        public static List<ModelData> DeserializeModels(string responseContent, string backend)
         {
             try
             {
-                switch (backendType.ToLower())
+                switch (backend)
                 {
                     case "ollama":
-                        RootObject rootObject = Newtonsoft.Json.JsonConvert.DeserializeObject<RootObject>(responseContent);
+                        RootObject rootObject = JsonConvert.DeserializeObject<RootObject>(responseContent);
                         if (rootObject?.Data != null)
                         {
                             return rootObject.Data;
@@ -205,20 +204,18 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                             return null;
                         }
                     case "openai":
-                        OpenAIResponse openAIResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenAIResponse>(responseContent);
+                        OpenAIResponse openAIResponse = JsonConvert.DeserializeObject<OpenAIResponse>(responseContent);
                         if (openAIResponse?.Data != null)
                         {
-                            return openAIResponse.Data.Select(x => new ModelData
-                            {
-                                Model = x.Id,
-                                Name = x.Id
-                            }).ToList();
+                            return openAIResponse.Data.Select(
+                                x => new ModelData
+                                {
+                                    Model = x.Id,
+                                    Name = x.Id
+                                }).ToList();
                         }
-                        else
-                        {
-                            Logs.Error("Data array is null or empty.");
-                            return null;
-                        }
+                        Logs.Error("OpenAI response data is null");
+                        return null;
                     case "anthropic":
                         AnthropicResponse anthropicResponse = null;
                         return anthropicResponse.Data.Select(x => new ModelData
@@ -227,7 +224,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                             Name = x.Id
                         }).ToList();
                     case "openaiapi":
-                        OpenAIAPIResponse openAIAPIResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenAIAPIResponse>(responseContent);
+                        OpenAIAPIResponse openAIAPIResponse = JsonConvert.DeserializeObject<OpenAIAPIResponse>(responseContent);
                         if (openAIAPIResponse?.Data != null)
                         {
                             return openAIAPIResponse.Data.Select(x => new ModelData
@@ -242,16 +239,15 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                             return null;
                         }
                     case "openrouter":
-                        //Logs.Debug($"Raw OpenRouter Response: {responseContent}");
                         try
                         {
-                            var errorResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenRouterError>(responseContent);
+                            OpenRouterError errorResponse = JsonConvert.DeserializeObject<OpenRouterError>(responseContent);
                             if (errorResponse?.Error != null)
                             {
                                 Logs.Error($"OpenRouter API error: {errorResponse.Error.Message}");
                                 throw new Exception($"OpenRouter API error: {errorResponse.Error.Message}");
                             }
-                            OpenRouterResponse openRouterResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenRouterResponse>(responseContent);
+                            OpenRouterResponse openRouterResponse = JsonConvert.DeserializeObject<OpenRouterResponse>(responseContent);
                             if (openRouterResponse?.Data != null)
                             {
                                 return openRouterResponse.Data.Select(x => new ModelData

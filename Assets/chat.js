@@ -86,7 +86,8 @@ if (!window.ChatHandler) {
             promptModeRadio.addEventListener('change', this.handleModeChange);
             unloadModelsToggle.addEventListener('change', () => {
                 MP.settings.unloadmodel = unloadModelsToggle.checked;
-                localStorage.setItem('unloadmodel', unloadModelsToggle.checked);
+                // Save the new settings
+                saveSettings();
             });
             // Set unload models toggle
             if (unloadModelsToggle) {

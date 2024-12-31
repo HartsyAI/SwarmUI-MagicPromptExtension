@@ -472,16 +472,22 @@ async function saveSettings() {
             visionbackend: selectedVisionBackend ? backendMap[selectedVisionBackend.id.replace('VisionBtn', 'LLMBtn')] : MP.settings.visionbackend,
             visionmodel: visionModel || MP.settings.visionmodel,
             unloadmodel: document.getElementById('unload_models_toggle')?.checked,
-            baseurl: document.getElementById('backendUrl')?.value || MP.settings.baseurl,
-            visionbaseurl: document.getElementById('visionBackendUrl')?.value || MP.settings.visionbaseurl,
+            backends: {
+                ...MP.settings.backends,
+                [backendMap[selectedChatBackend.id]]: {
+                    ...MP.settings.backends[backendMap[selectedChatBackend.id]],
+                    baseurl: document.getElementById('backendUrl')?.value || MP.settings.backends[backendMap[selectedChatBackend.id]]?.baseurl
+                },
+                [backendMap[selectedVisionBackend.id.replace('VisionBtn', 'LLMBtn')]]: {
+                    ...MP.settings.backends[backendMap[selectedVisionBackend.id.replace('VisionBtn', 'LLMBtn')]],
+                    baseurl: document.getElementById('visionBackendUrl')?.value || MP.settings.backends[backendMap[selectedVisionBackend.id.replace('VisionBtn', 'LLMBtn')]]?.baseurl
+                }
+            },
             instructions: {
                 chat: document.getElementById('chatInstructions')?.value || MP.settings.instructions?.chat || '',
                 vision: document.getElementById('visionInstructions')?.value || MP.settings.instructions?.vision || '',
                 caption: document.getElementById('captionInstructions')?.value || MP.settings.instructions?.caption || '',
                 prompt: document.getElementById('promptInstructions')?.value || MP.settings.instructions?.prompt || ''
-            },
-            backends: {
-                ...MP.settings.backends // Preserve existing backend configurations
             }
         };
         const response = await new Promise((resolve, reject) => {
@@ -493,12 +499,16 @@ async function saveSettings() {
                 }
             });
         });
-        // Update local settings
-        MP.settings = {
-            ...response.settings
-        };
-        // Refresh models
-        await fetchModels();
+        // Update local settings with a deep copy
+        MP.settings = JSON.parse(JSON.stringify(response.settings));
+        
+        // Refresh models and show any errors
+        try {
+            await fetchModels();
+        } catch (error) {
+            console.error('Failed to fetch models:', error);
+            showError(`Failed to fetch models: ${error.message}`);
+        }
     } catch (error) {
         console.error('Settings save error:', error);
         showError(`Failed to save settings: ${error.message}`);
@@ -519,7 +529,6 @@ async function resetSettings() {
             genericRequest('ResetSettingsAsync', {}, response => {
                 if (response.success) {
                     resolve(response);
-                    closeSettingsModal()
                 } else {
                     reject(new Error(response.error || 'Failed to reset settings'));
                 }
@@ -532,6 +541,7 @@ async function resetSettings() {
         document.getElementById('visionInstructions').value = '';
         document.getElementById('captionInstructions').value = '';
         document.getElementById('promptInstructions').value = '';
+        closeSettingsModal()
     } catch (error) {
         console.error('Settings reset error:', error);
         showError(`Failed to reset settings: ${error.message}`);
