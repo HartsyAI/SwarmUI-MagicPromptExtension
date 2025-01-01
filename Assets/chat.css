@@ -1,8 +1,21 @@
 /* Chat Interface Styles
-   This file contains styles specific to the chat interface of MagicPrompt
-   Including message bubbles, input area, and chat-specific animations */
+=========================================================
+This file contains styles specific to the chat interface of 
+MagicPrompt, including message bubbles, input area, and 
+chat-specific animations.
 
-/* Chat Section Layout */
+TABLE OF CONTENTS:
+1. Chat Section Layout
+2. Messages Area
+3. Input Area
+4. Message Bubbles
+5. Message Actions
+6. Loading States
+=========================================================== */
+
+/* 1. CHAT SECTION LAYOUT 
+   Main container and structure for chat interface */
+
 .magicprompt #chat_section {
     flex: 1;
     min-width: 300px;
@@ -12,6 +25,7 @@
     overflow: hidden;
 }
 
+/* Section content wrapper - Contains messages and input area */
 .magicprompt .section-content {
     flex: 1;
     display: flex;
@@ -21,21 +35,40 @@
     height: 100%;
 }
 
-/* Messages Area - Scrollable */
+/* 2. MESSAGES AREA 
+   Scrollable container for chat messages */
+
 .magicprompt #chat_messages {
     flex: 1 1 auto;
     overflow-y: auto;
     padding: 1rem;
     position: absolute;
-    top: 40px; /* Height of the header */
-    bottom: 160px; /* Height of the input container */
+    top: 40px; /* Below header */
+    bottom: 160px; /* Above input area */
     left: 0;
     right: 0;
     background: var(--background);
-    min-height: 0; /* Important for Firefox */
+    min-height: 0; /* Firefox fix */
 }
 
-/* Chat Input Area - Fixed */
+/* Individual chat message container */
+.magicprompt .chat-message {
+    display: flex;
+    margin-bottom: 20px;
+    align-items: flex-start;
+    padding: 0 1rem;
+}
+
+/* User message alignment (right side) */
+.magicprompt .user-message {
+    flex-direction: row-reverse;
+    margin-right: 18%;
+}
+
+/* 3. INPUT AREA 
+   Bottom section with text input and controls */
+
+/* Input container - Fixed at bottom */
 .magicprompt .chat-input-container {
     position: absolute;
     bottom: 0;
@@ -45,6 +78,7 @@
     padding: 1rem;
 }
 
+/* Input wrapper - Contains textarea and submit button */
 .magicprompt .chat-input-wrapper {
     display: flex;
     align-items: flex-start;
@@ -53,6 +87,7 @@
     background: var(--background);
 }
 
+/* Chat textarea styling */
 .magicprompt #chat_llm_textarea {
     flex: 1;
     height: 60px;
@@ -65,17 +100,17 @@
     margin: 0;
 }
 
-/* Submit Button */
+/* Submit button */
 .magicprompt #submit_button {
     height: 60px;
-    width: 60px;  
+    width: 60px;
     border-radius: 4px;
-    background: var(--emphasis);  
+    background: var(--emphasis);
     color: var(--text);
     border: none;
     cursor: pointer;
     transition: all 0.2s;
-    font-size: 1.5em;  
+    font-size: 1.5em;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -83,17 +118,19 @@
     margin-left: 8px;
 }
 
-.magicprompt #submit_button:hover {
-    opacity: 0.9;
-    transform: scale(1.02);
-}
+    .magicprompt #submit_button:hover {
+        opacity: 0.9;
+        transform: scale(1.02);
+    }
 
-.magicprompt #submit_button:active {
-    transform: scale(0.98);
-}
+    .magicprompt #submit_button:active {
+        transform: scale(0.98);
+    }
 
-/* Message Bubbles and Content
-   Styling for chat bubbles including user and assistant messages */
+/* 4. MESSAGE BUBBLES 
+   Individual message styling and content */
+
+/* Message content bubble */
 .magicprompt .message-content {
     background-color: var(--background-gray);
     padding: 16px;
@@ -106,12 +143,12 @@
     color: var(--text);
 }
 
+/* User message specific styling */
 .magicprompt .user-message .message-content {
     background-color: var(--background-soft);
 }
 
-/* Avatar Styling
-   Circular avatars for user and assistant */
+/* Avatar styling */
 .magicprompt .avatar {
     width: 32px;
     height: 32px;
@@ -126,8 +163,9 @@
     color: var(--button-foreground-hover);
 }
 
-/* Message Actions
-   Buttons and controls for each message */
+/* 5. MESSAGE ACTIONS 
+   Buttons and controls for individual messages */
+
 .magicprompt .message-actions {
     display: flex;
     gap: 8px;
@@ -136,10 +174,11 @@
     opacity: 0.7;
 }
 
-.magicprompt .message-actions:hover {
-    opacity: 1;
-}
+    .magicprompt .message-actions:hover {
+        opacity: 1;
+    }
 
+/* Action buttons */
 .magicprompt .action-button {
     background: none;
     border: none;
@@ -150,27 +189,31 @@
     position: relative;
 }
 
-.magicprompt .action-button:hover {
-    background: var(--button-background-hover);
-}
+    .magicprompt .action-button:hover {
+        background: var(--button-background-hover);
+    }
 
-/* Tooltips for Action Buttons */
-.magicprompt .action-button[data-tooltip]:hover::before {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 4px 8px;
-    background: var(--background-gray);
-    color: var(--text);
-    border-radius: 4px;
-    font-size: 12px;
-    white-space: nowrap;
-    margin-bottom: 4px;
-    border: 1px solid var(--shadow);
-}
+    /* Action button tooltips */
+    .magicprompt .action-button[data-tooltip]:hover::before {
+        content: attr(data-tooltip);
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        padding: 4px 8px;
+        background: var(--background-gray);
+        color: var(--text);
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        margin-bottom: 4px;
+        border: 1px solid var(--shadow);
+    }
 
+/* 6. LOADING STATES 
+   Loading indicators and animations */
+
+/* Loading indicator container */
 .magicprompt #loading_indicator {
     display: none;
     position: absolute;
@@ -183,58 +226,50 @@
     z-index: 10;
 }
 
-.magicprompt #loading_indicator.active {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-}
+    .magicprompt #loading_indicator.active {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+    }
 
-.magicprompt #loading_indicator .dot {
-    width: 8px;
-    height: 8px;
-    background: var(--emphasis);
-    border-radius: 50%;
-    animation: pulse 1.4s infinite ease-in-out;
-    display: inline-block;
-}
+    /* Loading animation dots */
+    .magicprompt #loading_indicator .dot {
+        width: 8px;
+        height: 8px;
+        background: var(--emphasis);
+        border-radius: 50%;
+        animation: pulse 1.4s infinite ease-in-out;
+        display: inline-block;
+    }
 
-.magicprompt #loading_indicator .dot:nth-child(1) {
-    animation-delay: 0s;
-}
+        /* Dot animation delays for wave effect */
+        .magicprompt #loading_indicator .dot:nth-child(1) {
+            animation-delay: 0s;
+        }
 
-.magicprompt #loading_indicator .dot:nth-child(2) {
-    animation-delay: 0.2s;
-}
+        .magicprompt #loading_indicator .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
 
-.magicprompt #loading_indicator .dot:nth-child(3) {
-    animation-delay: 0.4s;
-}
+        .magicprompt #loading_indicator .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
 
+/* Loading animation keyframes */
 @keyframes pulse {
     0% {
         transform: scale(0.3);
         opacity: 0.3;
     }
+
     50% {
         transform: scale(1);
         opacity: 1;
     }
+
     100% {
         transform: scale(0.3);
         opacity: 0.3;
     }
-}
-
-/* Chat Message Layout */
-.magicprompt .chat-message {
-    display: flex;
-    margin-bottom: 20px;
-    align-items: flex-start;
-    padding: 0 1rem;
-}
-
-.magicprompt .user-message {
-    flex-direction: row-reverse;
-    margin-right: 18%;
 }
