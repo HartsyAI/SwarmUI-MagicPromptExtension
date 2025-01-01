@@ -4,7 +4,6 @@ using SwarmUI.Utils;
 using SwarmUI.WebAPI;
 using System.Net.Http;
 using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
-using SwarmUI.Accounts;
 using static Hartsy.Extensions.MagicPromptExtension.BackendSchema;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
@@ -32,7 +31,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 }
                 string chatBackend = settings["backend"]?.ToString()?.ToLower() ?? "openrouter";
                 string visionBackend = settings["visionbackend"]?.ToString()?.ToLower() ?? "openrouter";
-                Logs.Debug($"\n\nBackends from settings: {chatBackend}\n{visionBackend}\n\n");
                 // Get chat models
                 List<ModelData> chatModels = await GetModelsForBackend(chatBackend, settings);
                 if (chatModels == null || !chatModels.Any())
@@ -121,7 +119,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             try
             {
                 HttpResponseMessage response = await _httpClient.SendAsync(request);
-                Logs.Debug($"Response from {(isVision ? "Vision" : "Chat")} LLM API: {response}");
                 if (response.IsSuccessStatusCode)
                 {
                     string jsonString = await response.Content.ReadAsStringAsync();
@@ -169,7 +166,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 Logs.Error($"Invalid configuration for backend {backend}: BaseUrl={baseUrl}, Endpoints={endpoints}");
                 return string.Empty;
             }
-            Logs.Debug($"\nUsing base URL for {backend}: {baseUrl}\n");
             string endpoint;
             // Special handling for vision endpoints
             if (endpointType == "vision")
@@ -195,7 +191,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             baseUrl = baseUrl.TrimEnd('/');
             endpoint = endpoint.StartsWith($"/") ? endpoint : "/" + endpoint;
             string fullUrl = $"{baseUrl}{endpoint}";
-            Logs.Debug(fullUrl);
             return fullUrl;
         }
 

@@ -103,10 +103,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         // First check for error response
                         try 
                         {
-                            var errorResponse = JsonConvert.DeserializeObject<OpenRouterError>(responseContent);
+                            OpenRouterError errorResponse = JsonConvert.DeserializeObject<OpenRouterError>(responseContent);
                             if (errorResponse?.Error != null)
                             {
-                                var errorMessage = errorResponse.Error.Message;
+                                string errorMessage = errorResponse.Error.Message;
                                 if (errorResponse.Error.Metadata != null)
                                 {
                                     // For maintenance errors, show the detailed message
@@ -121,8 +121,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                                     }
                                     else if (!string.IsNullOrEmpty(errorResponse.Error.Metadata.Raw))
                                     {
-                                        // Log the full error for debugging but return a clean message
-                                        Logs.Debug($"Full OpenRouter error: {errorResponse.Error.Metadata.Raw}");
                                         errorMessage = $"Error from {errorResponse.Error.Metadata.ProviderName}: {errorMessage}";
                                     }
                                 }
@@ -137,7 +135,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                         OpenRouterResponse openRouterResponse = JsonConvert.DeserializeObject<OpenRouterResponse>(responseContent);
                         if (openRouterResponse?.Choices != null && openRouterResponse.Choices.Count > 0)
                         {
-                            var message = openRouterResponse.Choices[0].Message;
+                            OpenRouterMessage message = openRouterResponse.Choices[0].Message;
                             if (message != null)
                             {
                                 // Handle both string and object content
@@ -147,10 +145,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                                     // Try to extract content from a structured response
                                     try
                                     {
-                                        var contentObj = JsonConvert.DeserializeObject<Dictionary<string, string>>(message.Content.ToString());
-                                        if (contentObj != null && contentObj.ContainsKey("text"))
+                                        Dictionary<string, string> contentObj = JsonConvert.DeserializeObject<Dictionary<string, string>>(message.Content.ToString());
+                                        if (contentObj != null && contentObj.TryGetValue("text", out string value))
                                         {
-                                            messageContent = contentObj["text"];
+                                            messageContent = value;
                                         }
                                     }
                                     catch
