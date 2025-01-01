@@ -420,7 +420,7 @@ async function loadSettings() {
 async function saveSettings() {
     try {
         // Prevent any form submission
-        event?.preventDefault();
+        //event?.preventDefault();
 
         const backendMap = {
             'ollamaLLMBtn': 'ollama',
@@ -687,11 +687,13 @@ function initSettingsModal() {
         // Set URLs
         const backendUrl = document.getElementById('backendUrl');
         if (backendUrl) {
-            backendUrl.value = MP.settings.baseurl || '';
+            const currentBackend = MP.settings.backend;
+            backendUrl.value = MP.settings.backends[currentBackend]?.baseurl || '';
         }
         const visionBackendUrl = document.getElementById('visionBackendUrl');
         if (visionBackendUrl) {
-            visionBackendUrl.value = MP.settings.visionbaseurl || '';
+            const currentVisionBackend = MP.settings.visionbackend;
+            visionBackendUrl.value = MP.settings.backends[currentVisionBackend]?.baseurl || '';
         }
         // Set API Key section
         const apiKeyBackendMap = {

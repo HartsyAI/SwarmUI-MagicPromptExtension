@@ -69,7 +69,7 @@ public static class BackendSchema
                 model,
                 messages = messages.ToArray(),
                 stream = false,
-                content.KeepAlive,
+                keep_alive = content.KeepAlive,
                 options = new
                 {
                     temperature = 1.0,
@@ -83,7 +83,7 @@ public static class BackendSchema
             model,
             messages = messages.ToArray(),
             stream = false,
-            content.KeepAlive,
+            keep_alive = content.KeepAlive,
             options = new
             {
                 temperature = 1.0,
