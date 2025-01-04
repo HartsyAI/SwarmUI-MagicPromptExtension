@@ -68,7 +68,6 @@ public class SessionSettings : MagicPromptAPI
     {
         ["backend"] = "ollama",
         ["visionbackend"] = "ollama",
-        ["unloadmodel"] = false,
         ["model"] = "llama3.2-vision:latest",
         ["visionmodel"] = "llama3.2-vision:latest",
         ["instructions"] = new JObject
@@ -145,33 +144,38 @@ public class SessionSettings : MagicPromptAPI
                     ["error"] = "No settings section provided"
                 };
             }
-
             // Get existing settings
             JObject existingSettings = await GetSettingsAsync();
             JObject newSettings = [];
-
             // Helper function to merge objects recursively
             static void MergeSettings(JObject target, JObject source, string parentKey = null)
             {
                 if (source == null) return;
-
                 foreach (JProperty prop in source.Properties())
                 {
                     string key = prop.Name;
                     JToken value = prop.Value;
                     string path = parentKey == null ? key : $"{parentKey}.{key}";
-
-                    // Special handling for API keys
-                    if (key == "apikey")
+                    // Special handling for backends
+                    if (key == "backends")
                     {
-                        if (!string.IsNullOrEmpty(value?.ToString()))
+                        if (target[key] == null || target[key] is not JObject)
                         {
-                            Logs.Debug($"[2] Updating API key for {parentKey}");
-                            target[key] = value;
+                            target[key] = new JObject();
+                        }
+                        JObject targetBackends = target[key] as JObject;
+                        JObject sourceBackends = value as JObject;
+                        // Merge each backend's configuration, preserving unloadModel
+                        foreach (JProperty backend in sourceBackends.Properties())
+                        {
+                            if (targetBackends[backend.Name] == null)
+                            {
+                                targetBackends[backend.Name] = new JObject();
+                            }
+                            MergeSettings(targetBackends[backend.Name] as JObject, backend.Value as JObject, $"{path}.{backend.Name}");
                         }
                         continue;
                     }
-
                     // Handle nested objects
                     if (value is JObject sourceObj)
                     {
@@ -233,10 +237,10 @@ public class SessionSettings : MagicPromptAPI
             if (newSettings["backends"] != null)
             {
                 Logs.Debug("- backends:");
-                foreach (var backend in newSettings["backends"].Children<JProperty>())
+                foreach (JProperty backend in newSettings["backends"].Children<JProperty>())
                 {
                     Logs.Debug($"  - {backend.Name}:");
-                    foreach (var prop in backend.Value.Children<JProperty>())
+                    foreach (JProperty prop in backend.Value.Children<JProperty>())
                     {
                         if (prop.Name == "apikey")
                         {
@@ -249,9 +253,7 @@ public class SessionSettings : MagicPromptAPI
                     }
                 }
             }
-
             Program.Sessions.GenericSharedUser.SaveGenericData(SETTINGS_KEY, SETTINGS_SUBKEY, newSettings.ToString());
-            
             return new JObject
             {
                 ["success"] = true,

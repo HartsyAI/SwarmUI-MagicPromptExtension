@@ -85,13 +85,19 @@ if (!window.ChatHandler) {
             visionModeRadio.addEventListener('change', this.handleModeChange);
             promptModeRadio.addEventListener('change', this.handleModeChange);
             unloadModelsToggle.addEventListener('change', () => {
-                MP.settings.unloadmodel = unloadModelsToggle.checked;
-                // Save the new settings
-                saveSettings();
+                const currentBackend = MP.settings.backend;
+                if (currentBackend === 'ollama') {
+                    // Use consistent capitalization
+                    MP.settings.backends[currentBackend].unloadModel = unloadModelsToggle.checked;
+                    console.log(`Setting unloadModel for ${currentBackend} to ${unloadModelsToggle.checked}`);
+                    saveSettings();
+                }
             });
             // Set unload models toggle
             if (unloadModelsToggle) {
-                unloadModelsToggle.checked = MP.settings.unloadmodel || false;
+                const currentBackend = MP.settings.backend;
+                unloadModelsToggle.checked = MP.settings.backends[currentBackend]?.unloadModel || false;
+                console.log(`Initial toggle state set to: ${unloadModelsToggle.checked} for backend ${currentBackend}`);
             }
             // Message action delegates
             this.elements.chatMessages.addEventListener('click', (e) => {

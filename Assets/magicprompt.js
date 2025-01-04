@@ -10,18 +10,55 @@ if (!window.MagicPrompt) {
     window.MagicPrompt = {
         initialized: false,
         settings: {
+            // Core settings
             backend: 'ollama',
-            baseurl: 'http://localhost:11434',
             model: '',
             visionbackend: 'ollama',
-            visionbaseurl: 'http://localhost:11434',
             visionmodel: '',
-            unloadmodel: false,
+            // Backend configurations
             backends: {
-                openai: { apikey: '' },
-                anthropic: { apikey: '' },
-                openrouter: { apikey: '' }
+                ollama: {
+                    baseurl: 'http://localhost:11434',
+                    unloadModel: false,
+                    endpoints: {
+                        chat: '/api/chat',
+                        models: '/api/tags'
+                    }
+                },
+                openaiapi: {
+                    baseurl: 'http://localhost:11434',
+                    unloadModel: false,
+                    endpoints: {
+                        chat: 'v1/chat/completions',
+                        models: '/v1/models'
+                    },
+                    apikey: ''
+                },
+                openai: {
+                    baseurl: 'https://api.openai.com',
+                    endpoints: {
+                        chat: 'v1/chat/completions',
+                        models: 'v1/models'
+                    },
+                    apikey: ''
+                },
+                anthropic: {
+                    baseurl: 'https://api.anthropic.com',
+                    endpoints: {
+                        chat: 'v1/messages'
+                    },
+                    apikey: ''
+                },
+                openrouter: {
+                    baseurl: 'https://openrouter.ai',
+                    endpoints: {
+                        chat: '/api/v1/chat/completions',
+                        models: '/api/v1/models'
+                    },
+                    apikey: ''
+                }
             },
+            // Instructions
             instructions: {
                 chat: '',
                 vision: '',
@@ -29,6 +66,7 @@ if (!window.MagicPrompt) {
                 prompt: ''
             }
         },
+
         APIClient: {
             /**
              * Makes an API request using SwarmUI's genericRequest
@@ -92,25 +130,18 @@ if (!window.MagicPrompt) {
                     const backend = hasImage ? MP.settings.visionbackend : MP.settings.backend;
                     // Get appropriate instructions based on action type
                     const instructions = MP.settings.instructions?.[action.toLowerCase()];
-                    // Just use the input text directly, instructions will be sent separately
-                    const text = input;
                     // Create the message content
                     const messageContent = {
                         text: input,
-                        media: image ? [{
-                            type: "base64",
-                            data: image,
-                            mediaType: window.visionHandler?.currentMediaType || "image/jpeg"
-                        }] : null,
-                        instructions: instructions
+                        media: image ? [{ type: "base64", data: image, mediaType: window.visionHandler?.currentMediaType || "image/jpeg" }] : null,
+                        instructions: instructions,
+                        KeepAlive: (backend.toLowerCase() === 'ollama' && MP.settings.backends[backend]?.unloadModel) ? 0 : null
                     };
-                    const keepAlive = (backend.toLowerCase() === 'ollama' && MP.settings.unloadmodel) ? 0 : null;
                     return {
                         messageContent,
                         modelId,
                         messageType: hasImage ? "Vision" : "Text",
                         action: action.toLowerCase(),
-                        keep_alive: keepAlive
                     };
                 } catch (error) {
                     console.error('Error creating request payload:', error);
@@ -378,17 +409,15 @@ async function loadSettings() {
                     const serverSettings = data.settings;
                     // Create settings object preserving server values
                     const settings = {
+                        // Core settings
                         backend: serverSettings.backend || 'ollama',
                         model: serverSettings.model || '',
                         visionbackend: serverSettings.visionbackend || serverSettings.backend || 'ollama',
                         visionmodel: serverSettings.visionmodel || '',
-                        unloadmodel: serverSettings.unloadmodel || false,
-                        baseurl: serverSettings.baseurl || 'http://localhost:11434',
-                        visionbaseurl: serverSettings.visionbaseurl || serverSettings.baseurl || 'http://localhost:11434',
-                        backends: serverSettings.backends || {
-                            openai: { apikey: '' },
-                            anthropic: { apikey: '' },
-                            openrouter: { apikey: '' }
+                        // Backends - merge using spread operator which does a "deep merge" of two objects
+                        backends: {
+                            ...MP.settings.backends,  // Start with default endpoints
+                            ...(serverSettings.backends || {}),  // Overlay server settings
                         },
                         instructions: {
                             chat: serverSettings.instructions?.chat || '',
@@ -432,25 +461,29 @@ async function saveSettings() {
         // Get selected chat and vision backends
         const selectedChatBackend = document.querySelector('input[name="llmBackend"]:checked');
         const selectedVisionBackend = document.querySelector('input[name="visionBackendSelect"]:checked');
-        // Get selected models
-        const chatModel = document.getElementById('modelSelect')?.value;
-        const visionModel = document.getElementById('visionModel')?.value;
-        // Match exact structure expected by C# DefaultSettings
+        // Get current backend identifiers
+        const chatBackendId = selectedChatBackend ? backendMap[selectedChatBackend.id] : MP.settings.backend;
+        const visionBackendId = selectedVisionBackend ?
+            backendMap[selectedVisionBackend.id.replace('VisionBtn', 'LLMBtn')] :
+            MP.settings.visionbackend;
+        // Create settings object. Match exact structure expected by C# DefaultSettings
         const settings = {
-            backend: selectedChatBackend ? backendMap[selectedChatBackend.id] : MP.settings.backend,
-            model: chatModel || MP.settings.model,
-            visionbackend: selectedVisionBackend ? backendMap[selectedVisionBackend.id.replace('VisionBtn', 'LLMBtn')] : MP.settings.visionbackend,
-            visionmodel: visionModel || MP.settings.visionmodel,
-            unloadmodel: document.getElementById('unload_models_toggle')?.checked,
+            // Core settings
+            backend: chatBackendId,
+            model: document.getElementById('modelSelect')?.value || MP.settings.model,
+            visionbackend: visionBackendId,
+            visionmodel: document.getElementById('visionModel')?.value || MP.settings.visionmodel,
             backends: {
                 ...MP.settings.backends,
-                [backendMap[selectedChatBackend.id]]: {
-                    ...MP.settings.backends[backendMap[selectedChatBackend.id]],
-                    baseurl: document.getElementById('backendUrl')?.value || MP.settings.backends[backendMap[selectedChatBackend.id]]?.baseurl
+                [chatBackendId]: {
+                    ...MP.settings.backends[chatBackendId],
+                    baseurl: document.getElementById('backendUrl')?.value || MP.settings.backends[chatBackendId]?.baseurl,
+                    unloadmodel: document.getElementById('unload_models_toggle')?.checked,
                 },
-                [backendMap[selectedVisionBackend.id.replace('VisionBtn', 'LLMBtn')]]: {
-                    ...MP.settings.backends[backendMap[selectedVisionBackend.id.replace('VisionBtn', 'LLMBtn')]],
-                    baseurl: document.getElementById('visionBackendUrl')?.value || MP.settings.backends[backendMap[selectedVisionBackend.id.replace('VisionBtn', 'LLMBtn')]]?.baseurl
+                [visionBackendId]: {
+                    ...MP.settings.backends[visionBackendId],
+                    baseurl: document.getElementById('visionBackendUrl')?.value || MP.settings.backends[visionBackendId]?.baseurl,
+                    unloadmodel: document.getElementById('unload_models_toggle')?.checked,
                 }
             },
             instructions: {
@@ -704,14 +737,14 @@ function initSettingsModal() {
             'anthropic': 'anthropicApiBtn'
         };
         // Ensure instructions object exists
-        if (!MP.settings.instructions) {
-            MP.settings.instructions = {
-                chat: '',
-                vision: '',
-                caption: '',
-                prompt: ''
-            };
-        }
+        //if (!MP.settings.instructions) {
+        //    MP.settings.instructions = {
+        //        chat: '',
+        //        vision: '',
+        //        caption: '',
+        //        prompt: ''
+        //    };
+        //}
         // Set Instructions
         const chatInstructions = document.getElementById('chatInstructions');
         if (chatInstructions) {

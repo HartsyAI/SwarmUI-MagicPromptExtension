@@ -148,17 +148,13 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             JObject backends = settings["backends"] as JObject;
             if (backends == null)
             {
-                Logs.Error("Backends configuration is null");
                 return string.Empty;
             }
-            // Get the backend configuration
             JObject backendConfig = backends[backend] as JObject;
             if (backendConfig == null)
             {
-                Logs.Error($"Configuration for backend '{backend}' not found");
                 return string.Empty;
             }
-            // Get base URL and endpoints
             string baseUrl = backendConfig["baseurl"]?.ToString();
             JObject endpoints = backendConfig["endpoints"] as JObject;
             if (string.IsNullOrEmpty(baseUrl) || endpoints == null)
@@ -275,6 +271,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
         /// <returns>A JSON object indicating success or error.</returns>
         public static async Task<JObject> LoadModelAsync([API.APIParameter("Model ID")] string modelId)
         {
+            // First get current settings from session
             JObject settingsResponse = await SessionSettings.GetSettingsAsync();
             if (settingsResponse == null || !settingsResponse["success"].Value<bool>())
             {
@@ -291,25 +288,35 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             {
                 return CreateErrorResponse("Invalid settings format");
             }
+
             Logs.Verbose($"Current settings: {settings}");
+
             // Create a new settings object preserving the structure
             JObject newSettings = new()
             {
                 ["backend"] = settings["backend"],
-                ["unloadmodel"] = settings["unloadmodel"] ?? false,
                 ["instructions"] = settings["instructions"] ?? "",
                 ["model"] = modelId,
                 ["backends"] = settings["backends"]?.DeepClone()
             };
+            // Save the updated settings
             await SessionSettings.SaveSettingsAsync(newSettings);
-            // Validate backend
-            if (settings["backend"] == null)
+            // Get and validate the current backend
+            string backend = settings["backend"]?.ToString()?.ToLower();
+            if (string.IsNullOrEmpty(backend))
             {
                 return CreateErrorResponse("LLMBackend not found in settings");
             }
-            string backend = settings["backend"].ToString().ToLower();
+
             Logs.Verbose($"Using backend: {backend}");
-            string endpoint;
+
+            // Get backend configuration
+            JObject backendConfig = settings["backends"]?[backend] as JObject;
+            if (backendConfig == null)
+            {
+                return CreateErrorResponse($"Configuration not found for backend: {backend}");
+            }
+            // Handle different backend types
             switch (backend)
             {
                 case "anthropic":
@@ -317,69 +324,67 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 case "openrouter":
                     return CreateSuccessResponse("Skip Model Preload: Not needed for 3rd party APIs.");
                 case "openaiapi":
-                    if (settings["backends"]?["openaiapi"]?["baseurl"] == null)
+                    string openaiApiBaseUrl = backendConfig["baseurl"]?.ToString();
+                    if (string.IsNullOrEmpty(openaiApiBaseUrl))
                     {
                         return CreateErrorResponse("OpenAI API BaseUrl not found in settings");
                     }
-                    endpoint = settings["backends"]["openaiapi"]["baseurl"].ToString();
+                    string openaiApiEndpoint = openaiApiBaseUrl;
                     break;
+
                 case "ollama":
-                    if (settings["backends"]?["ollama"] == null)
-                    {
-                        return CreateErrorResponse("Ollama configuration not found in settings");
-                    }
-                    string baseUrl = settings["backends"]["ollama"]["baseurl"]?.ToString() ?? "http://localhost:11434";
-                    if (settings["backends"]["ollama"]["endpoints"]?["load"] == null)
+                    string ollamaBaseUrl = backendConfig["baseurl"]?.ToString() ?? "http://localhost:11434";
+                    JObject ollamaEndpoints = backendConfig["endpoints"] as JObject;
+                    bool unloadModel = backendConfig["unloadModel"]?.Value<bool>() ?? false;
+                    if (ollamaEndpoints?["load"] == null)
                     {
                         return CreateErrorResponse("Ollama load endpoint not found in settings");
                     }
-                    endpoint = $"{baseUrl}{settings["backends"]["ollama"]["endpoints"]["load"]}";
-                    break;
+                    string ollamaEndpoint = $"{ollamaBaseUrl.TrimEnd('/')}{ollamaEndpoints["load"]}";
+                    // Create and send the request
+                    object requestBody = new { model = modelId };
+                    try
+                    {
+                        string jsonRequestBody = JsonSerializer.Serialize(requestBody);
+                        StringContent httpContent = new(jsonRequestBody, Encoding.UTF8, "application/json");
+                        HttpResponseMessage response = await _httpClient.PostAsync(ollamaEndpoint, httpContent);
+                        if (response.IsSuccessStatusCode)
+                        {
+                            Logs.Info($"Successfully loaded model: {modelId}");
+                            settings["Model"] = modelId; // Update the model in settings
+                            await SessionSettings.SaveSettingsAsync(settings); // Save the updated settings
+                            return CreateSuccessResponse($"Successfully loaded model: {modelId}", null, settings);
+                        }
+                        else
+                        {
+                            string errorMessage = await response.Content.ReadAsStringAsync();
+                            Logs.Error($"Failed to load model {modelId}: {response.StatusCode} - {response.ReasonPhrase}. Response: {errorMessage}");
+                            return CreateErrorResponse($"Failed to load model '{modelId}'. Please ensure:\n" +
+                                "1. The model name is correct\n" +
+                                "2. You have sufficient system resources\n" +
+                                "3. The model is downloaded (for Ollama)\n" +
+                                $"4. Check the error: {response.StatusCode} - {errorMessage}\n\n" +
+                                "For help, visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension"
+                            );
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logs.Error($"Error loading model {modelId}: {ex.Message}");
+                        return CreateErrorResponse($"Error loading model '{modelId}':\n" +
+                            $"{ex.Message}\n\n" +
+                            "Common solutions:\n" +
+                            "1. Verify your LLM backend is running\n" +
+                            "2. Check your network connection\n" +
+                            "3. Ensure the model is available\n\n" +
+                            "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension"
+                        );
+                    }
                 default:
                     Logs.Error($"Unsupported backend type in LoadModels: {backend}");
                     return CreateErrorResponse($"Unsupported LLM backend: {backend}");
             }
-            var requestBody = new
-            {
-                model = modelId,
-            };
-            try
-            {
-                string jsonRequestBody = JsonSerializer.Serialize(requestBody);
-                StringContent httpContent = new(jsonRequestBody, Encoding.UTF8, "application/json");
-                HttpResponseMessage response = await _httpClient.PostAsync(endpoint, httpContent);
-                if (response.IsSuccessStatusCode)
-                {
-                    Logs.Info($"Successfully loaded model: {modelId}");
-                    settings["Model"] = modelId; // Update the model in settings
-                    await SessionSettings.SaveSettingsAsync(settings); // Save the updated settings
-                    return CreateSuccessResponse($"Successfully loaded model: {modelId}", null, settings);
-                }
-                else
-                {
-                    string errorMessage = await response.Content.ReadAsStringAsync();
-                    Logs.Error($"Failed to load model {modelId}: {response.StatusCode} - {response.ReasonPhrase}. Response: {errorMessage}");
-                    return CreateErrorResponse($"Failed to load model '{modelId}'. Please ensure:\n" +
-                        "1. The model name is correct\n" +
-                        "2. You have sufficient system resources\n" +
-                        "3. The model is downloaded (for Ollama)\n" +
-                        $"4. Check the error: {response.StatusCode} - {errorMessage}\n\n" +
-                        "For help, visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension"
-                    );
-                }
-            }
-            catch (Exception ex)
-            {
-                Logs.Error($"Error loading model {modelId}: {ex.Message}");
-                return CreateErrorResponse($"Error loading model '{modelId}':\n" +
-                    $"{ex.Message}\n\n" +
-                    "Common solutions:\n" +
-                    "1. Verify your LLM backend is running\n" +
-                    "2. Check your network connection\n" +
-                    "3. Ensure the model is available\n\n" +
-                    "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension"
-                );
-            }
+            return CreateErrorResponse("Unexpected end of method reached");
         }
 
         /// <summary>Sends the prompt to the LLM API and processes the response.</summary>
@@ -407,11 +412,13 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     return CreateErrorResponse("Message content is missing");
                 }
                 // Create message content with explicit parsing
+                // Create message content with explicit parsing
                 MessageContent messageContent = new()
                 {
                     Text = messageContentToken["text"]?.ToString(),
-                    KeepAlive = requestData["keep_alive"]?.Value<int?>()
+                    KeepAlive = messageContentToken["KeepAlive"]?.Value<int?>()  // Get KeepAlive directly from messageContent
                 };
+                Logs.Debug($"\n\nMessageContent: Text={messageContent.Text},\n KeepAlive={messageContent.KeepAlive}\n\n");
                 // Safely parse media content if it exists
                 JToken mediaToken = messageContentToken["media"];
                 if (mediaToken != null && mediaToken.Type == JTokenType.Array)
