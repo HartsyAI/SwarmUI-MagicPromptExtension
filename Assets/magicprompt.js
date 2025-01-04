@@ -351,7 +351,7 @@ async function handleVisionAnalysis() {
             reader.readAsDataURL(blob);
         });
         const payload = MP.RequestBuilder.createRequestPayload(
-            MP.settings.instructions.vision, // TODO: Using vision instructions. Should this be prompt?
+            MP.settings.instructions.caption,
             base64Data,
             'vision'
         );
@@ -661,31 +661,6 @@ function setModelIfExists(select, modelId) {
     const modelExists = Array.from(select.options).some(opt => opt.value === modelId);
     if (modelExists) {
         select.value = modelId;
-    }
-}
-
-/**
- * Loads a selected model
- * @param {string} modelId - ID of model to load
- * @returns {Promise<void>}
- */
-async function loadModel(modelId) {
-    if (!modelId) return;
-
-    try {
-        MP.settings.model = modelId;
-        const response = await new Promise((resolve, reject) => {
-            genericRequest('LoadModelAsync', { modelId }, data => {
-                if (data.success) {
-                    resolve(data);
-                } else {
-                    reject(new Error(data.error || 'Failed to load model'));
-                }
-            });
-        });
-    } catch (error) {
-        console.error('Error loading model:', error);
-        showError(`Failed to load model: ${error.message}`);
     }
 }
 

@@ -17,7 +17,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
         public static readonly PermInfo PermSaveConfig = Permissions.Register(new("magicprompt_save_config", "Save Configuration", "Allows the user to save configuration settings.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
         public static readonly PermInfo PermReadConfig = Permissions.Register(new("magicprompt_read_config", "Read Configuration", "Allows the user to read configuration settings.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
         public static readonly PermInfo PermGetModels = Permissions.Register(new("magicprompt_get_models", "Get Models", "Allows the user to retrieve the list of available models.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
-        public static readonly PermInfo PermLoadModel = Permissions.Register(new("magicprompt_load_model", "Load Model", "Allows the user to load a model for usage.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
         public static readonly PermInfo PermResetConfig = Permissions.Register(new("magicprompt_reset_config", "Reset Configuration", "Allows the user to reset configuration settings.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
     }
 
@@ -33,7 +32,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             API.RegisterAPICall(SessionSettings.SaveSettingsAsync, false, MagicPromptPermissions.PermSaveConfig);
             API.RegisterAPICall(SessionSettings.ResetSettingsAsync, false, MagicPromptPermissions.PermResetConfig);
             API.RegisterAPICall(LLMAPICalls.GetModelsAsync, false, MagicPromptPermissions.PermGetModels);
-            API.RegisterAPICall(LLMAPICalls.LoadModelAsync, true, MagicPromptPermissions.PermLoadModel);
         }
 
         /// <summary>Makes the JSON response into a structured object and extracts the message content based on the backend type.</summary>
