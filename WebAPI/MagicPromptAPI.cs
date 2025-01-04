@@ -43,7 +43,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             try
             {
                 string responseContent = await response.Content.ReadAsStringAsync();
-                Logs.Debug($"Response content: {responseContent}");
                 JsonSerializerOptions jsonSerializerOptions = new()
                 {
                     PropertyNameCaseInsensitive = true

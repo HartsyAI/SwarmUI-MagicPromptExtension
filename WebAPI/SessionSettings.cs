@@ -190,7 +190,6 @@ public class SessionSettings : MagicPromptAPI
                     {
                         if (value != null && value.Type != JTokenType.Null)
                         {
-                            Logs.Debug($"[3] Setting {path} = {(key == "apikey" ? "[REDACTED]" : value)}");
                             target[key] = value;
                         }
                     }
@@ -209,7 +208,6 @@ public class SessionSettings : MagicPromptAPI
                     if (newSettings["backends"]?[backend] != null)
                     {
                         ((JObject)newSettings["backends"][backend])["baseurl"] = newSettings["baseurl"];
-                        Logs.Debug($"Synced {backend} backend baseurl with top-level baseurl: {newSettings["baseurl"]}");
                     }
                 }
             }
@@ -217,42 +215,6 @@ public class SessionSettings : MagicPromptAPI
             newSettings["backends"]["openai"]["baseurl"] = "https://api.openai.com";
             newSettings["backends"]["anthropic"]["baseurl"] = "https://api.anthropic.com";
             newSettings["backends"]["openrouter"]["baseurl"] = "https://openrouter.ai";
-
-            Logs.Debug("[4] Final merged settings structure:");
-            Logs.Debug($"- backend (LLM): {newSettings["backend"]}");
-            Logs.Debug($"- model (LLM): {newSettings["model"]}");
-            Logs.Debug($"- baseurl (LLM): {newSettings["baseurl"]}");
-            Logs.Debug($"- visionbackend: {newSettings["visionbackend"]}");
-            Logs.Debug($"- visionmodel: {newSettings["visionmodel"]}");
-            Logs.Debug($"- visionbaseurl: {newSettings["visionbaseurl"]}");
-            Logs.Debug($"- unloadmodel: {newSettings["unloadmodel"]}");
-            
-            if (newSettings["instructions"] != null)
-            {
-                Logs.Debug("- instructions:");
-                Logs.Debug($"  - chat: {newSettings["instructions"]?["chat"]}");
-                Logs.Debug($"  - vision: {newSettings["instructions"]?["vision"]}");
-            }
-
-            if (newSettings["backends"] != null)
-            {
-                Logs.Debug("- backends:");
-                foreach (JProperty backend in newSettings["backends"].Children<JProperty>())
-                {
-                    Logs.Debug($"  - {backend.Name}:");
-                    foreach (JProperty prop in backend.Value.Children<JProperty>())
-                    {
-                        if (prop.Name == "apikey")
-                        {
-                            Logs.Debug($"    - {prop.Name}: [REDACTED]");
-                        }
-                        else
-                        {
-                            Logs.Debug($"    - {prop.Name}: {prop.Value}");
-                        }
-                    }
-                }
-            }
             Program.Sessions.GenericSharedUser.SaveGenericData(SETTINGS_KEY, SETTINGS_SUBKEY, newSettings.ToString());
             return new JObject
             {

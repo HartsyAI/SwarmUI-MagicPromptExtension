@@ -412,13 +412,11 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     return CreateErrorResponse("Message content is missing");
                 }
                 // Create message content with explicit parsing
-                // Create message content with explicit parsing
                 MessageContent messageContent = new()
                 {
                     Text = messageContentToken["text"]?.ToString(),
-                    KeepAlive = messageContentToken["KeepAlive"]?.Value<int?>()  // Get KeepAlive directly from messageContent
+                    KeepAlive = messageContentToken["KeepAlive"]?.Value<int?>()
                 };
-                Logs.Debug($"\n\nMessageContent: Text={messageContent.Text},\n KeepAlive={messageContent.KeepAlive}\n\n");
                 // Safely parse media content if it exists
                 JToken mediaToken = messageContentToken["media"];
                 if (mediaToken != null && mediaToken.Type == JTokenType.Array)
