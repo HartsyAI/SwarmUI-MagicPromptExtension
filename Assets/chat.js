@@ -5,6 +5,37 @@
 
 'use strict';
 
+if (!window.MP) {
+    window.MP = {
+        initialized: false,
+        settings: {
+            // Core settings
+            backend: 'ollama',
+            model: '',
+            visionbackend: 'ollama',
+            visionmodel: '',
+            // Backend configurations
+            backends: {
+                ollama: {
+                    baseurl: 'http://localhost:11434',
+                    unloadModel: false,
+                    endpoints: {
+                        chat: '/api/chat',
+                        models: '/api/tags'
+                    }
+                }
+            },
+            // Instructions
+            instructions: {
+                chat: '',
+                vision: '',
+                caption: '',
+                prompt: ''
+            }
+        }
+    };
+}
+
 // Initialize ChatHandler only if it doesn't exist
 if (!window.ChatHandler) {
     window.ChatHandler = class ChatHandler {
