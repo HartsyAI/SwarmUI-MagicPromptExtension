@@ -6,8 +6,8 @@
 'use strict';
 
 // Initialize MagicPrompt global namespace if it doesn't exist
-if (!window.MagicPrompt) {
-    window.MagicPrompt = {
+if (!window.MP) {
+    window.MP = {
         initialized: false,
         settings: {
             // Core settings
@@ -287,9 +287,6 @@ function updateBaseUrlVisibility(backend, isVision = false) {
         container.style.display = needsBaseUrl(backend) ? 'block' : 'none';
     }
 }
-
-// Use existing MP or create new reference
-window.MP = window.MP || window.MagicPrompt;
 
 /**
  * Handles the enhance prompt button click
