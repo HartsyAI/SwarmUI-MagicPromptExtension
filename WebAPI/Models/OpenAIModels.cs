@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System.Text.Json.Serialization;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
@@ -29,6 +29,15 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
 
         [JsonPropertyName("choices")]
         public List<OpenAIChoice> Choices { get; set; }
+    }
+
+    public class OpenAIModelsResponse
+    {
+        [JsonProperty("data")]
+        public List<OpenAIModel> Data { get; set; }
+
+        [JsonProperty("object")]
+        public string Object { get; set; }
     }
 
     public class OpenAIChoice

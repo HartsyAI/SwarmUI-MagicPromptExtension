@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MagicPrompt</title>
+    <link rel="stylesheet" href="/ExtensionFile/MagicPromptExtension/Assets/magicprompt.css">
+    <link rel="stylesheet" href="/ExtensionFile/MagicPromptExtension/Assets/vision.css">
+    <link rel="stylesheet" href="/ExtensionFile/MagicPromptExtension/Assets/chat.css">
+</head>
+<body>
+    <div id="magicprompt_container" class="d-flex flex-column magicprompt">
+        <!-- Image Editor Container -->
+        <div id="image_editor_container"></div>
+        <!-- Main Content Area -->
+        <div class="d-flex flex-grow-1 main-content">
+            <!-- Left Side - Image Upload Area -->
+            <div id="vision_section">
+                <div class="section-content">
+                    <div class="section-header position-relative">
+                        <div class="text-center">MagicPrompt Vision</div>
+                        <!-- Auto Caption toggle -->
+                        <div class="form-check form-switch position-absolute start-0 ms-2 mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch" id="auto_caption_checkbox" checked>
+                            <label class="form-check-label" for="auto_caption_checkbox">
+                                Auto Caption
+                            </label>
+                        </div>
+                        <!-- Upload Image Button -->
+                        <button id="upload_image_button" class="basic-button position-absolute">
+                            Upload
+                        </button>
+                    </div>
+
+                    <!-- Image upload and preview area -->
+                    <div id="image_upload_area">
+                        <div class="upload-placeholder">
+                            <i class="fas fa-image upload-icon"></i>
+                            <div class="upload-text">Drag and drop an image here</div>
+                            <div class="upload-or">or click Upload button</div>
+                        </div>
+                        <input type="file" id="image_input" accept="image/*">
+                        <div id="image_preview_container">
+                            <img id="preview_image" class="preview-image" alt="Preview">
+                        </div>
+                    </div>
+
+                    <!-- Vision Info Section -->
+                    <div class="vision-info-section">
+                        <div class="vision-actions">
+                            <button type="button" class="basic-button alt-text-add-button" id="caption_btn" data-tooltip="Generate Caption">Caption</button>
+                            <button type="button" class="basic-button alt-text-add-button" id="use_init_btn" data-tooltip="Use as Init Image">Use as Init</button>
+                            <button type="button" class="basic-button alt-text-add-button" id="use_as_prompt_btn" data-tooltip="Send To Prompt">Send To Prompt</button>
+                            <button type="button" class="basic-button alt-text-add-button" id="edit_btn" data-tooltip="Edit Image">Edit Image</button>
+                            <button type="button" class="basic-button danger" id="clear_image_btn" data-tooltip="Clear Image">Clear</button>
+                        </div>
+                        <div class="caption-container">
+                            <div class="caption-content"></div>
+                            <div class="typing-animation">
+                                <div class="dot"></div>
+                                <div class="dot"></div>
+                                <div class="dot"></div>
+                            </div>
+                        </div>
+                        <div class="metadata-container">
+                            <div class="image-metadata"></div>
+                        </div>
+                        <div class="image-caption"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resize Handle -->
+            <div id="resize_handle" class="resize-handle"></div>
+
+            <!-- Right Side - Chat Area -->
+            <div id="chat_section" class="d-flex flex-column flex-grow-1">
+                <div class="section-content d-flex flex-column">
+                    <div class="section-header">
+                        MagicPrompt Chat
+                        <button id="settings_button" class="action-button" data-tooltip="Settings">
+                            ⚙️
+                        </button>
+                    </div>
+                    <!-- Chat Messages Area -->
+                    <div id="chat_messages"></div>
+
+                    <!-- Bottom Action Area -->
+                    <div class="chat-input-container">
+                        <div class="input-controls d-flex align-items-center gap-3">
+                            <div class="d-flex justify-content-between w-100">
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input" type="checkbox" role="switch" id="unload_models_toggle">
+                                    <label class="form-check-label" for="unload_models_toggle">
+                                        Unload Models After Response (Ollama Only)
+                                    </label>
+                                </div>
+                                <div class="chat-mode-control">
+                                    <span class="me-2">Chat Mode:</span>
+                                    <div class="btn-group" role="group">
+                                        <input type="radio" class="btn-check" name="chat_mode" id="chat_mode" autocomplete="on" checked>
+                                        <label class="btn btn-outline-primary" for="chat_mode">Chat</label>
+                                        <input type="radio" class="btn-check" name="chat_mode" id="vision_mode" autocomplete="off">
+                                        <label class="btn btn-outline-primary" for="vision_mode">Vision</label>
+                                        <input type="radio" class="btn-check" name="chat_mode" id="prompt_mode" autocomplete="off">
+                                        <label class="btn btn-outline-primary" for="prompt_mode">Prompt</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Loading Indicator -->
+                        <div id="loading_indicator">
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                            <div class="dot"></div>
+                        </div>
+
+                        <div class="chat-input-wrapper">
+                            <textarea id="chat_llm_textarea" class="form-control"
+                                      placeholder="Choose a mode and chat with the LLM here..."></textarea>
+                            <button id="submit_button" class="btn d-flex align-items-center justify-content-center">
+                                ➤
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Template (hidden) -->
+    <template id="message_template">
+        <div class="chat-message">
+            <div class="avatar"></div>
+            <div class="message-content"></div>
+            <div class="message-actions">
+                <button class="action-button" data-tooltip="Clear Message" onclick="clearMessage(this)">🗑️</button>
+                <button class="action-button" data-tooltip="Use as Prompt" onclick="sendToPrompt(this)">📝</button>
+                <button class="action-button" data-tooltip="Regenerate" onclick="regenerate(this)">🔄</button>
+            </div>
+        </div>
+    </template>
+
+    <!-- Modal Structure -->
+    <div class="modal fade magicprompt" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title translate" id="settingsModalLabel">Settings</h5>
+                    <button type="button" class="btn-close translate" aria-label="Close" onclick="closeSettingsModal()"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-container">
+                        <!-- Chat LLM Settings Card -->
+                        <div class="settings-card">
+                            <div class="settings-header d-flex align-items-center" data-bs-toggle="collapse" data-bs-target="#chatSettingsCollapse">
+                                <div class="d-flex align-items-center">
+                                    <div class="settings-header-icon">💬</div>
+                                    <h6 class="settings-section-title">Chat LLM Settings</h6>
+                                </div>
+                                <button class="collapse-toggle" aria-expanded="false">▼</button>
+                            </div>
+                            <div class="collapse" id="chatSettingsCollapse">
+                                <div class="settings-grid">
+                                    <div class="form-group">
+                                        <label class="form-label">LLM Backend</label>
+                                        <div class="btn-group btn-group-sm mb-2" role="group">
+                                            <input type="radio" class="btn-check" name="llmBackend" id="ollamaLLMBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="ollamaLLMBtn">Ollama</label>
+                                            <input type="radio" class="btn-check" name="llmBackend" id="openrouterLLMBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="openrouterLLMBtn">OpenRouter</label>
+                                            <input type="radio" class="btn-check" name="llmBackend" id="openaiAPILLMBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="openaiAPILLMBtn">OpenAIAPI (local)</label>
+                                            <input type="radio" class="btn-check" name="llmBackend" id="openaiLLMBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="openaiLLMBtn">OpenAI (ChatGPT)</label>
+                                            <input type="radio" class="btn-check" name="llmBackend" id="anthropicLLMBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="anthropicLLMBtn">Anthropic (Claude)</label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" id="baseUrlContainer">
+                                        <label class="form-label">Base URL</label>
+                                        <input type="text" class="form-control" id="backendUrl" placeholder="Enter base URL">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="modelSelect">Model</label>
+                                        <select id="modelSelect" class="form-select">
+                                            <option value="">Loading models...</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Vision Settings Card -->
+                        <div class="settings-card">
+                            <div class="settings-header d-flex align-items-center" data-bs-toggle="collapse" data-bs-target="#visionSettingsCollapse">
+                                <div class="d-flex align-items-center">
+                                    <div class="settings-header-icon">👁️</div>
+                                    <h6 class="settings-section-title">Vision Settings</h6>
+                                </div>
+                                <button class="collapse-toggle" aria-expanded="false">▼</button>
+                            </div>
+                            <div class="collapse" id="visionSettingsCollapse">
+                                <div class="settings-grid">
+                                    <div class="form-group">
+                                        <label class="form-label">Vision Backend</label>
+                                        <div class="btn-group btn-group-sm mb-2" role="group">
+                                            <input type="radio" class="btn-check" name="visionBackendSelect" id="ollamaVisionBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="ollamaVisionBtn">Ollama</label>
+                                            <input type="radio" class="btn-check" name="visionBackendSelect" id="openrouterVisionBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="openrouterVisionBtn">OpenRouter</label>
+                                            <input type="radio" class="btn-check" name="visionBackendSelect" id="openaiAPIVisionBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="openaiAPIVisionBtn">OpenAIAPI (local)</label>
+                                            <input type="radio" class="btn-check" name="visionBackendSelect" id="openaiVisionBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="openaiVisionBtn">OpenAI (ChatGPT)</label>
+                                            <input type="radio" class="btn-check" name="visionBackendSelect" id="anthropicVisionBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="anthropicVisionBtn">Anthropic (Claude)</label>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" id="visionBaseUrlContainer">
+                                        <label class="form-label">Base URL</label>
+                                        <input type="text" class="form-control" id="visionBackendUrl" placeholder="Enter base URL">
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" for="visionModel">Vision Model</label>
+                                        <select id="visionModel" class="form-select">
+                                            <option value="">Loading models...</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- API Key Management Card -->
+                        <div class="settings-card">
+                            <div class="settings-header d-flex align-items-center" data-bs-toggle="collapse" data-bs-target="#apiKeyCollapse">
+                                <div class="d-flex align-items-center">
+                                    <div class="settings-header-icon">🔑</div>
+                                    <h6 class="settings-section-title">API Key Management</h6>
+                                </div>
+                                <button class="collapse-toggle" aria-expanded="false">▼</button>
+                            </div>
+                            <div class="collapse" id="apiKeyCollapse">
+                                <div class="btn-group btn-group-sm mb-2" role="group">
+                                    <input type="radio" class="btn-check" name="apiKeyBackend" id="ollamaKeyBtn" autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="ollamaKeyBtn">Ollama</label>
+                                    <input type="radio" class="btn-check" name="apiKeyBackend" id="openrouterKeyBtn" autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="openrouterKeyBtn">OpenRouter</label>
+                                    <input type="radio" class="btn-check" name="apiKeyBackend" id="openaiAPIKeyBtn" autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="openaiAPIKeyBtn">OpenAIAPI (local)</label>
+                                    <input type="radio" class="btn-check" name="apiKeyBackend" id="openaiKeyBtn" autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="openaiKeyBtn">OpenAI (ChatGPT)</label>
+                                    <input type="radio" class="btn-check" name="apiKeyBackend" id="anthropicApiBtn" autocomplete="off">
+                                    <label class="btn btn-outline-primary" for="anthropicApiBtn">Anthropic (Claude)</label>
+                                    </div>
+                                <div class="d-flex gap-2">
+                                    <input type="password" id="apiKeyInput" class="form-control" placeholder="Enter API key for selected backend">
+                                    <button id="saveApiKey" type="button" class="basic-button" onclick="saveApiKey()">Save</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Instructions Card -->
+                        <div class="settings-card">
+                            <div class="settings-header d-flex align-items-center" data-bs-toggle="collapse" data-bs-target="#instructionsCollapse">
+                                <div class="d-flex align-items-center">
+                                    <div class="settings-header-icon">📝</div>
+                                    <h6 class="settings-section-title">Response Instructions</h6>
+                                </div>
+                                <button class="collapse-toggle" aria-expanded="false">▼</button>
+                            </div>
+                            <div class="collapse" id="instructionsCollapse">
+                                <div class="settings-content">
+                                    <div class="mb-3">
+                                        <label for="chatInstructions" class="form-label">
+                                            Chat Instructions
+                                            <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should behave in chat conversations. These define the AI's personality and response style."></i>
+                                        </label>
+                                        <textarea class="form-control" id="chatInstructions" rows="3"
+                                            placeholder="Configure the AI's chat personality and behavior"></textarea>
+                                        <div class="form-text">Define how the AI should behave in chat conversations</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="visionInstructions" class="form-label">
+                                            Vision Instructions
+                                            <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should analyze and describe images in the vision tab. These instructions are used when discussing images."></i>
+                                        </label>
+                                        <textarea class="form-control" id="visionInstructions" rows="3"
+                                            placeholder="Configure how the AI should analyze and describe images"></textarea>
+                                        <div class="form-text">Guide how the AI analyzes and describes images</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="captionInstructions" class="form-label">
+                                            Image Caption Instructions
+                                            <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should generate image captions. These instructions are used when clicking the 'Caption' button in the vision tab."></i>
+                                        </label>
+                                        <textarea class="form-control" id="captionInstructions" rows="3"
+                                            placeholder="Configure how the AI should generate image captions"></textarea>
+                                        <div class="form-text">Define how the AI generates captions for images</div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label for="promptInstructions" class="form-label">
+                                            Enhance Prompt Instructions
+                                            <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should format text-to-image prompts when generating images. These instructions are used when clicking 'Enhance Prompt' in the generate tab."></i>
+                                        </label>
+                                        <textarea class="form-control" id="promptInstructions" rows="3" 
+                                            placeholder="How do you want the AI to Enhance your prompt?"></textarea>
+                                        <div class="form-text">These instructions guide how the AI formats and enhances prompts. </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Footer Buttons -->
+                <div class="modal-footer">
+                    <button type="button" class="basic-button danger" onclick="event.preventDefault(); resetSettings()">Reset to Defaults</button>
+                    <div class="save-buttons">
+                        <button type="button" class="basic-button" onclick="event.preventDefault(); saveSettings().then(() => closeSettingsModal())">Save and Close</button>
+                        <button type="button" class="basic-button" onclick="event.preventDefault(); saveSettings()">Save and Refresh</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
