@@ -37,7 +37,7 @@ The MagicPrompt Extension provides a simple and intuitive way directly in SwarmU
 * Includes vision support, allowing you to upload images, generate captions, and use images as context for prompts.
 * Compatible with other SwarmUI extensions.
 
-## Vision Support
+### Vision Support
 The extension now includes comprehensive vision support, allowing you to interact with language models using images. Key features include:
 
 * **Image Upload**: Upload images directly within the MagicPrompt tab using drag and drop or the upload button.
@@ -66,7 +66,7 @@ Follow these steps to start making magic:
 
 1. Open your SwarmUI instance and navigate to the `Server -> Extensions` tab.
 2. Find the extension on the list. 
-![MagicPromptTab](https://github.com/HartsyAI/SwarmUI-MagicPromptExtension/blob/main/Images/Screenshots/install.png?raw=true)
+![Install](https://github.com/HartsyAI/SwarmUI-MagicPromptExtension/blob/main/Images/Screenshots/install.png?raw=true)
 3. Click the install button and let it download.
 4. Follow the prompts to restart Swarm. 
 5. Configure the extension as described in the [Configuration](#configuration) section.
@@ -90,7 +90,7 @@ The MagicPrompt Extension can be used with any LLM model that works on the suppo
 > do NOT have to add any payment details. They have several models available for free. (rate limits apply)
 
 1. Open the MagicPrompt tab and click the settings button. This will open the settings modal and you will see all of the options. If you are using Ollama with the default localhost and port You can just start by selecting a model for both the chat and vision settings.
-![MagicPromptTab](https://github.com/HartsyAI/SwarmUI-MagicPromptExtension/blob/main/Images/Screenshots/settings.png?raw=true)
+![Settings](https://github.com/HartsyAI/SwarmUI-MagicPromptExtension/blob/main/Images/Screenshots/settings.png?raw=true)
 
 **Chat Settings:**
 * **Chat Backend:** Choose your preferred LLM backend (e.g., Ollama, OpenAI, Anthropic).
@@ -126,7 +126,7 @@ The MagicPrompt Extension can be used with any LLM model that works on the suppo
 The MagicPrompt Extension offers two primary ways to enhance your prompts and interact with your LLM: through the "Enhance Prompt" and "Magic Vision" button in the Generate tab and the Chat and Vision sections in the dedicated "MagicPrompt" tab.
 
 **Generate Tab:**
-![MagicPromptTab](https://github.com/HartsyAI/SwarmUI-MagicPromptExtension/blob/main/Images/Screenshots/buttons.png?raw=true)
+![Buttons](https://github.com/HartsyAI/SwarmUI-MagicPromptExtension/blob/main/Images/Screenshots/buttons.png?raw=true)
 
 1. **Enter your prompt:** In the Generate tab, type your initial prompt in the positive prompt box.
 2. **Use MagicPrompt:** Click the "Enhance Prompt" button to rewrite and enhance your prompt based on your configured settings. This will rewrite your prompt and replace it in the prompt box.
@@ -139,12 +139,12 @@ The MagicPrompt Extension offers two primary ways to enhance your prompts and in
 1. **Access the tab:** Click on the tab and you will see how it is seperated into two sections. The Vision and Chat sections.
 2. **Chat:**
 **Select a mode:** Choose between "Prompt", "Chat", and "Vision" modes using the radio buttons at the top. This will switch between your instructions and the vision mode will use the selected vision model.
-![MagicPromptTab](https://github.com/HartsyAI/SwarmUI-MagicPromptExtension/blob/main/Images/Screenshots/chat_mode.png?raw=true)
+![Chat](https://github.com/HartsyAI/SwarmUI-MagicPromptExtension/blob/main/Images/Screenshots/chat_mode.png?raw=true)
 **Chat LLM:** Chat with your AI of choice however you want. Just note it has no memory and is not intended to be a comprehensive chat app.
 3. **Vision:**
 **Upload Image:** Click the upload button and choose an image. If you have the auto caption toggle enabled it will start to make the API call using the caption instructions.
 **Select an action:** Choose an action from the available buttons:
-![MagicPromptTab](https://github.com/HartsyAI/SwarmUI-MagicPromptExtension/blob/main/Images/Screenshots/image_action_buttons.png?raw=true)
+![Vision](https://github.com/HartsyAI/SwarmUI-MagicPromptExtension/blob/main/Images/Screenshots/image_action_buttons.png?raw=true)
     * **Caption:** Generate a caption for the image.
     * **Use as Init:** Use the image as an initial image for your generation.
     * **Send to Prompt:** Send a description of the image to the prompt box.
@@ -154,7 +154,7 @@ The MagicPrompt Extension offers two primary ways to enhance your prompts and in
 **Settings:**
 
 * Access the settings by clicking the settings button within the MagicPrompt tab to configure various options, including the LLM backend, API keys, and vision settings.
-![MagicPromptTab](https://github.com/HartsyAI/SwarmUI-MagicPromptExtension/blob/main/Images/Screenshots/settings.png?raw=true)
+![Settings](https://github.com/HartsyAI/SwarmUI-MagicPromptExtension/blob/main/Images/Screenshots/settings.png?raw=true)
 
 ## Troubleshooting
 -----------------
