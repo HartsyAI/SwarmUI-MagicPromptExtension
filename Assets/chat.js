@@ -303,19 +303,16 @@ if (!window.ChatHandler) {
         async regenerateMessage(messageId) {
             const message = this.findMessage(messageId);
             if (!message) return;
-            
             // Find associated user message
             const userMessage = this.findPrecedingUserMessage(messageId);
             if (!userMessage) {
                 showError('Cannot find original message to regenerate');
                 return;
             }
-            
             // Remove only the assistant's message
             const assistantMessageElement = this.elements.chatMessages
                 .querySelector(`.chat-message[data-message-id="${messageId}"]`);
             assistantMessageElement?.remove();
-            
             // Remove the assistant message from the messages array
             const messageIndex = this.messages.findIndex(m => m.id === parseInt(messageId));
             if (messageIndex !== -1) {
@@ -323,18 +320,17 @@ if (!window.ChatHandler) {
             }
 
             try {
-                // Create request payload using the original user message
+                const checkedButton = document.querySelector('input[name="chat_mode"]:checked');
+                const chatMode = checkedButton
+                    ? document.querySelector(`label[for="${checkedButton.id}"]`).textContent.toLowerCase() : null;
                 const payload = MP.RequestBuilder.createRequestPayload(
                     userMessage.content,
                     null,
-                    'chat'
+                    chatMode
                 );
-                
-                // Show typing indicator
+                // Show typing indicator animation
                 this.elements.loadingIndicator.style.display = 'block';
                 this.isTyping = true;
-                
-                // Make API request
                 const response = await MP.APIClient.makeRequest(payload);
                 if (response.success && response.response) {
                     this.appendMessage('assistant', response.response);
