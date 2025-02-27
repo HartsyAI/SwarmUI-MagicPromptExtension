@@ -21,6 +21,7 @@ namespace Hartsy.Extensions.MagicPromptExtension
         {
             // Register API endpoints so they can be used in the frontend
             MagicPromptAPI.Register();
+            
         }
     }
 }   
