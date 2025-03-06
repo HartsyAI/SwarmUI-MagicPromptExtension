@@ -445,25 +445,20 @@ async function loadSettings() {
  */
 async function saveSettings() {
     try {
-        // Prevent any form submission
-        //event?.preventDefault();
-
-        const backendMap = {
-            'ollamaLLMBtn': 'ollama',
-            'openrouterLLMBtn': 'openrouter',
-            'openaiLLMBtn': 'openai',
-            'openaiAPILLMBtn': 'openaiapi',
-            'anthropicLLMBtn': 'anthropic'
-        };
-        // Get selected chat and vision backends
+        // Get the selected backends
         const selectedChatBackend = document.querySelector('input[name="llmBackend"]:checked');
         const selectedVisionBackend = document.querySelector('input[name="visionBackendSelect"]:checked');
-        // Get current backend identifiers
-        const chatBackendId = selectedChatBackend ? backendMap[selectedChatBackend.id] : MP.settings.backend;
-        const visionBackendId = selectedVisionBackend ?
-            backendMap[selectedVisionBackend.id.replace('VisionBtn', 'LLMBtn')] :
+        
+        // Extract backend IDs
+        const chatBackendId = selectedChatBackend ? 
+            selectedChatBackend.id.replace('LLMBtn', '').toLowerCase() : 
+            MP.settings.backend;
+            
+        const visionBackendId = selectedVisionBackend ? 
+            selectedVisionBackend.id.replace('VisionBtn', '').toLowerCase() : 
             MP.settings.visionbackend;
-        // Create settings object. Match exact structure expected by C# DefaultSettings
+
+        // Create settings object matching exact structure expected by C# DefaultSettings
         const settings = {
             // Core settings
             backend: chatBackendId,
@@ -474,12 +469,12 @@ async function saveSettings() {
                 ...MP.settings.backends,
                 [chatBackendId]: {
                     ...MP.settings.backends[chatBackendId],
-                    baseurl: document.getElementById('backendUrl')?.value || MP.settings.backends[chatBackendId]?.baseurl,
+                    baseurl: document.getElementById('backendBaseUrl')?.value || MP.settings.backends[chatBackendId]?.baseurl,
                     unloadmodel: document.getElementById('unload_models_toggle')?.checked,
                 },
                 [visionBackendId]: {
                     ...MP.settings.backends[visionBackendId],
-                    baseurl: document.getElementById('visionBackendUrl')?.value || MP.settings.backends[visionBackendId]?.baseurl,
+                    baseurl: document.getElementById('visionBackendBaseUrl')?.value || MP.settings.backends[visionBackendId]?.baseurl,
                     unloadmodel: document.getElementById('unload_models_toggle')?.checked,
                 }
             },
@@ -490,29 +485,34 @@ async function saveSettings() {
                 prompt: document.getElementById('promptInstructions')?.value || MP.settings.instructions?.prompt || ''
             }
         };
-        const response = await new Promise((resolve, reject) => {
-            genericRequest('SaveSettingsAsync', { settings }, data => {
-                if (data.success) {
-                    resolve(data);
-                } else {
-                    reject(new Error(data.error || 'Failed to save settings'));
-                }
-            });
-        });
-        // Update local settings with a deep copy
-        MP.settings = JSON.parse(JSON.stringify(response.settings));
+
+        // Update MP.settings with the new values
+        MP.settings = settings;
         
-        // Refresh models and show any errors
-        try {
-            await fetchModels();
-        } catch (error) {
-            console.error('Failed to fetch models:', error);
-            showError(`Failed to fetch models: ${error.message}`);
-        }
+        // Create request payload with settings properly wrapped
+        const payload = { settings };
+
+        // Use genericRequest which will automatically add session_id
+        genericRequest('SaveSettingsAsync', payload, 
+            (data) => {
+                if (data.success) {
+                    showMessage('success', 'Settings saved successfully');
+                } else {
+                    showMessage('error', `Failed to save settings: ${data.error || 'Unknown error'}`);
+                    showError(`Failed to save settings: ${data.error || 'Unknown error'}`);
+                }
+            },
+            0,  // depth
+            (error) => {
+                console.error('Error saving settings:', error);
+                showMessage('error', `Error saving settings: ${error}`);
+                showError(`Error saving settings: ${error}`);
+            }
+        );
     } catch (error) {
-        console.error('Settings save error:', error);
-        showError(`Failed to save settings: ${error.message}`);
-        throw error;
+        console.error('Error in saveSettings:', error);
+        showMessage('error', `Error in saveSettings: ${error.message}`);
+        showError(`Error in saveSettings: ${error.message}`);
     }
 }
 
@@ -667,56 +667,85 @@ function setModelIfExists(select, modelId) {
  */
 function initSettingsModal() {
     try {
-        // Set backend radios
-        const backendMap = {
-            'ollama': 'ollamaLLMBtn',
-            'openrouter': 'openrouterLLMBtn',
-            'openai': 'openaiLLMBtn',
-            'openaiapi': 'openaiAPILLMBtn',
-            'anthropic': 'anthropicLLMBtn'
-        };
-        // Set chat backend
-        const chatBackendBtn = document.getElementById(backendMap[MP.settings.backend]);
-        if (chatBackendBtn) {
-            chatBackendBtn.checked = true;
-            // Update base URL visibility for chat backend
-            updateBaseUrlVisibility(MP.settings.backend, false);
+        // Select the correct backend based on current settings
+        const currentBackend = MP.settings.backend || 'ollama';
+        const currentBackendRadio = document.getElementById(`${currentBackend}LLMBtn`);
+        if (currentBackendRadio) {
+            currentBackendRadio.checked = true;
         }
-        // Set vision backend
-        const visionBackendBtn = document.getElementById(backendMap[MP.settings.visionbackend]?.replace('LLM', 'Vision'));
-        if (visionBackendBtn) {
-            visionBackendBtn.checked = true;
-            // Update base URL visibility for vision backend
-            updateBaseUrlVisibility(MP.settings.visionbackend, true);
-        }
-        // Set URLs
-        const backendUrl = document.getElementById('backendUrl');
+        updateBaseUrlVisibility(currentBackend, false);
+
+        // Set base URL if needed
+        const backendUrl = document.getElementById('backendBaseUrl');
         if (backendUrl) {
-            const currentBackend = MP.settings.backend;
             backendUrl.value = MP.settings.backends[currentBackend]?.baseurl || '';
         }
-        const visionBackendUrl = document.getElementById('visionBackendUrl');
+
+        // Select the correct vision backend based on current settings
+        const currentVisionBackend = MP.settings.visionbackend || 'ollama';
+        const currentVisionBackendRadio = document.getElementById(`${currentVisionBackend}VisionBtn`);
+        if (currentVisionBackendRadio) {
+            currentVisionBackendRadio.checked = true;
+        }
+        updateBaseUrlVisibility(currentVisionBackend, true);
+
+        // Set vision base URL if needed
+        const visionBackendUrl = document.getElementById('visionBackendBaseUrl');
         if (visionBackendUrl) {
-            const currentVisionBackend = MP.settings.visionbackend;
             visionBackendUrl.value = MP.settings.backends[currentVisionBackend]?.baseurl || '';
         }
-        // Set API Key section
-        const apiKeyBackendMap = {
-            'ollama': 'ollamaKeyBtn',
-            'openrouter': 'openrouterKeyBtn',
-            'openai': 'openaiKeyBtn',
-            'openaiapi': 'openaiAPIKeyBtn',
-            'anthropic': 'anthropicApiBtn'
-        };
+        
+        // Update API Key section - now managed in User tab
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        if (apiKeyInput) {
+            apiKeyInput.value = '';
+            apiKeyInput.placeholder = 'API keys are now managed in the User tab';
+            apiKeyInput.disabled = true;
+        }
+        
+        // Add information about API key management to the settings modal
+        const apiKeySection = document.querySelector('.tab-pane[data-tab="api-key"]');
+        if (apiKeySection) {
+            // Check if notice box already exists to avoid duplicates
+            if (!apiKeySection.querySelector('.notice-box')) {
+                const infoDiv = document.createElement('div');
+                infoDiv.className = 'notice-box';
+                infoDiv.innerHTML = `
+                    <p><strong>API Keys are now managed in the User tab</strong></p>
+                    <p>To set your API keys:</p>
+                    <ol>
+                        <li>Go to the User tab</li>
+                        <li>Find the API Keys section</li>
+                        <li>Enter your keys for each service you want to use</li>
+                    </ol>
+                    <p>This provides better security and consistent key management across SwarmUI.</p>
+                `;
+                apiKeySection.prepend(infoDiv);
+            }
+            
+            // Disable all API key radio buttons
+            const apiKeyRadios = apiKeySection.querySelectorAll('input[name="apiKeyBackend"]');
+            apiKeyRadios.forEach(radio => {
+                radio.disabled = true;
+            });
+            
+            // Disable the save button
+            const saveKeyButton = apiKeySection.querySelector('button[onclick="saveApiKey()"]');
+            if (saveKeyButton) {
+                saveKeyButton.textContent = 'API Keys Moved to User Tab';
+                saveKeyButton.classList.add('disabled');
+            }
+        }
+
         // Ensure instructions object exists
-        //if (!MP.settings.instructions) {
-        //    MP.settings.instructions = {
-        //        chat: '',
-        //        vision: '',
-        //        caption: '',
-        //        prompt: ''
-        //    };
-        //}
+        if (!MP.settings.instructions) {
+            MP.settings.instructions = {
+                chat: '',
+                vision: '',
+                caption: '',
+                prompt: ''
+            };
+        }
         // Set Instructions
         const chatInstructions = document.getElementById('chatInstructions');
         if (chatInstructions) {
@@ -734,11 +763,7 @@ function initSettingsModal() {
         if (promptInstructions) {
             promptInstructions.value = MP.settings.instructions.prompt || '';
         }
-        // Add event listener for API key backend selection
-        const apiKeyBackendRadios = document.querySelectorAll('input[name="apiKeyBackend"]');
-        apiKeyBackendRadios.forEach(radio => {
-            radio.addEventListener('change', updateApiKeyInput);
-        });
+        
         fetchModels();
         // Add event listeners for backend selection
         const backendRadios = document.querySelectorAll('input[name="llmBackend"]');
@@ -758,12 +783,11 @@ function initSettingsModal() {
             });
         });
 
-        // Set API Key section
-        const apiKeyInput = document.getElementById('apiKeyInput');
-        if (apiKeyInput) {
-            apiKeyInput.value = MP.settings.backends?.[MP.settings.backend]?.apikey || '';
-            apiKeyInput.placeholder = `Enter ${MP.settings.backend} API key`;
-        }
+        // Remove API key backend selection event listeners - API keys are now managed in User tab
+        const apiKeyRadios = document.querySelectorAll('input[name="apiKeyBackend"]');
+        apiKeyRadios.forEach(radio => {
+            radio.removeEventListener('change', updateApiKeyInput);
+        });
     } catch (error) {
         console.error('Error initializing settings modal:', error);
         showError('Error initializing settings modal:', error);
@@ -775,57 +799,16 @@ function initSettingsModal() {
  * @private
  */
 function updateApiKeyInput() {
-    const selectedBackend = document.querySelector('input[name="apiKeyBackend"]:checked');
-    if (!selectedBackend) return;
-
-    const backendToProvider = {
-        'ollamaKeyBtn': 'ollama',
-        'openrouterKeyBtn': 'openrouter',
-        'openaiKeyBtn': 'openai',
-        'openaiAPIKeyBtn': 'openaiapi',
-        'anthropicApiBtn': 'anthropic'
-    };
-    const provider = backendToProvider[selectedBackend.id];
-    const apiKeyInput = document.getElementById('apiKeyInput');
-    if (apiKeyInput && provider) {
-        apiKeyInput.value = MP.settings.backends?.[provider]?.apikey || '';
-        apiKeyInput.placeholder = `Enter ${provider} API key`;
-    }
+    console.log("API keys are now managed in the User tab");
 }
 
 /**
  * Saves API key for the selected backend
  */
 function saveApiKey() {
-    const selectedBackend = document.querySelector('input[name="apiKeyBackend"]:checked');
-    const apiKeyInput = document.getElementById('apiKeyInput');
-    if (!selectedBackend || !apiKeyInput) {
-        showMessage('error', 'Please select a backend and enter an API key');
-        showError('Please select a backend and enter an API key if applicible')
-        return;
-    }
-    const backendToProvider = {
-        'ollamaKeyBtn': 'ollama',
-        'openrouterKeyBtn': 'openrouter',
-        'openaiKeyBtn': 'openai',
-        'openaiAPIKeyBtn': 'openaiapi',
-        'anthropicApiBtn': 'anthropic'
-    };
-    const provider = backendToProvider[selectedBackend.id];
-    if (!provider) {
-        showError('Invalid backend selected')
-        console.Error('Invalid backend selected')
-        return;
-    }
-    // Update the settings object
-    if (!MP.settings.backends) {
-        MP.settings.backends = {};
-    }
-    if (!MP.settings.backends[provider]) {
-        MP.settings.backends[provider] = {};
-    }
-    MP.settings.backends[provider].apikey = apiKeyInput.value;
-    saveSettings();
+    // Display message to direct users to the User tab for API key management
+    showMessage('info', 'API keys are now managed in the User tab under API Keys section.');
+    showError('API keys are now managed in the User tab instead of here. Please go to the User tab to set your API keys.')
 }
 
 /**
@@ -838,6 +821,76 @@ function closeSettingsModal() {
         $('body').removeClass('modal-open').css('padding-right', '');
     } catch (error) {
         console.error('Error closing settings modal:', error);
+    }
+}
+
+/**
+ * Opens the User tab and navigates to the API Keys section
+ * Used when a user needs to set API keys after receiving an error
+ */
+function openUserApiKeysSettings() {
+    try {
+        // Close settings modal if open
+        closeSettingsModal();
+        
+        // Send a message to the parent window to open the User tab
+        window.parent.postMessage({
+            type: 'navigate',
+            target: 'user',
+            section: 'api-keys'
+        }, '*');
+        
+        showMessage('info', 'Navigating to User tab API Keys section...');
+    } catch (error) {
+        console.error('Error navigating to User API Keys section:', error);
+        showMessage('error', 'Could not navigate to User tab automatically. Please go to the User tab and select API Keys section manually.');
+    }
+}
+
+/**
+ * Handles API key errors by showing a helpful message and providing options
+ * @param {string} service - The service name (e.g., 'OpenAI', 'Anthropic')
+ * @param {string} error - The error message
+ */
+function handleApiKeyError(service, error) {
+    const errorEl = document.createElement('div');
+    errorEl.className = 'api-key-error';
+    errorEl.innerHTML = `
+        <p><strong>${service} API Key Error:</strong> ${error}</p>
+        <p>API keys are now managed in the User tab under API Keys section.</p>
+        <button class="btn btn-primary" onclick="openUserApiKeysSettings()">Go to API Keys Settings</button>
+    `;
+    
+    // Show the error in the UI
+    const chatContainer = document.querySelector('.chat-container');
+    if (chatContainer) {
+        chatContainer.appendChild(errorEl);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+    
+    // Also log to console
+    console.error(`${service} API Key Error:`, error);
+}
+
+/**
+ * Shows an error message that also includes API key help if the error contains API key related keywords
+ * @param {string} message - The error message
+ */
+function showChatError(message) {
+    showError(message);
+    
+    // Check if error is API key related
+    const apiKeyErrors = {
+        'OpenAI API Key not found': 'openai',
+        'Anthropic API Key not found': 'anthropic',
+        'OpenRouter API Key not found': 'openrouter'
+    };
+    
+    for (const [errorText, service] of Object.entries(apiKeyErrors)) {
+        if (message.includes(errorText)) {
+            handleApiKeyError(service.charAt(0).toUpperCase() + service.slice(1), message);
+            return;
+        }
     }
 }
 

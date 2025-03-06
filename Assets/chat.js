@@ -405,3 +405,23 @@ window.regenerate = function(button) {
         chatHandler.regenerateMessage(messageId);
     }
 };
+
+/**
+ * Handler for chat submission
+ */
+async function handleChatResponse(response) {
+    try {
+        if (!response.success) {
+            stopTypingAnimation();
+            if (response.error && (response.error.includes("API Key not found") || response.error.includes("API key"))) {
+                showChatError(response.error);
+            } else {
+                showError(response.error || 'Unknown error');
+            }
+            aiTyping = false;
+            return;
+        }
+    } catch (error) {
+        console.error('Error handling chat response:', error);
+    }
+}

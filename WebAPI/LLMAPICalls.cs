@@ -5,6 +5,8 @@ using SwarmUI.WebAPI;
 using System.Net.Http;
 using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
 using static Hartsy.Extensions.MagicPromptExtension.BackendSchema;
+using SwarmUI.Core;
+using SwarmUI.Accounts;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
 {
@@ -14,17 +16,17 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
 
         /// <summary>Fetches available models from the LLM API endpoint.</summary>
         /// <returns>A JSON object containing the models or an error message.</returns>
-        public static async Task<JObject> GetModelsAsync()
+        public static async Task<JObject> GetModelsAsync(Session session = null)
         {
             try
             {
                 // Get current settings
-                JObject session = await SessionSettings.GetSettingsAsync();
-                if (!session["success"].Value<bool>())
+                JObject sessionSettings = await SessionSettings.GetSettingsAsync();
+                if (!sessionSettings["success"].Value<bool>())
                 {
-                    return CreateErrorResponse(session["error"]?.ToString() ?? "Failed to load settings");
+                    return CreateErrorResponse(sessionSettings["error"]?.ToString() ?? "Failed to load settings");
                 }
-                JObject settings = session["settings"] as JObject;
+                JObject settings = sessionSettings["settings"] as JObject;
                 if (settings == null)
                 {
                     return CreateErrorResponse("Configuration not found. Please check your settings.");
@@ -32,13 +34,13 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 string chatBackend = settings["backend"]?.ToString()?.ToLower() ?? "openrouter";
                 string visionBackend = settings["visionbackend"]?.ToString()?.ToLower() ?? "openrouter";
                 // Get chat models
-                List<ModelData> chatModels = await GetModelsForBackend(chatBackend, settings);
+                List<ModelData> chatModels = await GetModelsForBackend(chatBackend, settings, false, session);
                 if (chatModels == null || !chatModels.Any())
                 {
                     return CreateErrorResponse($"Failed to fetch models for {chatBackend}. Please check your API key and try again.");
                 }
                 // Get vision models
-                List<ModelData> visionmodels = await GetModelsForBackend(visionBackend, settings, true);
+                List<ModelData> visionmodels = await GetModelsForBackend(visionBackend, settings, true, session);
                 if (visionmodels == null || !visionmodels.Any())
                 {
                     return CreateErrorResponse($"Failed to fetch vision models for {visionBackend}. Please check your API key and try again.");
@@ -67,7 +69,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             }
         }
 
-        private static async Task<List<ModelData>> GetModelsForBackend(string backend, JObject settings, bool isVision = false)
+        private static async Task<List<ModelData>> GetModelsForBackend(string backend, JObject settings, bool isVision = false, Session session = null)
         {
             // Handle Anthropic's hardcoded models
             if (backend == "anthropic")
@@ -110,7 +112,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             }
             // Create and configure request
             HttpRequestMessage request = new(HttpMethod.Get, endpoint);
-            if (!ConfigureRequest(request, backend, settings, out string error))
+            if (!ConfigureRequest(request, backend, settings, session, out string error))
             {
                 Logs.Error(error);
                 return [];
@@ -194,9 +196,10 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
         /// <param name="request">The HTTP request to configure.</param>
         /// <param name="backend">The LLM backend being used.</param>
         /// <param name="settings">The current settings object.</param>
+        /// <param name="session">The current user session.</param>
         /// <param name="error">Output parameter for any error message.</param>
         /// <returns>True if configuration was successful, false otherwise.</returns>
-        private static bool ConfigureRequest(HttpRequestMessage request, string backend, JObject settings, out string error)
+        private static bool ConfigureRequest(HttpRequestMessage request, string backend, JObject settings, Session session, out string error)
         {
             error = string.Empty;
             JObject backends = settings["backends"] as JObject;
@@ -208,12 +211,12 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
             switch (backend)
             {
                 case "openai":
-                    string apiKey = backends["openai"]?["apikey"]?.ToString();
+                    string apiKey = session.User.GetGenericData("openai_api", "key") ?? Program.Sessions.GenericSharedUser.GetGenericData("openai_api", "key");
                     if (string.IsNullOrEmpty(apiKey))
                     {
                         error = "OpenAI API Key not found. To configure:\n" +
-                            "1. Get your API key from OpenAI\n" +
-                            "2. Add it in the extension settings\n" +
+                            "1. Go to the User tab\n" +
+                            "2. Add your OpenAI API key in the API Keys section\n" +
                             "3. Save your changes\n\n" +
                             "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
                         return false;
@@ -221,12 +224,13 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     request.Headers.Add("Authorization", $"Bearer {apiKey}");
                     break;
                 case "openrouter":
-                    string openRouterKey = backends["openrouter"]?["apikey"]?.ToString();
+                    string openRouterKey = session?.User?.GetGenericData("openrouter_api", "key") ?? Program.Sessions.GenericSharedUser.GetGenericData("openrouter_api", "key");
+                    Logs.Info($"OpenRouter API Key from User: {openRouterKey}");
                     if (string.IsNullOrEmpty(openRouterKey))
                     {
                         error = "OpenRouter API Key not found. To configure:\n" +
-                            "1. Get your API key from OpenRouter\n" +
-                            "2. Add it in the extension settings\n" +
+                            "1. Go to the User tab\n" +
+                            "2. Add your OpenRouter API key in the API Keys section\n" +
                             "3. Save your changes\n\n" +
                             "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
                         return false;
@@ -236,12 +240,12 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     request.Headers.Add("X-Title", "SwarmUI-MagicPromptExtension");
                     break;
                 case "anthropic":
-                    string anthropicKey = backends["anthropic"]?["apikey"]?.ToString();
+                    string anthropicKey = session?.User?.GetGenericData("anthropic_api", "key") ?? Program.Sessions.GenericSharedUser.GetGenericData("anthropic_api", "key");
                     if (string.IsNullOrEmpty(anthropicKey))
                     {
                         error = "Anthropic API Key not found. To configure:\n" +
-                            "1. Get your API key from Anthropic\n" +
-                            "2. Add it in the extension settings\n" +
+                            "1. Go to the User tab\n" +
+                            "2. Add your Anthropic API key in the API Keys section\n" +
                             "3. Save your changes\n\n" +
                             "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
                         return false;
@@ -250,8 +254,18 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     request.Headers.Add("anthropic-version", "2023-06-01");
                     break;
                 case "openaiapi":
+                    string openaiApiKey = session?.User?.GetGenericData("openaiapi_local", "key") ?? Program.Sessions.GenericSharedUser.GetGenericData("openaiapi_local", "key");
+                    if (!string.IsNullOrEmpty(openaiApiKey))
+                    {
+                        request.Headers.Add("Authorization", $"Bearer {openaiApiKey}");
+                    }
+                    break;
                 case "ollama":
-                    // No additional headers needed
+                    string ollamaKey = session?.User?.GetGenericData("ollama_api", "key") ?? Program.Sessions.GenericSharedUser.GetGenericData("ollama_api", "key");
+                    if (!string.IsNullOrEmpty(ollamaKey))
+                    {
+                        request.Headers.Add("Authorization", $"Bearer {ollamaKey}");
+                    }
                     break;
                 default:
                     error = $"Unsupported LLM backend: {backend}\n" +
@@ -276,7 +290,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 "error": string
             }
             """)]
-        public static async Task<JObject> PhoneHomeAsync(JObject requestData)
+        public static async Task<JObject> PhoneHomeAsync(JObject requestData, Session session = null)
         {
             try
             {
@@ -328,14 +342,14 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     return CreateErrorResponse("Message content or model ID is missing");
                 }
                 // Get current settings
-                JObject session = await SessionSettings.GetSettingsAsync();
-                if (!session["success"].Value<bool>())
+                JObject sessionSettings = await SessionSettings.GetSettingsAsync();
+                if (!sessionSettings["success"].Value<bool>())
                 {
-                    Logs.Error(session["error"]?.ToString() ?? "Failed to load settings");
-                    return CreateErrorResponse(session["error"]?.ToString() ?? "Failed to load settings");
+                    Logs.Error(sessionSettings["error"]?.ToString() ?? "Failed to load settings");
+                    return CreateErrorResponse(sessionSettings["error"]?.ToString() ?? "Failed to load settings");
                 }
 
-                JObject settings = session["settings"] as JObject;
+                JObject settings = sessionSettings["settings"] as JObject;
                 if (settings == null)
                 {
                     Logs.Error("Configuration not found. Please check your settings.");
@@ -365,7 +379,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 messageContent.Text = $"{messageContent.Text}";
                 // Create request with proper headers
                 using HttpRequestMessage request = new(HttpMethod.Post, endpoint);
-                if (!ConfigureRequest(request, backend, settings, out string error))
+                if (!ConfigureRequest(request, backend, settings, session, out string error))
                 {
                     Logs.Error(error);
                     return CreateErrorResponse(error);
