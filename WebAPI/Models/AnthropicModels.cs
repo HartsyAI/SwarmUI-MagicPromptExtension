@@ -1,4 +1,4 @@
-﻿using Newtonsoft.Json;
+using Newtonsoft.Json;
 using System.Text.Json.Serialization;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
@@ -62,5 +62,29 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI.Models
     {
         [JsonProperty("id")]
         public string Id { get; set; }
+        
+        [JsonProperty("name")]
+        public string Name { get; set; }
+        
+        [JsonProperty("description")]
+        public string Description { get; set; }
+        
+        [JsonProperty("max_tokens")]
+        public int MaxTokens { get; set; }
+        
+        [JsonProperty("created")]
+        public long Created { get; set; }
+        
+        [JsonProperty("updated")]
+        public long Updated { get; set; }
+        
+        [JsonProperty("capabilities")]
+        public AnthropicModelCapabilities Capabilities { get; set; }
+    }
+    
+    public class AnthropicModelCapabilities
+    {
+        [JsonProperty("vision")]
+        public bool Vision { get; set; }
     }
 }

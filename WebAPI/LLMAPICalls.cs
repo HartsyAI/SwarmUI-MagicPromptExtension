@@ -71,38 +71,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
 
         private static async Task<List<ModelData>> GetModelsForBackend(string backend, JObject settings, bool isVision = false, Session session = null)
         {
-            // Handle Anthropic's hardcoded models
-            if (backend == "anthropic")
-            {
-                List<ModelData> models =
-                    [
-                        new ModelData
-                        {
-                            Name = "Claude 3.5 Sonnet",
-                            Version = "20241022",
-                            Model = "claude-3-5-sonnet-20241022",
-                        },
-                        new ModelData
-                        {
-                            Name = "Claude 3 Opus",
-                            Version = "20240229",
-                            Model = "claude-3-opus-20240229",
-                        },
-                        new ModelData
-                        {
-                            Name = "Claude 3 Sonnet",
-                            Version = "20240229",
-                            Model = "claude-3-sonnet-20240229",
-                        },
-                        new ModelData
-                        {
-                            Name = "Claude 3 Haiku",
-                            Version = "20240307",
-                            Model = "claude-3-haiku-20240229",
-                        }
-                    ];
-                return models;
-            }
             // Get endpoint based on backend
             string endpoint = GetEndpoint(backend, settings, "models");
             if (string.IsNullOrEmpty(endpoint))
@@ -117,6 +85,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 Logs.Error(error);
                 return [];
             }
+            
             // Send request and handle response
             try
             {
@@ -124,7 +93,7 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                 if (response.IsSuccessStatusCode)
                 {
                     string jsonString = await response.Content.ReadAsStringAsync();
-                    List<ModelData> models = DeserializeModels(jsonString, backend);
+                    List<ModelData> models = MagicPromptAPI.DeserializeModels(jsonString, backend);
                     return models ?? [];
                 }
                 else
@@ -174,6 +143,15 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     "anthropic" => endpoints["messages"]?.ToString() ?? endpoints["chat"]?.ToString(),// Anthropic uses the messages endpoint for both chat and vision
                     "ollama" => endpoints["vision"]?.ToString() ?? endpoints["chat"]?.ToString(),// Ollama has a dedicated vision endpoint
                     _ => endpoints[endpointType]?.ToString() ?? endpoints["chat"]?.ToString(),
+                };
+            }
+            // Special handling for models endpoints
+            else if (endpointType == "models")
+            {
+                endpoint = backend.ToLower() switch
+                {
+                    "anthropic" => "/v1/models", // Anthropic has a standardized models endpoint now
+                    _ => endpoints[endpointType]?.ToString()
                 };
             }
             else

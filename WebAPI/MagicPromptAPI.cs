@@ -226,12 +226,18 @@ public class MagicPromptAPI
                     Logs.Error("OpenAI response data is null");
                     return null;
                 case "anthropic":
-                    AnthropicResponse anthropicResponse = null;
-                    return anthropicResponse.Data.Select(x => new ModelData
+                    AnthropicResponse anthropicResponse = JsonConvert.DeserializeObject<AnthropicResponse>(responseContent);
+                    if (anthropicResponse?.Data != null)
                     {
-                        Model = x.Id,
-                        Name = x.Id
-                    }).ToList();
+                        return anthropicResponse.Data.Select(x => new ModelData
+                        {
+                            Model = x.Id,
+                            Name = GetFriendlyNameFromId(x.Id),
+                            Version = ExtractVersionFromId(x.Id)
+                        }).ToList();
+                    }
+                    Logs.Error("Anthropic response data is null");
+                    return null;
                 case "openaiapi":
                     OpenAIAPIResponse openAIAPIResponse = JsonConvert.DeserializeObject<OpenAIAPIResponse>(responseContent);
                     if (openAIAPIResponse?.Data != null)
@@ -283,6 +289,39 @@ public class MagicPromptAPI
             Logs.Error($"Error deserializing models: {ex.Message}");
             return null;
         }
+    }
+
+    /// <summary>Extracts a version string from a model ID, if present</summary>
+    private static string ExtractVersionFromId(string id)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(id, @"\d{8}$");
+        return match.Success ? match.Value : "";
+    }
+
+    /// <summary>Creates a user-friendly name from a model ID</summary>
+    private static string GetFriendlyNameFromId(string modelId)
+    {
+        // Extract the model name from ID patterns like "claude-3-opus-20240229"
+        string baseName = modelId.Split('/').Last();
+        
+        // Remove version numbers and dates when possible
+        var match = System.Text.RegularExpressions.Regex.Match(baseName, @"^(.*?)[-:]?\d{8}$");
+        if (match.Success && match.Groups.Count > 1)
+        {
+            baseName = match.Groups[1].Value;
+        }
+        
+        // Convert kebab-case to Title Case with proper spacing
+        string[] parts = baseName.Split('-');
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (parts[i].Length > 0)
+            {
+                parts[i] = char.ToUpper(parts[i][0]) + parts[i].Substring(1);
+            }
+        }
+        
+        return string.Join(" ", parts);
     }
 
     /// <summary>Creates a JSON object for a success, includes models and config data.</summary>
