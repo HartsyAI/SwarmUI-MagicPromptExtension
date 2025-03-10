@@ -560,55 +560,93 @@ async function fetchModels() {
         console.error('Model select elements not found');
         return;
     }
+    
+    // Create a request semaphore
+    if (MP.fetchingModels) {
+        console.log('Models already being fetched, waiting for current request to complete');
+        return MP.fetchingModelsPromise;
+    }
+    
     try {
-        // Clear existing options
-        modelSelect.innerHTML = '';
-        visionModelSelect.innerHTML = '';
-        // Add default options
-        const defaultOption = new Option('-- Select a model --', '');
-        modelSelect.add(defaultOption.cloneNode(true));
-        visionModelSelect.add(defaultOption.cloneNode(true));
-        // Fetch models for both backends
-        const response = await new Promise((resolve, reject) => {
-            genericRequest('GetModelsAsync', {}, data => {
-                if (data.success) {
-                    resolve(data);
-                } else {
-                    reject(new Error(data.error || 'Failed to fetch models'));
-                }
+        // Set semaphore
+        MP.fetchingModels = true;
+        MP.fetchingModelsPromise = (async () => {
+            // Clear existing options
+            modelSelect.innerHTML = '';
+            visionModelSelect.innerHTML = '';
+            // Add default options
+            const defaultOption = new Option('-- Select a model --', '');
+            modelSelect.add(defaultOption.cloneNode(true));
+            visionModelSelect.add(defaultOption.cloneNode(true));
+            
+            // Fetch models for both backends
+            const response = await new Promise((resolve, reject) => {
+                genericRequest('GetModelsAsync', {}, data => {
+                    if (data.success) {
+                        resolve(data);
+                    } else {
+                        reject(new Error(data.error || 'Failed to fetch models'));
+                    }
+                });
             });
-        });
-        // Add chat models
-        if (Array.isArray(response.models)) {
-            response.models.forEach(model => {
-                if (!model.model) {
-                    console.warn('Chat model missing model field:', model);
-                    return;
+            
+            // Add chat models
+            if (Array.isArray(response.models)) {
+                const existingModelIds = new Set();
+                
+                response.models.forEach(model => {
+                    if (!model.model || existingModelIds.has(model.model)) {
+                        if (!model.model) {
+                            console.warn('Chat model missing model field:', model);
+                        }
+                        return;
+                    }
+                    
+                    existingModelIds.add(model.model);
+                    const option = new Option(model.name || model.model, model.model);
+                    modelSelect.add(option);
+                });
+                
+                if (MP.settings.model) {
+                    setModelIfExists(modelSelect, MP.settings.model);
                 }
-                const option = new Option(model.name || model.model, model.model);
-                modelSelect.add(option);
-            });
-            if (MP.settings.model) {
-                setModelIfExists(modelSelect, MP.settings.model);
             }
-        }
-        // Add vision models
-        if (Array.isArray(response.visionmodels)) {
-            response.visionmodels.forEach(model => {
-                if (!model.model) {
-                    console.warn('Vision model missing model field:', model);
-                    return;
+            
+            // Add vision models
+            if (Array.isArray(response.visionmodels)) {
+                const existingVisionModelIds = new Set();
+                
+                response.visionmodels.forEach(model => {
+                    if (!model.model || existingVisionModelIds.has(model.model)) {
+                        if (!model.model) {
+                            console.warn('Vision model missing model field:', model);
+                        }
+                        return;
+                    }
+                    
+                    existingVisionModelIds.add(model.model);
+                    const option = new Option(model.name || model.model, model.model);
+                    visionModelSelect.add(option);
+                });
+                
+                if (MP.settings.visionmodel) {
+                    setModelIfExists(visionModelSelect, MP.settings.visionmodel);
                 }
-                const option = new Option(model.name || model.model, model.model);
-                visionModelSelect.add(option);
-            });
-            if (MP.settings.visionmodel) {
-                setModelIfExists(visionModelSelect, MP.settings.visionmodel);
             }
-        }
+            
+            console.log(`Models populated - Chat: ${modelSelect.options.length - 1}, Vision: ${visionModelSelect.options.length - 1}`);
+        })();
+        
+        await MP.fetchingModelsPromise;
+        return MP.fetchingModelsPromise;
     } catch (error) {
         console.error('Error fetching models:', error);
         showError(`Failed to fetch models: ${error.message}`);
+        return Promise.reject(error);
+    } finally {
+        // Clear semaphore
+        MP.fetchingModels = false;
+        MP.fetchingModelsPromise = null;
     }
 }
 
