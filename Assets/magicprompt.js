@@ -578,7 +578,6 @@ async function fetchModels() {
             const defaultOption = new Option('-- Select a model --', '');
             modelSelect.add(defaultOption.cloneNode(true));
             visionModelSelect.add(defaultOption.cloneNode(true));
-            
             // Fetch models for both backends
             const response = await new Promise((resolve, reject) => {
                 genericRequest('GetModelsAsync', {}, data => {
@@ -589,7 +588,6 @@ async function fetchModels() {
                     }
                 });
             });
-            
             // Add chat models
             if (Array.isArray(response.models)) {
                 const existingModelIds = new Set();
@@ -606,12 +604,10 @@ async function fetchModels() {
                     const option = new Option(model.name || model.model, model.model);
                     modelSelect.add(option);
                 });
-                
                 if (MP.settings.model) {
                     setModelIfExists(modelSelect, MP.settings.model);
                 }
             }
-            
             // Add vision models
             if (Array.isArray(response.visionmodels)) {
                 const existingVisionModelIds = new Set();
@@ -628,7 +624,6 @@ async function fetchModels() {
                     const option = new Option(model.name || model.model, model.model);
                     visionModelSelect.add(option);
                 });
-                
                 if (MP.settings.visionmodel) {
                     setModelIfExists(visionModelSelect, MP.settings.visionmodel);
                 }
@@ -732,48 +727,6 @@ function initSettingsModal() {
         if (visionBackendUrl) {
             visionBackendUrl.value = MP.settings.backends[currentVisionBackend]?.baseurl || '';
         }
-        
-        // Update API Key section - now managed in User tab
-        const apiKeyInput = document.getElementById('apiKeyInput');
-        if (apiKeyInput) {
-            apiKeyInput.value = '';
-            apiKeyInput.placeholder = 'API keys are now managed in the User tab';
-            apiKeyInput.disabled = true;
-        }
-        
-        // Add information about API key management to the settings modal
-        const apiKeySection = document.querySelector('.tab-pane[data-tab="api-key"]');
-        if (apiKeySection) {
-            // Check if notice box already exists to avoid duplicates
-            if (!apiKeySection.querySelector('.notice-box')) {
-                const infoDiv = document.createElement('div');
-                infoDiv.className = 'notice-box';
-                infoDiv.innerHTML = `
-                    <p><strong>API Keys are now managed in the User tab</strong></p>
-                    <p>To set your API keys:</p>
-                    <ol>
-                        <li>Go to the User tab</li>
-                        <li>Find the API Keys section</li>
-                        <li>Enter your keys for each service you want to use</li>
-                    </ol>
-                    <p>This provides better security and consistent key management across SwarmUI.</p>
-                `;
-                apiKeySection.prepend(infoDiv);
-            }
-            
-            // Disable all API key radio buttons
-            const apiKeyRadios = apiKeySection.querySelectorAll('input[name="apiKeyBackend"]');
-            apiKeyRadios.forEach(radio => {
-                radio.disabled = true;
-            });
-            
-            // Disable the save button
-            const saveKeyButton = apiKeySection.querySelector('button[onclick="saveApiKey()"]');
-            if (saveKeyButton) {
-                saveKeyButton.textContent = 'API Keys Moved to User Tab';
-                saveKeyButton.classList.add('disabled');
-            }
-        }
 
         // Ensure instructions object exists
         if (!MP.settings.instructions) {
@@ -821,32 +774,10 @@ function initSettingsModal() {
             });
         });
 
-        // Remove API key backend selection event listeners - API keys are now managed in User tab
-        const apiKeyRadios = document.querySelectorAll('input[name="apiKeyBackend"]');
-        apiKeyRadios.forEach(radio => {
-            radio.removeEventListener('change', updateApiKeyInput);
-        });
     } catch (error) {
         console.error('Error initializing settings modal:', error);
         showError('Error initializing settings modal:', error);
     }
-}
-
-/**
- * Updates API key input when backend selection changes
- * @private
- */
-function updateApiKeyInput() {
-    console.log("API keys are now managed in the User tab");
-}
-
-/**
- * Saves API key for the selected backend
- */
-function saveApiKey() {
-    // Display message to direct users to the User tab for API key management
-    showMessage('info', 'API keys are now managed in the User tab under API Keys section.');
-    showError('API keys are now managed in the User tab instead of here. Please go to the User tab to set your API keys.')
 }
 
 /**
@@ -859,76 +790,6 @@ function closeSettingsModal() {
         $('body').removeClass('modal-open').css('padding-right', '');
     } catch (error) {
         console.error('Error closing settings modal:', error);
-    }
-}
-
-/**
- * Opens the User tab and navigates to the API Keys section
- * Used when a user needs to set API keys after receiving an error
- */
-function openUserApiKeysSettings() {
-    try {
-        // Close settings modal if open
-        closeSettingsModal();
-        
-        // Send a message to the parent window to open the User tab
-        window.parent.postMessage({
-            type: 'navigate',
-            target: 'user',
-            section: 'api-keys'
-        }, '*');
-        
-        showMessage('info', 'Navigating to User tab API Keys section...');
-    } catch (error) {
-        console.error('Error navigating to User API Keys section:', error);
-        showMessage('error', 'Could not navigate to User tab automatically. Please go to the User tab and select API Keys section manually.');
-    }
-}
-
-/**
- * Handles API key errors by showing a helpful message and providing options
- * @param {string} service - The service name (e.g., 'OpenAI', 'Anthropic')
- * @param {string} error - The error message
- */
-function handleApiKeyError(service, error) {
-    const errorEl = document.createElement('div');
-    errorEl.className = 'api-key-error';
-    errorEl.innerHTML = `
-        <p><strong>${service} API Key Error:</strong> ${error}</p>
-        <p>API keys are now managed in the User tab under API Keys section.</p>
-        <button class="btn btn-primary" onclick="openUserApiKeysSettings()">Go to API Keys Settings</button>
-    `;
-    
-    // Show the error in the UI
-    const chatContainer = document.querySelector('.chat-container');
-    if (chatContainer) {
-        chatContainer.appendChild(errorEl);
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }
-    
-    // Also log to console
-    console.error(`${service} API Key Error:`, error);
-}
-
-/**
- * Shows an error message that also includes API key help if the error contains API key related keywords
- * @param {string} message - The error message
- */
-function showChatError(message) {
-    showError(message);
-    
-    // Check if error is API key related
-    const apiKeyErrors = {
-        'OpenAI API Key not found': 'openai',
-        'Anthropic API Key not found': 'anthropic',
-        'OpenRouter API Key not found': 'openrouter'
-    };
-    
-    for (const [errorText, service] of Object.entries(apiKeyErrors)) {
-        if (message.includes(errorText)) {
-            handleApiKeyError(service.charAt(0).toUpperCase() + service.slice(1), message);
-            return;
-        }
     }
 }
 
