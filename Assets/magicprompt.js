@@ -15,6 +15,7 @@ if (!window.MP) {
             model: '',
             visionbackend: 'ollama',
             visionmodel: '',
+            linkChatAndVisionModels: true, // Default to true
             // Backend configurations
             backends: {
                 ollama: {
@@ -45,7 +46,8 @@ if (!window.MP) {
                 anthropic: {
                     baseurl: 'https://api.anthropic.com',
                     endpoints: {
-                        chat: 'v1/messages'
+                        chat: 'v1/messages',
+                        models: 'v1/models'
                     },
                     apikey: ''
                 },
@@ -150,6 +152,9 @@ if (!window.MP) {
             },
 
             getModelId(isVision) {
+                if (MP.settings.linkChatAndVisionModels) {
+                    return document.getElementById('modelSelect')?.value;
+                }
                 const modelId = isVision
                     ? document.getElementById('visionModel')?.value
                     : document.getElementById('modelSelect')?.value;
@@ -411,6 +416,7 @@ async function loadSettings() {
                         model: serverSettings.model || '',
                         visionbackend: serverSettings.visionbackend || serverSettings.backend || 'ollama',
                         visionmodel: serverSettings.visionmodel || '',
+                        linkChatAndVisionModels: serverSettings.linkChatAndVisionModels !== false, // Default to true
                         // Backends - merge using spread operator which does a "deep merge" of two objects
                         backends: {
                             ...MP.settings.backends,  // Start with default endpoints
@@ -445,6 +451,9 @@ async function loadSettings() {
  */
 async function saveSettings() {
     try {
+        // Check if models are linked
+        const isLinked = document.getElementById('linkModelsToggle')?.checked;
+        
         // Get the selected backends
         const selectedChatBackend = document.querySelector('input[name="llmBackend"]:checked');
         const selectedVisionBackend = document.querySelector('input[name="visionBackendSelect"]:checked');
@@ -454,27 +463,42 @@ async function saveSettings() {
             selectedChatBackend.id.replace('LLMBtn', '').toLowerCase() : 
             MP.settings.backend;
             
-        const visionBackendId = selectedVisionBackend ? 
-            selectedVisionBackend.id.replace('VisionBtn', '').toLowerCase() : 
-            MP.settings.visionbackend;
+        // If linked, use chat backend for vision too
+        const visionBackendId = isLinked ? chatBackendId : 
+            (selectedVisionBackend ? 
+                selectedVisionBackend.id.replace('VisionBtn', '').toLowerCase() : 
+                MP.settings.visionbackend);
+
+        // Get models and use chat model for vision if linked
+        const chatModel = document.getElementById('modelSelect')?.value || MP.settings.model;
+        const visionModel = isLinked ? chatModel : 
+            (document.getElementById('visionModel')?.value || MP.settings.visionmodel);
+
+        // Get base URLs
+        const chatBaseUrl = document.getElementById('backendBaseUrl')?.value || 
+            MP.settings.backends[chatBackendId]?.baseurl;
+        const visionBaseUrl = isLinked ? chatBaseUrl : 
+            (document.getElementById('visionBackendBaseUrl')?.value || 
+             MP.settings.backends[visionBackendId]?.baseurl);
 
         // Create settings object matching exact structure expected by C# DefaultSettings
         const settings = {
             // Core settings
             backend: chatBackendId,
-            model: document.getElementById('modelSelect')?.value || MP.settings.model,
+            model: chatModel,
             visionbackend: visionBackendId,
-            visionmodel: document.getElementById('visionModel')?.value || MP.settings.visionmodel,
+            visionmodel: visionModel,
+            linkChatAndVisionModels: isLinked,
             backends: {
                 ...MP.settings.backends,
                 [chatBackendId]: {
                     ...MP.settings.backends[chatBackendId],
-                    baseurl: document.getElementById('backendBaseUrl')?.value || MP.settings.backends[chatBackendId]?.baseurl,
+                    baseurl: chatBaseUrl,
                     unloadmodel: document.getElementById('unload_models_toggle')?.checked,
                 },
                 [visionBackendId]: {
                     ...MP.settings.backends[visionBackendId],
-                    baseurl: document.getElementById('visionBackendBaseUrl')?.value || MP.settings.backends[visionBackendId]?.baseurl,
+                    baseurl: visionBaseUrl,
                     unloadmodel: document.getElementById('unload_models_toggle')?.checked,
                 }
             },
@@ -490,28 +514,28 @@ async function saveSettings() {
         MP.settings = settings;
         
         // Create request payload with settings properly wrapped
-        const payload = { settings };
+        const payload = { 
+            settings 
+        };
 
         // Use genericRequest which will automatically add session_id
         genericRequest('SaveSettingsAsync', payload, 
             (data) => {
                 if (data.success) {
-                    showMessage('success', 'Settings saved successfully');
+                    console.log('Settings saved successfully');
                 } else {
-                    showMessage('error', `Failed to save settings: ${data.error || 'Unknown error'}`);
+                    console.error(`Failed to save settings: ${data.error || 'Unknown error'}`);
                     showError(`Failed to save settings: ${data.error || 'Unknown error'}`);
                 }
             },
             0,  // depth
             (error) => {
                 console.error('Error saving settings:', error);
-                showMessage('error', `Error saving settings: ${error}`);
                 showError(`Error saving settings: ${error}`);
             }
         );
     } catch (error) {
         console.error('Error in saveSettings:', error);
-        showMessage('error', `Error in saveSettings: ${error.message}`);
         showError(`Error in saveSettings: ${error.message}`);
     }
 }
@@ -550,7 +574,7 @@ async function resetSettings() {
 
 /**
  * Fetches available models from the backend
- * @returns {Promise<void>}
+ * @returns {Promise<Object>} Object containing the fetched models
  */
 async function fetchModels() {
     const modelSelect = document.getElementById("modelSelect");
@@ -558,7 +582,7 @@ async function fetchModels() {
 
     if (!modelSelect || !visionModelSelect) {
         console.error('Model select elements not found');
-        return;
+        return Promise.reject(new Error('Model select elements not found'));
     }
     
     // Create a request semaphore
@@ -571,16 +595,28 @@ async function fetchModels() {
         // Set semaphore
         MP.fetchingModels = true;
         MP.fetchingModelsPromise = (async () => {
-            // Clear existing options
-            modelSelect.innerHTML = '';
-            visionModelSelect.innerHTML = '';
-            // Add default options
-            const defaultOption = new Option('-- Select a model --', '');
-            modelSelect.add(defaultOption.cloneNode(true));
-            visionModelSelect.add(defaultOption.cloneNode(true));
+            // Use the currently set backend values from MP.settings
+            // These will be temporarily set by the radio button handlers
+            const chatBackendId = MP.settings.backend || 'ollama';
+            const visionBackendId = MP.settings.visionbackend || 'ollama';
+            
+            console.log(`Fetching models for chat backend: ${chatBackendId}, vision backend: ${visionBackendId}`);
+            
             // Fetch models for both backends
             const response = await new Promise((resolve, reject) => {
-                genericRequest('GetModelsAsync', {}, data => {
+                genericRequest('GetModelsAsync', {
+                    backend: chatBackendId,
+                    visionbackend: visionBackendId,
+                    // Include baseUrl information if available
+                    backends: {
+                        [chatBackendId]: {
+                            baseurl: MP.settings.backends[chatBackendId]?.baseurl || '',
+                        },
+                        [visionBackendId]: {
+                            baseurl: MP.settings.backends[visionBackendId]?.baseurl || '',
+                        }
+                    }
+                }, data => {
                     if (data.success) {
                         resolve(data);
                     } else {
@@ -592,6 +628,14 @@ async function fetchModels() {
             if (Array.isArray(response.models)) {
                 const existingModelIds = new Set();
                 
+                // Clear existing options if not already cleared
+                if (modelSelect.options.length > 0) {
+                    modelSelect.innerHTML = '';
+                    // Add default option
+                    const defaultOption = new Option('-- Select a model --', '');
+                    modelSelect.add(defaultOption);
+                }
+                
                 response.models.forEach(model => {
                     if (!model.model || existingModelIds.has(model.model)) {
                         if (!model.model) {
@@ -602,7 +646,7 @@ async function fetchModels() {
                     
                     existingModelIds.add(model.model);
                     const option = new Option(model.name || model.model, model.model);
-                    modelSelect.add(option);
+                    modelSelect.add(option.cloneNode(true));
                 });
                 if (MP.settings.model) {
                     setModelIfExists(modelSelect, MP.settings.model);
@@ -611,6 +655,14 @@ async function fetchModels() {
             // Add vision models
             if (Array.isArray(response.visionmodels)) {
                 const existingVisionModelIds = new Set();
+                
+                // Clear existing options if not already cleared
+                if (visionModelSelect.options.length > 0) {
+                    visionModelSelect.innerHTML = '';
+                    // Add default option
+                    const defaultOption = new Option('-- Select a vision model --', '');
+                    visionModelSelect.add(defaultOption);
+                }
                 
                 response.visionmodels.forEach(model => {
                     if (!model.model || existingVisionModelIds.has(model.model)) {
@@ -630,6 +682,8 @@ async function fetchModels() {
             }
             
             console.log(`Models populated - Chat: ${modelSelect.options.length - 1}, Vision: ${visionModelSelect.options.length - 1}`);
+            // Return the fetched data for debugging
+            return response;
         })();
         
         await MP.fetchingModelsPromise;
@@ -700,6 +754,16 @@ function setModelIfExists(select, modelId) {
  */
 function initSettingsModal() {
     try {
+        // Initialize the linked models state
+        const isLinked = MP.settings.linkChatAndVisionModels !== false; // Default to true if not set
+        
+        // Set the toggle to match the stored setting
+        const linkModelsToggle = document.getElementById('linkModelsToggle');
+        if (linkModelsToggle) {
+            linkModelsToggle.checked = isLinked;
+            updateLinkedModelsUI(isLinked);
+        }
+        
         // Select the correct backend based on current settings
         const currentBackend = MP.settings.backend || 'ollama';
         const currentBackendRadio = document.getElementById(`${currentBackend}LLMBtn`);
@@ -727,7 +791,7 @@ function initSettingsModal() {
         if (visionBackendUrl) {
             visionBackendUrl.value = MP.settings.backends[currentVisionBackend]?.baseurl || '';
         }
-
+        
         // Ensure instructions object exists
         if (!MP.settings.instructions) {
             MP.settings.instructions = {
@@ -755,45 +819,333 @@ function initSettingsModal() {
             promptInstructions.value = MP.settings.instructions.prompt || '';
         }
         
-        fetchModels();
+        // Show loading state before fetching models
+        const modelSelect = document.getElementById("modelSelect");
+        const visionModelSelect = document.getElementById("visionModel");
+        
+        // Use the already defined backend variables from above
+        if (modelSelect) {
+            modelSelect.innerHTML = '';
+            const loadingOption = new Option(`Loading ${currentBackend} models...`, '');
+            loadingOption.disabled = true;
+            modelSelect.add(loadingOption);
+        }
+        if (visionModelSelect) {
+            visionModelSelect.innerHTML = '';
+            const loadingOption = new Option(`Loading ${currentVisionBackend} vision models...`, '');
+            loadingOption.disabled = true;
+            visionModelSelect.add(loadingOption);
+        }
+        
+        // Fetch models for the selected backends
+        console.log(`Fetching initial models for ${currentBackend} and ${currentVisionBackend} backends`);
+        fetchModels().then(result => {
+            console.log('Initial models loaded:', result);
+        }).catch(error => {
+            console.error('Error loading initial models:', error);
+            // Show error options if there's a failure
+            if (modelSelect) {
+                modelSelect.innerHTML = '';
+                const errorOption = new Option('Error loading models', '');
+                errorOption.disabled = true;
+                modelSelect.add(errorOption);
+            }
+            if (visionModelSelect) {
+                visionModelSelect.innerHTML = '';
+                const errorOption = new Option('Error loading vision models', '');
+                errorOption.disabled = true;
+                visionModelSelect.add(errorOption);
+            }
+        });
+        
         // Add event listeners for backend selection
-        const backendRadios = document.querySelectorAll('input[name="llmBackend"]');
-        backendRadios.forEach(radio => {
-            radio.addEventListener('change', (e) => {
+        const linkingBackendRadios = document.querySelectorAll('input[name="llmBackend"]');
+        linkingBackendRadios.forEach(radio => {
+            radio.addEventListener('change', async (e) => {
                 const backend = e.target.id.replace('LLMBtn', '').toLowerCase();
+                
+                // Update UI for base URL input
                 updateBaseUrlVisibility(backend, false);
+                
+                // Show loading state in the model dropdown
+                const modelSelect = document.getElementById("modelSelect");
+                if (modelSelect) {
+                    modelSelect.innerHTML = '';
+                    const loadingOption = new Option(`Loading ${backend} models...`, '');
+                    loadingOption.disabled = true;
+                    modelSelect.add(loadingOption);
+                }
+                
+                try {
+                    // Get current base URL
+                    const backendUrl = document.getElementById('backendBaseUrl');
+                    const baseUrl = backendUrl ? backendUrl.value : '';
+                    
+                    // Update MP.settings directly
+                    MP.settings.backend = backend;
+                    
+                    // Update baseurl if needed
+                    if (baseUrl && needsBaseUrl(backend)) {
+                        if (!MP.settings.backends[backend]) {
+                            MP.settings.backends[backend] = {};
+                        }
+                        MP.settings.backends[backend].baseurl = baseUrl;
+                    }
+                    
+                    // Save settings with minimal data (just backend)
+                    const payload = { 
+                        settings: {
+                            backend: backend,
+                            backends: {
+                                ...MP.settings.backends
+                            }
+                        } 
+                    };
+
+                    // Use genericRequest which will automatically add session_id
+                    await new Promise((resolve, reject) => {
+                        genericRequest('SaveSettingsAsync', payload, 
+                            (data) => {
+                                if (data.success) {
+                                    resolve();
+                                } else {
+                                    reject(new Error(data.error || 'Failed to save settings'));
+                                }
+                            },
+                            0,
+                            (error) => reject(error)
+                        );
+                    });
+                    
+                    // Fetch models with the updated settings
+                    await fetchModels();
+                } catch (error) {
+                    console.error(`Error fetching models for ${backend}:`, error);
+                    if (modelSelect) {
+                        modelSelect.innerHTML = '';
+                        const errorOption = new Option(`Error loading models: ${error.message}`, '');
+                        errorOption.disabled = true;
+                        modelSelect.add(errorOption);
+                    }
+                }
             });
         });
 
         // Add event listeners for vision backend selection
         const visionBackendRadios = document.querySelectorAll('input[name="visionBackendSelect"]');
         visionBackendRadios.forEach(radio => {
-            radio.addEventListener('change', (e) => {
+            radio.addEventListener('change', async (e) => {
                 const backend = e.target.id.replace('VisionBtn', '').toLowerCase();
+                
+                // Update UI for base URL input
                 updateBaseUrlVisibility(backend, true);
+                
+                // Show loading state in the model dropdown
+                const modelSelect = document.getElementById("visionModel");
+                if (modelSelect) {
+                    modelSelect.innerHTML = '';
+                    const loadingOption = new Option(`Loading ${backend} vision models...`, '');
+                    loadingOption.disabled = true;
+                    modelSelect.add(loadingOption);
+                }
+                
+                try {
+                    // Get current base URL
+                    const backendUrl = document.getElementById('visionBackendBaseUrl');
+                    const baseUrl = backendUrl ? backendUrl.value : '';
+                    
+                    // Update MP.settings directly
+                    MP.settings.visionbackend = backend;
+                    
+                    // Update baseurl if needed
+                    if (baseUrl && needsBaseUrl(backend)) {
+                        if (!MP.settings.backends[backend]) {
+                            MP.settings.backends[backend] = {};
+                        }
+                        MP.settings.backends[backend].baseurl = baseUrl;
+                    }
+                    
+                    // Save settings with minimal data (just vision backend)
+                    const payload = { 
+                        settings: {
+                            visionbackend: backend,
+                            backends: {
+                                ...MP.settings.backends
+                            }
+                        } 
+                    };
+                    
+                    // Save settings
+                    console.log(`Saving vision backend settings for ${backend}`);
+                    
+                    // Use genericRequest which will automatically add session_id
+                    await new Promise((resolve, reject) => {
+                        genericRequest('SaveSettingsAsync', payload, 
+                            (data) => {
+                                if (data.success) {
+                                    resolve();
+                                } else {
+                                    reject(new Error(data.error || 'Failed to save settings'));
+                                }
+                            },
+                            0,
+                            (error) => reject(error)
+                        );
+                    });
+                    
+                    // Fetch models with the updated settings
+                    await fetchModels();
+                } catch (error) {
+                    console.error(`Error fetching vision models for ${backend}:`, error);
+                    if (modelSelect) {
+                        modelSelect.innerHTML = '';
+                        const errorOption = new Option(`Error loading vision models: ${error.message}`, '');
+                        errorOption.disabled = true;
+                        modelSelect.add(errorOption);
+                    }
+                }
             });
         });
-
+        
+        // Add event listeners for base URL changes
+        const backendBaseUrl = document.getElementById('backendBaseUrl');
+        if (backendBaseUrl) {
+            backendBaseUrl.addEventListener('input', function(e) {
+                // Sync with vision URL when linked
+                if (document.getElementById('linkModelsToggle')?.checked) {
+                    const visionBackendUrl = document.getElementById('visionBackendBaseUrl');
+                    if (visionBackendUrl) {
+                        visionBackendUrl.value = e.target.value;
+                    }
+                }
+                
+                // Original functionality to update models when URL changes
+                const currentBackend = document.querySelector('input[name="llmBackend"]:checked')?.id.replace('LLMBtn', '').toLowerCase() || MP.settings.backend;
+                if (needsBaseUrl(currentBackend)) {
+                    // Clear and show loading state
+                    const modelSelect = document.getElementById("modelSelect");
+                    if (modelSelect) {
+                        modelSelect.innerHTML = '';
+                        const loadingOption = new Option(`Loading ${currentBackend} models with new URL...`, '');
+                        loadingOption.disabled = true;
+                        modelSelect.add(loadingOption);
+                        
+                        // Temporarily update settings for API call
+                        const originalBaseUrl = MP.settings.backends[currentBackend]?.baseurl;
+                        if (!MP.settings.backends[currentBackend]) {
+                            MP.settings.backends[currentBackend] = {};
+                        }
+                        MP.settings.backends[currentBackend].baseurl = e.target.value;
+                        
+                        // Fetch models with new base URL
+                        console.log(`Fetching models for ${currentBackend} with new base URL: ${e.target.value}`);
+                        fetchModels().then(result => {
+                            console.log(`Models fetched with new base URL:`, result);
+                        }).catch(error => {
+                            console.error(`Error fetching models with new base URL:`, error);
+                            modelSelect.innerHTML = '';
+                            const errorOption = new Option('Error loading models with new URL', '');
+                            errorOption.disabled = true;
+                            modelSelect.add(errorOption);
+                        }).finally(() => {
+                            // Restore original setting if user hasn't saved
+                            MP.settings.backends[currentBackend].baseurl = originalBaseUrl;
+                        });
+                    }
+                }
+            });
+        }
+        
+        // Add event listeners for vision base URL changes
+        const visionBackendUrlInput = document.getElementById('visionBackendBaseUrl');
+        if (visionBackendUrlInput) {
+            visionBackendUrlInput.addEventListener('input', function(e) {
+                const currentVisionBackend = document.querySelector('input[name="visionBackendSelect"]:checked')?.id.replace('VisionBtn', '').toLowerCase() || MP.settings.visionbackend;
+                if (needsBaseUrl(currentVisionBackend)) {
+                    // Clear and show loading state
+                    const visionModelSelect = document.getElementById("visionModel");
+                    if (visionModelSelect) {
+                        visionModelSelect.innerHTML = '';
+                        const loadingOption = new Option(`Loading ${currentVisionBackend} vision models with new URL...`, '');
+                        loadingOption.disabled = true;
+                        visionModelSelect.add(loadingOption);
+                        
+                        // Temporarily update settings for API call
+                        const originalBaseUrl = MP.settings.backends[currentVisionBackend]?.baseurl;
+                        if (!MP.settings.backends[currentVisionBackend]) {
+                            MP.settings.backends[currentVisionBackend] = {};
+                        }
+                        MP.settings.backends[currentVisionBackend].baseurl = e.target.value;
+                        
+                        // Fetch models with new base URL
+                        console.log(`Fetching vision models for ${currentVisionBackend} with new base URL: ${e.target.value}`);
+                        fetchModels().then(result => {
+                            console.log(`Vision models fetched with new base URL:`, result);
+                        }).catch(error => {
+                            console.error(`Error fetching vision models with new base URL:`, error);
+                            visionModelSelect.innerHTML = '';
+                            const errorOption = new Option('Error loading vision models with new URL', '');
+                            errorOption.disabled = true;
+                            visionModelSelect.add(errorOption);
+                        }).finally(() => {
+                            // Restore original setting if user hasn't saved
+                            MP.settings.backends[currentVisionBackend].baseurl = originalBaseUrl;
+                        });
+                    }
+                }
+            });
+        }
+        
+        // Add event listener for link models toggle
+        const toggleBtn = document.getElementById('linkModelsToggle');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('change', function(e) {
+                const isLinked = e.target.checked;
+                updateLinkedModelsUI(isLinked);
+            });
+        }
+        
+        // Add event listener for model select change
+        const modelDropdown = document.getElementById("modelSelect");
+        if (modelDropdown) {
+            modelDropdown.addEventListener('change', function(e) {
+                if (document.getElementById('linkModelsToggle')?.checked) {
+                    const visionModelSelect = document.getElementById("visionModel");
+                    if (visionModelSelect) {
+                        visionModelSelect.value = modelDropdown.value;
+                    }
+                }
+            });
+        }
+        
+        // Add event listeners for backend selection
+        const linkBackendRadios = document.querySelectorAll('input[name="llmBackend"]');
+        linkBackendRadios.forEach(radio => {
+            radio.addEventListener('change', function(e) {
+                if (document.getElementById('linkModelsToggle')?.checked) {
+                    const backend = e.target.id.replace('LLMBtn', '').toLowerCase();
+                    const visionBackendRadio = document.getElementById(`${backend}VisionBtn`);
+                    if (visionBackendRadio && !visionBackendRadio.checked) {
+                        visionBackendRadio.checked = true;
+                        const changeEvent = new Event('change');
+                        visionBackendRadio.dispatchEvent(changeEvent);
+                    }
+                }
+            });
+        });
     } catch (error) {
         console.error('Error initializing settings modal:', error);
         showError('Error initializing settings modal:', error);
     }
 }
 
-/**
- * Closes the settings modal
- */
-function closeSettingsModal() {
-    try {
-        $('#settingsModal').modal('hide');
-        $('.modal-backdrop').remove();
-        $('body').removeClass('modal-open').css('padding-right', '');
-    } catch (error) {
-        console.error('Error closing settings modal:', error);
-    }
-}
+// Add initSettingsModal to global scope for other scripts
+window.initSettingsModal = initSettingsModal;
+MP.initSettingsModal = initSettingsModal;
 
-// Initialize on DOM load
+/**
+ * Initializes on DOM load
+ */
 document.addEventListener("DOMContentLoaded", async function () {
     try {
         if (MP.initialized) return;
@@ -828,8 +1180,92 @@ document.addEventListener("DOMContentLoaded", async function () {
                 maxWidthOffset: 300
             });
         }
+        // Update linked models UI
+        const isLinked = MP.settings.linkChatAndVisionModels !== false;
+        updateLinkedModelsUI(isLinked);
     } catch (error) {
         console.error('Error initializing MagicPrompt:', error);
         MP.ResponseHandler.showError('Failed to initialize MagicPrompt: ' + error.message);
     }
 });
+
+function updateLinkedModelsUI(isLinked) {
+    try {
+        // Get UI elements
+        const visionSettingsCard = document.querySelector('.settings-card:nth-child(2)');
+        const chatSettingsCard = document.querySelector('.settings-card:first-child');
+        const visionContent = document.getElementById('visionSettingsCollapse');
+        const chatContent = document.getElementById('chatSettingsCollapse');
+        const visionHeader = visionSettingsCard?.querySelector('.settings-section-title');
+        const chatHeader = chatSettingsCard?.querySelector('.settings-section-title');
+        
+        // If elements don't exist, exit early
+        if (!visionSettingsCard || !chatSettingsCard) return;
+        
+        // Get model selects
+        const chatModelSelect = document.getElementById("modelSelect");
+        const visionModelSelect = document.getElementById("visionModel");
+        
+        if (isLinked) {
+            // Update chat settings header to indicate it's linked
+            if (chatHeader) {
+                chatHeader.textContent = 'Chat and Vision Settings (Linked)';
+            }
+            
+            // Hide vision settings section completely
+            visionSettingsCard.style.display = 'none';
+            
+            // Make chat settings always expanded
+            if (chatContent && !chatContent.classList.contains('show')) {
+                chatContent.classList.add('show');
+                const button = chatSettingsCard.querySelector('.collapse-toggle');
+                if (button) button.setAttribute('aria-expanded', 'true');
+            }
+            
+            // Sync vision model with chat model
+            if (chatModelSelect && visionModelSelect) {
+                visionModelSelect.value = chatModelSelect.value;
+            }
+            
+            // Sync vision backend with chat backend
+            const selectedChatBackend = document.querySelector('input[name="llmBackend"]:checked');
+            if (selectedChatBackend) {
+                const chatBackendId = selectedChatBackend.id.replace('LLMBtn', '').toLowerCase();
+                const visionBackendRadio = document.getElementById(`${chatBackendId}VisionBtn`);
+                if (visionBackendRadio) {
+                    visionBackendRadio.checked = true;
+                }
+            }
+            
+            // Sync base URLs
+            const backendUrl = document.getElementById('backendBaseUrl');
+            const visionBackendUrl = document.getElementById('visionBackendBaseUrl');
+            if (backendUrl && visionBackendUrl) {
+                visionBackendUrl.value = backendUrl.value;
+            }
+        } else {
+            // Restore chat title
+            if (chatHeader) {
+                chatHeader.textContent = 'Chat LLM Settings';
+            }
+            
+            // Show vision settings
+            visionSettingsCard.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error updating linked models UI:', error);
+    }
+}
+
+/**
+ * Closes the settings modal
+ */
+function closeSettingsModal() {
+    try {
+        $('#settingsModal').modal('hide');
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open').css('padding-right', '');
+    } catch (error) {
+        console.error('Error closing settings modal:', error);
+    }
+}

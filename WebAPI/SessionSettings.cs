@@ -46,7 +46,8 @@ public class SessionSettings : MagicPromptAPI
             ["baseurl"] = "https://api.anthropic.com",
             ["endpoints"] = new JObject
             {
-                ["chat"] = "v1/messages"
+                ["chat"] = "v1/messages",
+                ["models"] = "v1/models"
             }
         },
         ["openrouter"] = new JObject

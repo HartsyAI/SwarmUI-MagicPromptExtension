@@ -203,7 +203,6 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI
                     break;
                 case "openrouter":
                     string openRouterKey = session?.User?.GetGenericData("openrouter_api", "key") ?? Program.Sessions.GenericSharedUser.GetGenericData("openrouter_api", "key");
-                    Logs.Info($"OpenRouter API Key from User: {openRouterKey}");
                     if (string.IsNullOrEmpty(openRouterKey))
                     {
                         error = "OpenRouter API Key not found. To configure:\n" +
