@@ -6,6 +6,7 @@ using System.Text.Json;
 using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
 using System.Net.Http;
 using Newtonsoft.Json;
+using Microsoft.AspNetCore.Html;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI;
 
@@ -31,7 +32,19 @@ public class MagicPromptAPI
         API.RegisterAPICall(SessionSettings.GetSettingsAsync, false, MagicPromptPermissions.PermReadConfig);
         API.RegisterAPICall(SessionSettings.SaveSettingsAsync, false, MagicPromptPermissions.PermSaveConfig);
         API.RegisterAPICall(SessionSettings.ResetSettingsAsync, false, MagicPromptPermissions.PermResetConfig);
-        API.RegisterAPICall(LLMAPICalls.GetModelsAsync, false, MagicPromptPermissions.PermGetModels);
+        API.RegisterAPICall(LLMAPICalls.GetModelsAsync, true, MagicPromptPermissions.PermGetModels);
+
+        // All key types must be added to the accepted list first
+        string[] keyTypes = ["openai_api", "anthropic_api", "openrouter_api", "openaiapi_local"]; 
+        foreach (string keyType in keyTypes)
+        {
+            BasicAPIFeatures.AcceptedAPIKeyTypes.Add(keyType);
+        }
+        // Register API Key tables for each backend
+        UserUpstreamApiKeys.Register(new("openai_api", "openai", "OpenAI (ChatGPT)", "https://platform.openai.com/api-keys", new HtmlString("To use OpenAI models in SwarmUI (via the MagicPrompt extension), you must set your OpenAI API key.")));
+        UserUpstreamApiKeys.Register(new("anthropic_api", "anthropic", "Anthropic (Claude)", "https://console.anthropic.com/settings/keys", new HtmlString("To use Anthropic models like Claude in SwarmUI (via the MagicPrompt extension), you must set your Anthropic API key.")));
+        UserUpstreamApiKeys.Register(new("openrouter_api", "openrouter", "OpenRouter", "https://openrouter.ai/keys", new HtmlString("To use OpenRouter models in SwarmUI (via the MagicPrompt extension), you must set your OpenRouter API key. OpenRouter gives you access to many different models through a single API.")));
+        UserUpstreamApiKeys.Register(new("openaiapi_local", "openaiapi", "OpenAI API (Local)", "#", new HtmlString("For connecting to local servers that implement the OpenAI API schema (like LM Studio, text-generation-webui, or LocalAI). You may need to provide API keys or connection details depending on your local setup.")));
     }
 
     /// <summary>Makes the JSON response into a structured object and extracts the message content based on the backend type.</summary>
@@ -212,12 +225,18 @@ public class MagicPromptAPI
                     Logs.Error("OpenAI response data is null");
                     return null;
                 case "anthropic":
-                    AnthropicResponse anthropicResponse = null;
-                    return anthropicResponse.Data.Select(x => new ModelData
+                    AnthropicResponse anthropicResponse = JsonConvert.DeserializeObject<AnthropicResponse>(responseContent);
+                    if (anthropicResponse?.Data != null)
                     {
-                        Model = x.Id,
-                        Name = x.Id
-                    }).ToList();
+                        return anthropicResponse.Data.Select(x => new ModelData
+                        {
+                            Model = x.Id,
+                            Name = GetFriendlyNameFromId(x.Id),
+                            Version = ExtractVersionFromId(x.Id)
+                        }).ToList();
+                    }
+                    Logs.Error("Anthropic response data is null");
+                    return null;
                 case "openaiapi":
                     OpenAIAPIResponse openAIAPIResponse = JsonConvert.DeserializeObject<OpenAIAPIResponse>(responseContent);
                     if (openAIAPIResponse?.Data != null)
@@ -269,6 +288,39 @@ public class MagicPromptAPI
             Logs.Error($"Error deserializing models: {ex.Message}");
             return null;
         }
+    }
+
+    /// <summary>Extracts a version string from a model ID, if present</summary>
+    private static string ExtractVersionFromId(string id)
+    {
+        var match = System.Text.RegularExpressions.Regex.Match(id, @"\d{8}$");
+        return match.Success ? match.Value : "";
+    }
+
+    /// <summary>Creates a user-friendly name from a model ID</summary>
+    private static string GetFriendlyNameFromId(string modelId)
+    {
+        // Extract the model name from ID patterns like "claude-3-opus-20240229"
+        string baseName = modelId.Split('/').Last();
+        
+        // Remove version numbers and dates when possible
+        var match = System.Text.RegularExpressions.Regex.Match(baseName, @"^(.*?)[-:]?\d{8}$");
+        if (match.Success && match.Groups.Count > 1)
+        {
+            baseName = match.Groups[1].Value;
+        }
+        
+        // Convert kebab-case to Title Case with proper spacing
+        string[] parts = baseName.Split('-');
+        for (int i = 0; i < parts.Length; i++)
+        {
+            if (parts[i].Length > 0)
+            {
+                parts[i] = char.ToUpper(parts[i][0]) + parts[i].Substring(1);
+            }
+        }
+        
+        return string.Join(" ", parts);
     }
 
     /// <summary>Creates a JSON object for a success, includes models and config data.</summary>

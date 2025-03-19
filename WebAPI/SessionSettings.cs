@@ -30,8 +30,7 @@ public class SessionSettings : MagicPromptAPI
             {
                 ["chat"] = "v1/chat/completions",
                 ["models"] = "/v1/models"
-            },
-            ["apikey"] = ""
+            }
         },
         ["openai"] = new JObject
         {
@@ -40,17 +39,16 @@ public class SessionSettings : MagicPromptAPI
             {
                 ["chat"] = "v1/chat/completions",
                 ["models"] = "v1/models"
-            },
-            ["apikey"] = ""
+            }
         },
         ["anthropic"] = new JObject
         {
             ["baseurl"] = "https://api.anthropic.com",
             ["endpoints"] = new JObject
             {
-                ["chat"] = "v1/messages"
-            },
-            ["apikey"] = ""
+                ["chat"] = "v1/messages",
+                ["models"] = "v1/models"
+            }
         },
         ["openrouter"] = new JObject
         {
@@ -59,8 +57,7 @@ public class SessionSettings : MagicPromptAPI
             {
                 ["chat"] = "/api/v1/chat/completions",
                 ["models"] = "/api/v1/models"
-            },
-            ["apikey"] = ""
+            }
         }
     };
 
@@ -212,6 +209,21 @@ public class SessionSettings : MagicPromptAPI
             newSettings["backends"]["openai"]["baseurl"] = "https://api.openai.com";
             newSettings["backends"]["anthropic"]["baseurl"] = "https://api.anthropic.com";
             newSettings["backends"]["openrouter"]["baseurl"] = "https://openrouter.ai";
+
+            // Don't save API keys in settings as they are now stored in UserUpstreamApiKeys
+            JObject backends = newSettings["backends"] as JObject;
+            if (backends != null)
+            {
+                foreach (var backend in backends.Properties())
+                {
+                    JObject backendObj = backend.Value as JObject;
+                    if (backendObj != null && backendObj["apikey"] != null)
+                    {
+                        backendObj.Remove("apikey");
+                    }
+                }
+            }
+
             Program.Sessions.GenericSharedUser.SaveGenericData(SETTINGS_KEY, SETTINGS_SUBKEY, newSettings.ToString());
             return new JObject
             {

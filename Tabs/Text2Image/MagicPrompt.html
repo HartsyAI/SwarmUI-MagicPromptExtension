@@ -146,6 +146,10 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title translate" id="settingsModalLabel">Settings</h5>
+                    <div class="form-check form-switch me-auto ms-4">
+                        <input class="form-check-input" type="checkbox" role="switch" id="linkModelsToggle" checked>
+                        <label class="form-check-label" for="linkModelsToggle">Link Chat & Vision Settings</label>
+                    </div>
                     <button type="button" class="btn-close translate" aria-label="Close" onclick="closeSettingsModal()"></button>
                 </div>
                 <div class="modal-body">
@@ -230,35 +234,6 @@
                             </div>
                         </div>
 
-                        <!-- API Key Management Card -->
-                        <div class="settings-card">
-                            <div class="settings-header d-flex align-items-center" data-bs-toggle="collapse" data-bs-target="#apiKeyCollapse">
-                                <div class="d-flex align-items-center">
-                                    <div class="settings-header-icon">🔑</div>
-                                    <h6 class="settings-section-title">API Key Management</h6>
-                                </div>
-                                <button class="collapse-toggle" aria-expanded="false">▼</button>
-                            </div>
-                            <div class="collapse" id="apiKeyCollapse">
-                                <div class="btn-group btn-group-sm mb-2" role="group">
-                                    <input type="radio" class="btn-check" name="apiKeyBackend" id="ollamaKeyBtn" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="ollamaKeyBtn">Ollama</label>
-                                    <input type="radio" class="btn-check" name="apiKeyBackend" id="openrouterKeyBtn" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="openrouterKeyBtn">OpenRouter</label>
-                                    <input type="radio" class="btn-check" name="apiKeyBackend" id="openaiAPIKeyBtn" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="openaiAPIKeyBtn">OpenAIAPI (local)</label>
-                                    <input type="radio" class="btn-check" name="apiKeyBackend" id="openaiKeyBtn" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="openaiKeyBtn">OpenAI (ChatGPT)</label>
-                                    <input type="radio" class="btn-check" name="apiKeyBackend" id="anthropicApiBtn" autocomplete="off">
-                                    <label class="btn btn-outline-primary" for="anthropicApiBtn">Anthropic (Claude)</label>
-                                    </div>
-                                <div class="d-flex gap-2">
-                                    <input type="password" id="apiKeyInput" class="form-control" placeholder="Enter API key for selected backend">
-                                    <button id="saveApiKey" type="button" class="basic-button" onclick="saveApiKey()">Save</button>
-                                </div>
-                            </div>
-                        </div>
-
                         <!-- Instructions Card -->
                         <div class="settings-card">
                             <div class="settings-header d-flex align-items-center" data-bs-toggle="collapse" data-bs-target="#instructionsCollapse">
@@ -316,7 +291,6 @@
                     <button type="button" class="basic-button danger" onclick="event.preventDefault(); resetSettings()">Reset to Defaults</button>
                     <div class="save-buttons">
                         <button type="button" class="basic-button" onclick="event.preventDefault(); saveSettings().then(() => closeSettingsModal())">Save and Close</button>
-                        <button type="button" class="basic-button" onclick="event.preventDefault(); saveSettings()">Save and Refresh</button>
                     </div>
                 </div>
             </div>
