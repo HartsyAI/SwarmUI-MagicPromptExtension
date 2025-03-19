@@ -9,10 +9,8 @@ TABLE OF CONTENTS:
    - Headers
    - Buttons 
    - Form Controls
-   - Modal Styles
-   - Loading Animations
-3. Settings Modal Specific Styles
-4. Utility Classes & Animations
+3. Utility Classes & Animations
+4. Prompt Enhancement Buttons
 =========================================================== */
 
 /* 1. CORE LAYOUT & CONTAINER STYLES 
@@ -108,8 +106,7 @@ TABLE OF CONTENTS:
 }
 
 /* Radio Button Base Styles */
-.magicprompt .btn-check + .btn-outline-primary,
-#settingsModal .btn-check + .btn-outline-primary {
+.magicprompt .btn-check + .btn-outline-primary {
     /* Unselected state */
     border: 1px solid var(--shadow);
     background: var(--shadow);
@@ -118,8 +115,7 @@ TABLE OF CONTENTS:
 }
 
 /* Radio Button Selected State */
-.magicprompt .btn-check:checked + .btn-outline-primary,
-#settingsModal .btn-check:checked + .btn-outline-primary {
+.magicprompt .btn-check:checked + .btn-outline-primary {
     /* Selected state */
     background: var(--emphasis);
     border-color: var(--emphasis);
@@ -127,8 +123,7 @@ TABLE OF CONTENTS:
 }
 
 /* Hover effect for radio buttons */
-.magicprompt .btn-check + .btn-outline-primary:hover,
-#settingsModal .btn-check + .btn-outline-primary:hover {
+.magicprompt .btn-check + .btn-outline-primary:hover {
     background: color-mix(in srgb, var(--emphasis-soft) 70%, white);
     color: var(--emphasis-text);
 }
@@ -144,184 +139,7 @@ TABLE OF CONTENTS:
     font-size: 0.9em;
 }
 
-/* 3. SETTINGS MODAL STYLES 
-   Styles specific to the settings modal interface */
-
-/* Settings Modal Core Structure*/
-#settingsModal {
-    /* Base modal styles */
-    --modal-width: 800px;
-    --section-padding: 1.5rem;
-    --border-style: 1px solid var(--border-color);
-}
-
-    #settingsModal .modal-dialog {
-        width: var(--modal-width);
-        max-width: var(--modal-width);
-        min-width: var(--modal-width);
-        margin: 1.75rem auto;
-    }
-
-    #settingsModal .modal-content {
-        width: 100%;
-        min-height: 600px;
-        background: var(--background);
-        border: var(--border-style);
-        border-radius: 8px;
-    }
-
-    /* Content Areas 
-   Styles for the main content sections of the modal */
-    #settingsModal .modal-body {
-        padding: var(--section-padding);
-        min-height: 450px;
-    }
-
-    #settingsModal .settings-container,
-    #settingsModal .settings-card,
-    #settingsModal .settings-grid {
-        width: 100%;
-    }
-
-    #settingsModal .settings-card {
-        margin-bottom: 1rem;
-        border: var(--border-style);
-        border-radius: 4px;
-        background: var(--background-gray);
-    }
-
-    /* Settings Headers 
-   Styles for section headers and toggles */
-    #settingsModal .settings-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.75rem;
-        cursor: pointer;
-    }
-
-        #settingsModal .settings-header .d-flex {
-            display: flex;
-            align-items: center;
-            padding: 0;
-            margin: 0;
-        }
-
-    #settingsModal .settings-header-icon {
-        font-size: 1em;
-        margin-right: 0.5rem;
-        display: flex;
-        align-items: center;
-    }
-
-    #settingsModal .settings-section-title {
-        margin: 0;
-        font-size: 0.95em;
-        font-weight: 600;
-        color: var(--text);
-    }
-
-    /* Collapse Controls */
-    #settingsModal .collapse-toggle {
-        --toggle-size: 24px;
-        background: none;
-        border: none;
-        color: inherit;
-        font-size: 0.8em;
-        padding: 0.25rem;
-        transition: transform 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: var(--toggle-size);
-        height: var(--toggle-size);
-    }
-
-        #settingsModal .collapse-toggle[aria-expanded="true"] {
-            transform: rotate(180deg);
-        }
-
-    #settingsModal .collapse {
-        padding: 0.75rem;
-        background: var(--background);
-        border-top: var(--border-style);
-        border-radius: 0 0 4px 4px;
-    }
-
-    /* Form Controls */
-    #settingsModal .form-group {
-        margin-bottom: 1rem;
-    }
-
-    #settingsModal .form-label {
-        display: block;
-        margin-bottom: 0.5rem;
-        color: var(--text);
-    }
-
-    #settingsModal .form-control,
-    #settingsModal .form-select,
-    #settingsModal .btn-outline-primary {
-        padding: 0.5rem;
-        border: var(--border-style);
-        border-radius: 4px;
-        background: var(--background);
-        color: var(--text);
-    }
-
-    #settingsModal .form-control,
-    #settingsModal .form-select {
-        width: 100%;
-    }
-
-    /* Footer Section */
-    #settingsModal .modal-footer {
-        display: flex;
-        justify-content: space-between;
-        padding: var(--section-padding);
-        border-top: var(--border-style);
-    }
-
-        #settingsModal .modal-footer .save-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        #settingsModal .modal-footer .danger {
-            margin-right: auto;
-        }
-
-    /* Buttons in Footer */
-    #settingsModal .basic-button {
-        padding: 0.5rem 1rem;
-        border: none;
-        border-radius: 4px;
-        background-color: var(--button-background);
-        color: var(--button-text);
-        cursor: pointer;
-    }
-
-        #settingsModal .basic-button:hover {
-            background-color: var(--button-background-hover);
-        }
-
-        #settingsModal .basic-button.danger {
-            --danger-color: #dc3545;
-            --danger-hover: #c82333;
-            --danger-active: #bd2130;
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-            #settingsModal .basic-button.danger:hover {
-                background-color: var(--danger-hover);
-            }
-
-            #settingsModal .basic-button.danger:active {
-                background-color: var(--danger-active);
-            }
-
-/* 4. UTILITY CLASSES & ANIMATIONS 
+/* 3. UTILITY CLASSES & ANIMATIONS 
    Helper classes and animation definitions */
 
 /* Dragging state for resize handle */
@@ -361,7 +179,9 @@ body.dragging {
         overflow: hidden;
     }
 
-/* Enhance Prompt and Magic Vision buttons */
+/* 4. PROMPT ENHANCEMENT BUTTONS
+   Styling for the Enhance Prompt and Magic Vision buttons */
+
 .magicprompt.prompt-buttons-container {
     position: absolute;
     /* Calculate position to align with textarea, accounting for the + button width */

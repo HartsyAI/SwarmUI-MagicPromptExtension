@@ -2,9 +2,6 @@
 <html>
 <head>
     <title>MagicPrompt</title>
-    <link rel="stylesheet" href="/ExtensionFile/MagicPromptExtension/Assets/magicprompt.css">
-    <link rel="stylesheet" href="/ExtensionFile/MagicPromptExtension/Assets/vision.css">
-    <link rel="stylesheet" href="/ExtensionFile/MagicPromptExtension/Assets/chat.css">
 </head>
 <body>
     <div id="magicprompt_container" class="d-flex flex-column magicprompt">
@@ -246,40 +243,29 @@
                             <div class="collapse" id="instructionsCollapse">
                                 <div class="settings-content">
                                     <div class="mb-3">
-                                        <label for="chatInstructions" class="form-label">
+                                        <label class="form-label">Instruction Type</label>
+                                        <div class="btn-group btn-group-sm mb-2" role="group" id="instructionTypeGroup">
+                                            <input type="radio" class="btn-check" name="instructionType" id="chatInstructionBtn" autocomplete="off" checked>
+                                            <label class="btn btn-outline-primary" for="chatInstructionBtn">Chat</label>
+
+                                            <input type="radio" class="btn-check" name="instructionType" id="visionInstructionBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="visionInstructionBtn">Vision</label>
+
+                                            <input type="radio" class="btn-check" name="instructionType" id="captionInstructionBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="captionInstructionBtn">Caption</label>
+
+                                            <input type="radio" class="btn-check" name="instructionType" id="promptInstructionBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary" for="promptInstructionBtn">Enhance Prompt</label>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label id="instructionLabel" class="form-label" for="instructionTextarea">
                                             Chat Instructions
                                             <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should behave in chat conversations. These define the AI's personality and response style."></i>
                                         </label>
-                                        <textarea class="form-control" id="chatInstructions" rows="3"
-                                            placeholder="Configure the AI's chat personality and behavior"></textarea>
-                                        <div class="form-text">Define how the AI should behave in chat conversations</div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="visionInstructions" class="form-label">
-                                            Vision Instructions
-                                            <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should analyze and describe images in the vision tab. These instructions are used when discussing images."></i>
-                                        </label>
-                                        <textarea class="form-control" id="visionInstructions" rows="3"
-                                            placeholder="Configure how the AI should analyze and describe images"></textarea>
-                                        <div class="form-text">Guide how the AI analyzes and describes images</div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="captionInstructions" class="form-label">
-                                            Image Caption Instructions
-                                            <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should generate image captions. These instructions are used when clicking the 'Caption' button in the vision tab."></i>
-                                        </label>
-                                        <textarea class="form-control" id="captionInstructions" rows="3"
-                                            placeholder="Configure how the AI should generate image captions"></textarea>
-                                        <div class="form-text">Define how the AI generates captions for images</div>
-                                    </div>
-                                    <div class="mb-3">
-                                        <label for="promptInstructions" class="form-label">
-                                            Enhance Prompt Instructions
-                                            <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should format text-to-image prompts when generating images. These instructions are used when clicking 'Enhance Prompt' in the generate tab."></i>
-                                        </label>
-                                        <textarea class="form-control" id="promptInstructions" rows="3" 
-                                            placeholder="How do you want the AI to Enhance your prompt?"></textarea>
-                                        <div class="form-text">These instructions guide how the AI formats and enhances prompts. </div>
+                                        <textarea class="form-control" id="instructionTextarea" rows="6"
+                                                  placeholder="Configure the AI's chat personality and behavior"></textarea>
+                                        <div class="form-text" id="instructionHelpText">Define how the AI should behave in chat conversations</div>
                                     </div>
                                 </div>
                             </div>

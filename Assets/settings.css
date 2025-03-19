@@ -1,0 +1,259 @@
+/* Settings Modal Styles
+=========================================================
+This file contains styles specific to the settings modal interface 
+for the MagicPrompt extension. It defines the layout, components, 
+and interactive elements of the settings UI.
+
+TABLE OF CONTENTS:
+1. Modal Core Structure
+2. Settings Sections
+3. Form Controls
+4. Button Styles
+5. Expandable Sections
+6. Instruction UI
+=========================================================== */
+
+/* 1. MODAL CORE STRUCTURE
+   Base styles for the modal dialog */
+
+#settingsModal {
+    /* Base modal styles */
+    --modal-width: 800px;
+    --section-padding: 1.5rem;
+    --border-style: 1px solid var(--border-color);
+}
+
+    #settingsModal .modal-dialog {
+        width: var(--modal-width);
+        max-width: var(--modal-width);
+        min-width: var(--modal-width);
+        margin: 1.75rem auto;
+    }
+
+    #settingsModal .modal-content {
+        width: 100%;
+        min-height: 600px;
+        background: var(--background);
+        border: var(--border-style);
+        border-radius: 8px;
+    }
+
+    /* 2. SETTINGS SECTIONS 
+   Content areas and containers */
+
+    #settingsModal .modal-body {
+        padding: var(--section-padding);
+        min-height: 450px;
+    }
+
+    #settingsModal .settings-container,
+    #settingsModal .settings-card,
+    #settingsModal .settings-grid {
+        width: 100%;
+    }
+
+    #settingsModal .settings-card {
+        margin-bottom: 1rem;
+        border: var(--border-style);
+        border-radius: 4px;
+        background: var(--background-gray);
+    }
+
+    /* 3. SECTION HEADERS 
+   Headers and toggles for sections */
+
+    #settingsModal .settings-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem;
+        cursor: pointer;
+    }
+
+        #settingsModal .settings-header .d-flex {
+            display: flex;
+            align-items: center;
+            padding: 0;
+            margin: 0;
+        }
+
+    #settingsModal .settings-header-icon {
+        font-size: 1em;
+        margin-right: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+
+    #settingsModal .settings-section-title {
+        margin: 0;
+        font-size: 0.95em;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    /* 4. COLLAPSE CONTROLS
+   Expand/collapse section toggles */
+
+    #settingsModal .collapse-toggle {
+        --toggle-size: 24px;
+        background: none;
+        border: none;
+        color: inherit;
+        font-size: 0.8em;
+        padding: 0.25rem;
+        transition: transform 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--toggle-size);
+        height: var(--toggle-size);
+    }
+
+        #settingsModal .collapse-toggle[aria-expanded="true"] {
+            transform: rotate(180deg);
+        }
+
+    #settingsModal .collapse {
+        padding: 0.75rem;
+        background: var(--background);
+        border-top: var(--border-style);
+        border-radius: 0 0 4px 4px;
+    }
+
+    /* 5. FORM CONTROLS
+   Input fields, selects, radios */
+
+    #settingsModal .form-group {
+        margin-bottom: 1rem;
+    }
+
+    #settingsModal .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--text);
+    }
+
+    #settingsModal .form-control,
+    #settingsModal .form-select,
+    #settingsModal .btn-outline-primary {
+        padding: 0.5rem;
+        border: var(--border-style);
+        border-radius: 4px;
+        background: var(--background);
+        color: var(--text);
+    }
+
+    #settingsModal .form-control,
+    #settingsModal .form-select {
+        width: 100%;
+    }
+
+    /* Radio buttons */
+    #settingsModal .btn-check + .btn-outline-primary {
+        /* Unselected state */
+        border: 1px solid var(--shadow);
+        background: var(--shadow);
+        color: var(--emphasis-text);
+        padding: 0.25rem 0.5rem;
+    }
+
+    #settingsModal .btn-check:checked + .btn-outline-primary {
+        /* Selected state */
+        background: var(--emphasis);
+        border-color: var(--emphasis);
+        color: var(--button-foreground-hover);
+    }
+
+    #settingsModal .btn-check + .btn-outline-primary:hover {
+        background: color-mix(in srgb, var(--emphasis-soft) 70%, white);
+        color: var(--emphasis-text);
+    }
+
+    /* 6. INSTRUCTION UI
+   Specific styles for instruction type radio buttons */
+
+    #settingsModal #instructionTypeGroup {
+        margin-bottom: 1rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0; /* Remove gap between buttons */
+    }
+
+        #settingsModal #instructionTypeGroup .btn-outline-primary {
+            border-radius: 0;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+            margin: 0;
+            border-right: none;
+        }
+
+            #settingsModal #instructionTypeGroup .btn-outline-primary:first-of-type {
+                border-top-left-radius: 4px;
+                border-bottom-left-radius: 4px;
+            }
+
+            #settingsModal #instructionTypeGroup .btn-outline-primary:last-of-type {
+                border-top-right-radius: 4px;
+                border-bottom-right-radius: 4px;
+                border-right: 1px solid var(--shadow);
+            }
+
+    #settingsModal #instructionTextarea {
+        min-height: 150px;
+        resize: vertical;
+    }
+
+    #settingsModal .instruction-type-label {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+
+    /* 7. FOOTER SECTION */
+
+    #settingsModal .modal-footer {
+        display: flex;
+        justify-content: space-between;
+        padding: var(--section-padding);
+        border-top: var(--border-style);
+    }
+
+        #settingsModal .modal-footer .save-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        #settingsModal .modal-footer .danger {
+            margin-right: auto;
+        }
+
+    /* 8. BUTTONS */
+
+    #settingsModal .basic-button {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        background-color: var(--button-background);
+        color: var(--button-text);
+        cursor: pointer;
+    }
+
+        #settingsModal .basic-button:hover {
+            background-color: var(--button-background-hover);
+        }
+
+        #settingsModal .basic-button.danger {
+            --danger-color: #dc3545;
+            --danger-hover: #c82333;
+            --danger-active: #bd2130;
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+            #settingsModal .basic-button.danger:hover {
+                background-color: var(--danger-hover);
+            }
+
+            #settingsModal .basic-button.danger:active {
+                background-color: var(--danger-active);
+            }
