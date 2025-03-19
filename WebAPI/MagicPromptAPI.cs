@@ -35,16 +35,15 @@ public class MagicPromptAPI
         API.RegisterAPICall(LLMAPICalls.GetModelsAsync, true, MagicPromptPermissions.PermGetModels);
 
         // All key types must be added to the accepted list first
-        string[] keyTypes = ["openai_api", "anthropic_api", "openrouter_api", "ollama_api", "openaiapi_local"]; 
+        string[] keyTypes = ["openai_api", "anthropic_api", "openrouter_api", "openaiapi_local"]; 
         foreach (string keyType in keyTypes)
         {
             BasicAPIFeatures.AcceptedAPIKeyTypes.Add(keyType);
         }
         // Register API Key tables for each backend
-        UserUpstreamApiKeys.Register(new("openai_api", "openai", "OpenAI", "https://platform.openai.com/api-keys", new HtmlString("To use OpenAI models in SwarmUI (via the MagicPrompt extension), you must set your OpenAI API key.")));
-        UserUpstreamApiKeys.Register(new("anthropic_api", "anthropic", "Anthropic", "https://console.anthropic.com/settings/keys", new HtmlString("To use Anthropic models like Claude in SwarmUI (via the MagicPrompt extension), you must set your Anthropic API key.")));
+        UserUpstreamApiKeys.Register(new("openai_api", "openai", "OpenAI (ChatGPT)", "https://platform.openai.com/api-keys", new HtmlString("To use OpenAI models in SwarmUI (via the MagicPrompt extension), you must set your OpenAI API key.")));
+        UserUpstreamApiKeys.Register(new("anthropic_api", "anthropic", "Anthropic (Claude)", "https://console.anthropic.com/settings/keys", new HtmlString("To use Anthropic models like Claude in SwarmUI (via the MagicPrompt extension), you must set your Anthropic API key.")));
         UserUpstreamApiKeys.Register(new("openrouter_api", "openrouter", "OpenRouter", "https://openrouter.ai/keys", new HtmlString("To use OpenRouter models in SwarmUI (via the MagicPrompt extension), you must set your OpenRouter API key. OpenRouter gives you access to many different models through a single API.")));
-        UserUpstreamApiKeys.Register(new("ollama_api", "ollama", "Ollama", "https://ollama.com/", new HtmlString("To use Ollama models in SwarmUI (via the MagicPrompt extension), you need to have Ollama running locally. No API key required but connection settings may be managed here.")));
         UserUpstreamApiKeys.Register(new("openaiapi_local", "openaiapi", "OpenAI API (Local)", "#", new HtmlString("For connecting to local servers that implement the OpenAI API schema (like LM Studio, text-generation-webui, or LocalAI). You may need to provide API keys or connection details depending on your local setup.")));
     }
 
