@@ -132,8 +132,11 @@ if (!window.MP) {
                     // Get model and backend based on request type
                     const modelId = this.getModelId(hasImage);
                     const backend = hasImage ? MP.settings.visionbackend : MP.settings.backend;
-                    // Get appropriate instructions based on action type
-                    const instructions = MP.settings.instructions?.[action.toLowerCase()];
+                    // Get appropriate instructions based on action type and feature mapping
+                    const featureName = action.toLowerCase();
+                    // Use the feature mapping system to get the right instruction type
+                    const instructionType = getInstructionForFeature(featureName) || featureName;
+                    const instructions = getInstructionContent(instructionType);
                     // Create the message content
                     const messageContent = {
                         text: input,
@@ -145,7 +148,7 @@ if (!window.MP) {
                         messageContent,
                         modelId,
                         messageType: hasImage ? "Vision" : "Text",
-                        action: action.toLowerCase(),
+                        action: featureName,
                     };
                 } catch (error) {
                     console.error('Error creating request payload:', error);
@@ -295,7 +298,7 @@ async function handleEnhancePrompt() {
         const payload = MP.RequestBuilder.createRequestPayload(
             input,
             null,
-            'prompt'
+            'enhance-prompt'  // Changed from 'prompt' to 'enhance-prompt' for feature mapping
         );
         const response = await MP.APIClient.makeRequest(payload);
         if (response.success && response.response) {
@@ -337,10 +340,11 @@ async function handleVisionAnalysis() {
             };
             reader.readAsDataURL(blob);
         });
+        // Get instruction for magic-vision feature
         const payload = MP.RequestBuilder.createRequestPayload(
-            MP.settings.instructions.caption,
+            getInstructionContent(getInstructionForFeature('magic-vision') || 'vision'),
             base64Data,
-            'vision'
+            'magic-vision'  // Changed from 'vision' to 'magic-vision' for feature mapping
         );
         const response = await MP.APIClient.makeRequest(payload);
         if (response.success && response.response) {

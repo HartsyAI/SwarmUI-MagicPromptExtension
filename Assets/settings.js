@@ -9,6 +9,16 @@
 // Define backends that don't need base URL configuration
 const FIXED_URL_BACKENDS = ['openai', 'anthropic', 'openrouter'];
 
+// Define default feature to instruction mappings
+const DEFAULT_FEATURE_MAPPINGS = {
+    'enhance-prompt': 'prompt',
+    'magic-vision': 'vision',
+    'chat-mode': 'chat',
+    'vision-mode': 'vision',
+    'prompt-mode': 'prompt',
+    'caption': 'caption'
+};
+
 // Helper function to check if a backend needs base URL configuration
 function needsBaseUrl(backend) {
     return !FIXED_URL_BACKENDS.includes(backend);
@@ -34,6 +44,8 @@ async function loadSettings() {
             genericRequest('GetSettingsAsync', {}, data => {
                 if (data.success) {
                     const serverSettings = data.settings;
+                    console.log("Received settings from server:", serverSettings);
+
                     // Create settings object preserving server values
                     const settings = {
                         // Core settings
@@ -41,19 +53,65 @@ async function loadSettings() {
                         model: serverSettings.model || '',
                         visionbackend: serverSettings.visionbackend || serverSettings.backend || 'ollama',
                         visionmodel: serverSettings.visionmodel || '',
-                        linkChatAndVisionModels: serverSettings.linkChatAndVisionModels !== false, // Default to true
+                        linkChatAndVisionModels: serverSettings.linkChatAndVisionModels !== false, // Default to true if not set
                         // Backends - merge using spread operator which does a "deep merge" of two objects
                         backends: {
                             ...MP.settings.backends,  // Start with default endpoints
                             ...(serverSettings.backends || {}),  // Overlay server settings
                         },
+                        // Instructions - ensure we get the proper values from the server
                         instructions: {
-                            chat: serverSettings.instructions?.chat || '',
-                            vision: serverSettings.instructions?.vision || '',
-                            caption: serverSettings.instructions?.caption || '',
-                            prompt: serverSettings.instructions?.prompt || ''
+                            chat: '',
+                            vision: '',
+                            caption: '',
+                            prompt: '',
+                            custom: {},
+                            featureMap: { ...DEFAULT_FEATURE_MAPPINGS }
                         }
                     };
+
+                    // Handle the instructions specifically to ensure all types are properly loaded
+                    if (serverSettings.instructions) {
+                        console.log("Processing instructions from server");
+
+                        // Explicitly handle each instruction type
+                        if (typeof serverSettings.instructions.chat === 'string') {
+                            settings.instructions.chat = serverSettings.instructions.chat;
+                            console.log("Loaded chat instructions");
+                        }
+
+                        if (typeof serverSettings.instructions.vision === 'string') {
+                            settings.instructions.vision = serverSettings.instructions.vision;
+                            console.log("Loaded vision instructions");
+                        }
+
+                        if (typeof serverSettings.instructions.caption === 'string') {
+                            settings.instructions.caption = serverSettings.instructions.caption;
+                            console.log("Loaded caption instructions");
+                        }
+
+                        if (typeof serverSettings.instructions.prompt === 'string') {
+                            settings.instructions.prompt = serverSettings.instructions.prompt;
+                            console.log("Loaded prompt instructions");
+                        }
+
+                        // Handle any custom instructions
+                        if (serverSettings.instructions.custom) {
+                            settings.instructions.custom = serverSettings.instructions.custom;
+                            console.log("Loaded custom instructions");
+                        }
+
+                        // Handle feature mappings
+                        if (serverSettings.instructions.featureMap) {
+                            settings.instructions.featureMap = {
+                                ...DEFAULT_FEATURE_MAPPINGS,
+                                ...serverSettings.instructions.featureMap
+                            };
+                            console.log("Loaded feature mappings");
+                        }
+                    }
+
+                    console.log("Final processed settings:", settings);
                     MP.settings = settings;
                     resolve(settings);
                 } else {
@@ -72,9 +130,10 @@ async function loadSettings() {
 
 /**
  * Saves current settings to the backend
+ * @param {boolean} [skipFeatureMappings=false] - If true, don't reload feature mappings from UI 
  * @returns {Promise<void>}
  */
-async function saveSettings() {
+async function saveSettings(skipFeatureMappings = false) {
     try {
         // Check if models are linked
         const isLinked = document.getElementById('linkModelsToggle')?.checked;
@@ -105,6 +164,11 @@ async function saveSettings() {
         const visionBaseUrl = isLinked ? chatBaseUrl :
             (document.getElementById('visionBackendUrl')?.value ||
                 MP.settings.backends[visionBackendId]?.baseurl);
+
+        // Save feature mappings if not skipped
+        if (!skipFeatureMappings) {
+            saveFeatureMappingsFromUI();
+        }
 
         // Create settings object matching exact structure expected by C# DefaultSettings
         const settings = {
@@ -166,7 +230,7 @@ async function saveSettings() {
  */
 async function resetSettings() {
     try {
-        if (!confirm('This will reset all settings to defaults. Any custom API keys will be cleared. Are you sure?')) {
+        if (!confirm('This will reset all settings to defaults. Any custom API keys and custom instructions will be cleared. Are you sure?')) {
             return;
         }
         const response = await new Promise((resolve, reject) => {
@@ -179,9 +243,15 @@ async function resetSettings() {
             });
         });
         MP.settings = response.settings;
+        // Ensure feature mappings are set to defaults
+        if (!MP.settings.instructions.featureMap) {
+            MP.settings.instructions.featureMap = { ...DEFAULT_FEATURE_MAPPINGS };
+        }
         await fetchModels();
         // Reset UI elements
         initInstructionsUI();
+        renderCustomInstructionsList();
+        populateFeatureSelects();
         closeSettingsModal();
     } catch (error) {
         console.error('Settings reset error:', error);
@@ -330,6 +400,636 @@ function setModelIfExists(select, modelId) {
 }
 
 /**
+ * Gets the instruction content for a specified instruction type
+ * @param {string} type - The instruction type (e.g., 'chat', 'vision', or a custom ID)
+ * @returns {string} The instruction content
+ */
+function getInstructionContent(type) {
+    if (!type) return '';
+
+    // Handle built-in instruction types
+    if (type === 'chat' || type === 'vision' || type === 'caption' || type === 'prompt') {
+        return MP.settings.instructions[type] || '';
+    }
+
+    // Handle custom instruction types
+    if (MP.settings.instructions?.custom?.[type]) {
+        const customInstruction = MP.settings.instructions.custom[type];
+        return typeof customInstruction === 'object'
+            ? customInstruction.content || ''
+            : customInstruction || '';
+    }
+
+    return '';
+}
+
+/**
+ * Gets the instruction type to use for a specific feature
+ * @param {string} feature - The feature name (e.g., 'enhance-prompt', 'chat-mode')
+ * @returns {string} The instruction type to use
+ */
+function getInstructionForFeature(feature) {
+    if (!feature || !MP.settings.instructions?.featureMap) {
+        return null;
+    }
+
+    return MP.settings.instructions.featureMap[feature] || null;
+}
+
+/**
+ * Sets which instruction to use for a specific feature
+ * @param {string} feature - The feature name
+ * @param {string} instructionType - The instruction type to use
+ * @param {boolean} [skipSave=false] - If true, don't call saveSettings() to prevent infinite loops
+ */
+function setInstructionForFeature(feature, instructionType, skipSave = false) {
+    if (!feature) return;
+
+    if (!MP.settings.instructions.featureMap) {
+        MP.settings.instructions.featureMap = { ...DEFAULT_FEATURE_MAPPINGS };
+    }
+    MP.settings.instructions.featureMap[feature] = instructionType;
+    if (!skipSave) {
+        saveSettings();
+    }
+}
+
+/**
+ * Gets all instructions available for a specific category
+ * @param {string} category - The category ('chat', 'vision', 'caption', 'prompt')
+ * @returns {Array} Array of instruction objects with id and title
+ */
+function getInstructionsForCategory(category) {
+    if (!category) return [];
+    const instructions = [];
+    // Add the built-in instruction for this category
+    if (category === 'chat' || category === 'vision' || category === 'caption' || category === 'prompt') {
+        instructions.push({
+            id: category,
+            title: getCategoryTitle(category),
+            isBuiltIn: true
+        });
+    }
+    // Add custom instructions that work with this category
+    if (MP.settings.instructions?.custom) {
+        Object.entries(MP.settings.instructions.custom).forEach(([id, instruction]) => {
+            // Handle both string and object formats
+            if (typeof instruction === 'object') {
+                if (instruction.categories && instruction.categories.includes(category)) {
+                    instructions.push({
+                        id,
+                        title: instruction.title || id,
+                        isBuiltIn: false
+                    });
+                }
+            }
+        });
+    }
+    return instructions;
+}
+
+/**
+ * Gets a human-readable title for a category
+ * @param {string} category - Category name
+ * @returns {string} Human-readable title
+ */
+function getCategoryTitle(category) {
+    switch (category) {
+        case 'chat': return 'Chat (Default)';
+        case 'vision': return 'Vision (Default)';
+        case 'caption': return 'Caption (Default)';
+        case 'prompt': return 'Enhance Prompt (Default)';
+        default: return category.charAt(0).toUpperCase() + category.slice(1);
+    }
+}
+
+/**
+ * Populates the feature select dropdowns with available instructions
+ */
+function populateFeatureSelects() {
+    const features = [
+        { id: 'enhance-prompt', category: 'prompt' },
+        { id: 'magic-vision', category: 'vision' },
+        { id: 'chat-mode', category: 'chat' },
+        { id: 'vision-mode', category: 'vision' },
+        { id: 'caption', category: 'caption' }
+    ];
+    features.forEach(feature => {
+        const select = document.getElementById(`feature-${feature.id}`);
+        if (!select) return;
+        // Clear existing options
+        select.innerHTML = '';
+        // Get available instructions for this category
+        const instructions = getInstructionsForCategory(feature.category);
+        // Add options to select
+        instructions.forEach(instruction => {
+            const option = document.createElement('option');
+            option.value = instruction.id;
+            option.textContent = instruction.title;
+            select.appendChild(option);
+        });
+        // Set current selection
+        const currentMapping = getInstructionForFeature(feature.id);
+        if (currentMapping && select.querySelector(`option[value="${currentMapping}"]`)) {
+            select.value = currentMapping;
+        } else {
+            // Default to the category name if no mapping or mapping not found
+            select.value = feature.category;
+        }
+    });
+}
+
+/**
+ * Saves the feature mappings from the UI selects
+ */
+function saveFeatureMappingsFromUI() {
+    const features = [
+        'enhance-prompt',
+        'magic-vision',
+        'chat-mode',
+        'vision-mode',
+        'caption'
+    ];
+    features.forEach(feature => {
+        const select = document.getElementById(`feature-${feature}`);
+        if (select && select.value) {
+            setInstructionForFeature(feature, select.value, true); // Pass true to skipSave
+        }
+    });
+    
+    // Save settings after updating all feature mappings
+    saveSettings(true); // Pass true to skipFeatureMappings to prevent recursion
+}
+
+/**
+ * Adds a new custom instruction
+ * @param {Object} data - Instruction data
+ * @returns {string} The ID of the new instruction
+ */
+function addCustomInstruction(data) {
+    const id = data.id || `custom-${Date.now()}`;
+    const categories = Array.isArray(data.categories) ? data.categories :
+        (typeof data.categories === 'string' ? [data.categories] : []);
+    // Create the instruction object and add to settings
+    const instruction = {
+        id,
+        title: data.title || 'Custom Instruction',
+        content: data.content || '',
+        tooltip: data.tooltip || `Custom instructions for ${data.title}`,
+        categories,
+        created: data.created || new Date().toISOString(),
+        updated: new Date().toISOString()
+    };
+    if (!MP.settings.instructions.custom) {
+        MP.settings.instructions.custom = {};
+    }
+    MP.settings.instructions.custom[id] = instruction;
+    saveSettings();
+    addCustomInstructionToUI(id, instruction);
+    return id;
+}
+
+/**
+ * Updates an existing custom instruction
+ * @param {string} id - Instruction ID
+ * @param {Object} data - Updated instruction data
+ * @returns {boolean} Success status
+ */
+function updateCustomInstruction(id, data) {
+    if (!MP.settings.instructions?.custom?.[id]) {
+        console.error(`Custom instruction "${id}" not found`);
+        return false;
+    }
+    const instruction = MP.settings.instructions.custom[id];
+    if (data.title) instruction.title = data.title;
+    if (data.content !== undefined) instruction.content = data.content;
+    if (data.tooltip) instruction.tooltip = data.tooltip;
+    if (data.categories) {
+        instruction.categories = Array.isArray(data.categories) ? data.categories :
+            (typeof data.categories === 'string' ? [data.categories] : instruction.categories);
+    }
+    instruction.updated = new Date().toISOString();
+    updateCustomInstructionInUI(id);
+    populateFeatureSelects();
+    saveSettings();
+    return true;
+}
+
+/**
+ * Deletes a custom instruction
+ * @param {string} id - Instruction ID
+ * @returns {boolean} Success status
+ */
+function deleteCustomInstruction(id) {
+    if (!MP.settings.instructions?.custom?.[id]) {
+        console.error(`Custom instruction "${id}" not found`);
+        return false;
+    }
+    delete MP.settings.instructions.custom[id];
+    // Remove from feature mappings and revert to default then save settings
+    if (MP.settings.instructions.featureMap) {
+        Object.entries(MP.settings.instructions.featureMap).forEach(([feature, instructionId]) => {
+            if (instructionId === id) {
+                // Revert to default
+                const categoryForFeature = DEFAULT_FEATURE_MAPPINGS[feature];
+                MP.settings.instructions.featureMap[feature] = categoryForFeature;
+            }
+        });
+    }
+    removeCustomInstructionFromUI(id);
+    populateFeatureSelects();
+    saveSettings();
+    return true;
+}
+
+/**
+ * Adds a custom instruction to the UI
+ * @param {string} id - Instruction ID
+ * @param {Object} instruction - Instruction data
+ */
+function addCustomInstructionToUI(id, instruction) {
+    const instructionTypeGroup = document.getElementById('instructionTypeGroup');
+    if (instructionTypeGroup) {
+        if (document.getElementById(`${id}InstructionBtn`)) {
+            return updateCustomInstructionInUI(id);
+        }
+        // Create radio button for custom instruction
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.className = 'btn-check';
+        radio.name = 'instructionType';
+        radio.id = `${id}InstructionBtn`;
+        // Create label for radio button
+        const label = document.createElement('label');
+        label.className = 'btn btn-outline-primary';
+        label.htmlFor = radio.id;
+        label.innerHTML = `
+            ${instruction.title}
+            <span class="custom-instruction-actions">
+                <i class="edit-icon" title="Edit">✏️</i>
+                <i class="delete-icon" title="Delete">🗑️</i>
+            </span>
+        `;
+        instructionTypeGroup.appendChild(radio);
+        instructionTypeGroup.appendChild(label);
+        // Add to instruction types for UI updating
+        instructionTypes[id] = {
+            title: instruction.title,
+            tooltip: instruction.tooltip,
+            helpText: `Custom instructions for ${instruction.categories.join(', ')}`,
+            placeholder: `Enter custom instructions for ${instruction.title}`
+        };
+        radio.addEventListener('change', handleInstructionChange);
+        const editIcon = label.querySelector('.edit-icon');
+        const deleteIcon = label.querySelector('.delete-icon');
+        if (editIcon) {
+            editIcon.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showEditInstructionModal(id);
+            });
+        }
+        if (deleteIcon) {
+            deleteIcon.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showDeleteConfirmation(id);
+            });
+        }
+    }
+    renderCustomInstructionsList();
+}
+
+/**
+ * Updates an existing custom instruction in the UI
+ * @param {string} id - Instruction ID
+ */
+function updateCustomInstructionInUI(id) {
+    if (!MP.settings.instructions?.custom?.[id]) return;
+    const instruction = MP.settings.instructions.custom[id];
+    // Update radio button label
+    const label = document.querySelector(`label[for="${id}InstructionBtn"]`);
+    if (label) {
+        const labelText = label.childNodes[0];
+        if (labelText && labelText.nodeType === Node.TEXT_NODE) {
+            labelText.nodeValue = instruction.title;
+        } else {
+            // If text node not found, update innerHTML but preserve actions
+            const actionsSpan = label.querySelector('.custom-instruction-actions');
+            label.innerHTML = instruction.title;
+            if (actionsSpan) {
+                label.appendChild(actionsSpan);
+            }
+        }
+    }
+    // Update instruction types object
+    if (instructionTypes[id]) {
+        instructionTypes[id].title = instruction.title;
+        instructionTypes[id].tooltip = instruction.tooltip;
+        instructionTypes[id].helpText = `Custom instructions for ${instruction.categories.join(', ')}`;
+        instructionTypes[id].placeholder = `Enter custom instructions for ${instruction.title}`;
+    }
+    // Refresh custom instructions list
+    renderCustomInstructionsList();
+}
+
+/**
+ * Removes a custom instruction from the UI
+ * @param {string} id - Instruction ID
+ */
+function removeCustomInstructionFromUI(id) {
+    // Remove radio button
+    const radio = document.getElementById(`${id}InstructionBtn`);
+    if (radio) {
+        radio.remove();
+    }
+
+    // Remove label
+    const label = document.querySelector(`label[for="${id}InstructionBtn"]`);
+    if (label) {
+        label.remove();
+    }
+
+    // Remove from instruction types
+    if (instructionTypes[id]) {
+        delete instructionTypes[id];
+    }
+
+    // Refresh custom instructions list
+    renderCustomInstructionsList();
+}
+
+/**
+ * Renders the list of custom instructions in the management section
+ */
+function renderCustomInstructionsList() {
+    const container = document.getElementById('customInstructionsList');
+    const noInstructionsMsg = document.getElementById('noCustomInstructionsMsg');
+
+    if (!container) return;
+
+    // Clear existing items (except the "no instructions" message)
+    Array.from(container.children).forEach(child => {
+        if (child.id !== 'noCustomInstructionsMsg') {
+            child.remove();
+        }
+    });
+
+    // Check if we have any custom instructions
+    const customInstructions = MP.settings.instructions?.custom || {};
+    const instructionCount = Object.keys(customInstructions).length;
+
+    // Show/hide the "no instructions" message
+    if (noInstructionsMsg) {
+        noInstructionsMsg.style.display = instructionCount > 0 ? 'none' : 'block';
+    }
+
+    // If no instructions, stop here
+    if (instructionCount === 0) return;
+
+    // Add each instruction to the list
+    Object.entries(customInstructions).forEach(([id, instruction]) => {
+        // Create item container
+        const item = document.createElement('div');
+        item.className = 'custom-instruction-item';
+        item.dataset.id = id;
+
+        // Create info section
+        const info = document.createElement('div');
+        info.className = 'custom-instruction-info';
+
+        // Create title
+        const title = document.createElement('div');
+        title.className = 'custom-instruction-title';
+        title.textContent = instruction.title || id;
+        info.appendChild(title);
+
+        // Create categories
+        if (instruction.categories && instruction.categories.length > 0) {
+            const categoriesContainer = document.createElement('div');
+            categoriesContainer.className = 'custom-instruction-categories';
+
+            instruction.categories.forEach(category => {
+                const categorySpan = document.createElement('span');
+                categorySpan.className = 'custom-instruction-category';
+                categorySpan.textContent = category;
+                categoriesContainer.appendChild(categorySpan);
+            });
+
+            info.appendChild(categoriesContainer);
+        }
+
+        // Create actions
+        const actions = document.createElement('div');
+        actions.className = 'custom-instruction-actions';
+
+        // Edit button
+        const editBtn = document.createElement('button');
+        editBtn.className = 'custom-instruction-action edit';
+        editBtn.innerHTML = '✏️';
+        editBtn.title = 'Edit';
+        editBtn.addEventListener('click', () => showEditInstructionModal(id));
+        actions.appendChild(editBtn);
+
+        // Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'custom-instruction-action delete';
+        deleteBtn.innerHTML = '🗑️';
+        deleteBtn.title = 'Delete';
+        deleteBtn.addEventListener('click', () => showDeleteConfirmation(id));
+        actions.appendChild(deleteBtn);
+
+        // Add sections to item
+        item.appendChild(info);
+        item.appendChild(actions);
+
+        // Add item to container
+        container.appendChild(item);
+    });
+}
+
+/**
+ * Shows the custom instruction modal for creating or editing
+ * @param {string|null} id - Instruction ID (null for new instructions)
+ */
+function showCustomInstructionModal(id = null) {
+    // Get modal elements
+    const modal = document.getElementById('customInstructionModal');
+    const title = modal.querySelector('.modal-title');
+    const form = document.getElementById('customInstructionForm');
+    const idInput = document.getElementById('instructionId');
+    const titleInput = document.getElementById('instructionTitle');
+    const tooltipInput = document.getElementById('instructionTooltip');
+    const contentTextarea = document.getElementById('instructionContent');
+    const saveBtn = document.getElementById('saveCustomInstructionBtn');
+    form.reset();
+    // Clear category checkboxes to ensure no old values are carried over
+    const categoryCheckboxes = form.querySelectorAll('input[name="instructionCategory"]');
+    categoryCheckboxes.forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    if (id) {
+        const instruction = MP.settings.instructions?.custom?.[id];
+        if (!instruction) {
+            console.error(`Custom instruction "${id}" not found`);
+            return;
+        }
+        title.textContent = 'Edit Custom Instruction';
+        idInput.value = id;
+        titleInput.value = instruction.title || '';
+        tooltipInput.value = instruction.tooltip || '';
+        contentTextarea.value = instruction.content || '';
+        if (Array.isArray(instruction.categories)) {
+            instruction.categories.forEach(category => {
+                const checkbox = form.querySelector(`input[name="instructionCategory"][value="${category}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                }
+            });
+        }
+    } else {
+        title.textContent = 'Add Custom Instruction'; // Add new instruction
+        idInput.value = '';
+    }
+    // Show modal and set up save button handler
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+    if (saveBtn) {
+        const newSaveBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+        newSaveBtn.addEventListener('click', saveCustomInstructionFromForm);
+    }
+}
+
+/**
+ * Shows delete confirmation modal
+ * @param {string} id - Instruction ID to delete
+ */
+function showDeleteConfirmation(id) {
+    if (!id || !MP.settings.instructions?.custom?.[id]) return;
+    const modal = document.getElementById('confirmDeleteModal');
+    const confirmBtn = document.getElementById('confirmDeleteBtn');
+    if (!modal || !confirmBtn) return;
+    // Create new button to remove old event listeners
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    newConfirmBtn.addEventListener('click', () => {
+        deleteCustomInstruction(id);
+        bootstrap.Modal.getInstance(modal).hide();
+    });
+    const bootstrapModal = new bootstrap.Modal(modal);
+    bootstrapModal.show();
+}
+
+/**
+ * Saves a custom instruction from the form data
+ */
+function saveCustomInstructionFromForm() {
+    const form = document.getElementById('customInstructionForm');
+    const idInput = document.getElementById('instructionId');
+    const titleInput = document.getElementById('instructionTitle');
+    const tooltipInput = document.getElementById('instructionTooltip');
+    const contentTextarea = document.getElementById('instructionContent');
+    if (!form || !titleInput || !contentTextarea) {
+        console.error('Form elements not found');
+        return;
+    }
+    // Validate required fields (trim to remove whitespace)
+    if (!titleInput.value.trim()) {
+        alert('Please enter a title for the instruction');
+        titleInput.focus();
+        return;
+    }
+    if (!contentTextarea.value.trim()) {
+        alert('Please enter instruction content');
+        contentTextarea.focus();
+        return;
+    }
+    const categoryCheckboxes = form.querySelectorAll('input[name="instructionCategory"]:checked');
+    if (categoryCheckboxes.length === 0) {
+        alert('Please select at least one category');
+        return;
+    }
+    const categories = Array.from(categoryCheckboxes).map(checkbox => checkbox.value);
+    const data = {
+        title: titleInput.value.trim(),
+        content: contentTextarea.value.trim(),
+        tooltip: tooltipInput.value.trim(),
+        categories
+    };
+    const id = idInput.value; // Get ID (if editing)
+    if (id) {
+        updateCustomInstruction(id, data);
+    } else {
+        addCustomInstruction(data);
+    }
+    populateFeatureSelects(); // Refresh feature selects
+    const modal = document.getElementById('customInstructionModal');
+    bootstrap.Modal.getInstance(modal).hide();
+}
+
+/**
+ * Exports custom instructions as a JSON file
+ */
+function exportCustomInstructions() {
+    const customInstructions = MP.settings.instructions?.custom || {};
+    if (Object.keys(customInstructions).length === 0) {
+        alert('No custom instructions to export');
+        return;
+    }
+    // Create JSON blob and trigger download
+    const json = JSON.stringify(customInstructions, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'magicprompt-custom-instructions.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a); // Clean up
+    URL.revokeObjectURL(url);
+}
+
+/**
+ * Imports custom instructions from a JSON file
+ * @param {File} file - JSON file to import
+ */
+function importCustomInstructions(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const data = JSON.parse(e.target.result);
+            let imported = 0;
+            let skipped = 0;
+            Object.entries(data).forEach(([id, instruction]) => {
+                if (!instruction.title || !instruction.content) {
+                    console.warn(`Skipping invalid instruction: ${id}`);
+                    skipped++;
+                    return;
+                }
+                // Generate new ID to avoid conflicts and mark as imported
+                const newId = `custom-${Date.now()}-${imported}`;
+                addCustomInstruction({
+                    id: newId,
+                    title: instruction.title,
+                    content: instruction.content,
+                    tooltip: instruction.tooltip,
+                    categories: instruction.categories || []
+                });
+                imported++;
+            });
+            alert(`Successfully imported ${imported} custom instructions${skipped > 0 ? ` (${skipped} skipped)` : ''}`);
+            populateFeatureSelects(); // Refresh feature selects
+        } catch (error) {
+            console.error('Error importing instructions:', error);
+            alert(`Error importing instructions: ${error.message}`);
+        }
+    };
+    reader.readAsText(file);
+}
+
+/**
  * Initialize instructions UI with radio buttons and a single textarea
  * Manages switching between different instruction types
  */
@@ -339,14 +1039,11 @@ function initInstructionsUI() {
     const instructionTextarea = document.getElementById('instructionTextarea');
     const instructionLabel = document.getElementById('instructionLabel');
     const instructionHelpText = document.getElementById('instructionHelpText');
-
     if (!instructionTextarea || !instructionLabel || !instructionHelpText) {
         console.error('Instruction UI elements not found');
         return;
     }
-
-    // Define content for each instruction type
-    const instructionTypes = {
+    window.instructionTypes = {
         chat: {
             title: 'Chat Instructions',
             tooltip: 'Instructions for how the AI should behave in chat conversations. These define the AI\'s personality and response style.',
@@ -372,49 +1069,41 @@ function initInstructionsUI() {
             placeholder: 'How do you want the AI to Enhance your prompt?'
         }
     };
-
-    // Add custom instructions if they exist
+    // Add custom instructions from saved user settings
     if (MP.settings.instructions?.custom) {
-        Object.entries(MP.settings.instructions.custom).forEach(([key, value]) => {
-            if (typeof value === 'object' && value.title) {
-                instructionTypes[key] = value;
-            }
+        Object.entries(MP.settings.instructions.custom).forEach(([id, instruction]) => {
+            addCustomInstructionToUI(id, instruction); // Add to radio buttons and instruction types
+            instructionTypes[id] = {
+                title: instruction.title || id,
+                tooltip: instruction.tooltip || `Custom instructions for ${instruction.title || id}`,
+                helpText: `Custom instructions for ${Array.isArray(instruction.categories) ? instruction.categories.join(', ') : 'custom use'}`,
+                placeholder: `Enter custom instructions for ${instruction.title || id}`
+            };
         });
     }
 
-    // Function to update the instruction UI based on selected type
+    // Update the instruction UI based on selected type
     function updateInstructionUI(type) {
         console.log(`Updating instruction UI for type: ${type}`);
-
-        // Get the type config
         const typeConfig = instructionTypes[type];
         if (!typeConfig) {
             console.error(`Instruction type "${type}" not found`);
             return;
         }
-
         console.log(`Type config:`, typeConfig);
-
         // Update the label, tooltip, and help text
         if (instructionLabel) {
-            // Find or create text node for title
             let textNode = Array.from(instructionLabel.childNodes)
                 .find(node => node.nodeType === Node.TEXT_NODE);
-
             if (!textNode) {
                 textNode = document.createTextNode('');
                 instructionLabel.insertBefore(textNode, instructionLabel.firstChild);
             }
-
-            // Update the text
             textNode.nodeValue = typeConfig.title + ' ';
-
-            // Update the tooltip
             const tooltipIcon = instructionLabel.querySelector('i');
             if (tooltipIcon) {
                 tooltipIcon.setAttribute('title', typeConfig.tooltip);
                 tooltipIcon.setAttribute('data-bs-original-title', typeConfig.tooltip);
-
                 // Refresh the tooltip if Bootstrap's tooltip is initialized
                 if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
                     const tooltip = bootstrap.Tooltip.getInstance(tooltipIcon);
@@ -425,35 +1114,14 @@ function initInstructionsUI() {
                 }
             }
         }
-
-        // Update help text
         if (instructionHelpText) {
             instructionHelpText.textContent = typeConfig.helpText;
         }
-
-        // Update placeholder
         if (instructionTextarea) {
             instructionTextarea.placeholder = typeConfig.placeholder;
-
-            // Get the current instructions for this type
-            let value = '';
-
-            if (type === 'chat' || type === 'vision' || type === 'caption' || type === 'prompt') {
-                console.log(`Getting ${type} instructions:`, MP.settings.instructions[type]);
-                value = MP.settings.instructions[type] || '';
-            } else if (MP.settings.instructions?.custom?.[type]) {
-                // This is a custom instruction
-                value = typeof MP.settings.instructions.custom[type] === 'object'
-                    ? MP.settings.instructions.custom[type].content || ''
-                    : MP.settings.instructions.custom[type] || '';
-            }
-
-            console.log(`Setting textarea value to:`, value);
-
+            const value = getInstructionContent(type);
             // Set the textarea value and force a refresh
             instructionTextarea.value = value;
-
-            // Force a refresh of the textarea
             setTimeout(() => {
                 const event = new Event('input', { bubbles: true });
                 instructionTextarea.dispatchEvent(event);
@@ -461,63 +1129,44 @@ function initInstructionsUI() {
         }
     }
 
-    // Add event listeners to radio buttons
-    instructionTypeRadios.forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            if (e.target.checked) {
-                console.log(`Radio button changed: ${e.target.id}`);
-
-                // Only save content if the textarea exists
-                if (instructionTextarea) {
-                    const currentType = Array.from(instructionTypeRadios)
-                        .find(r => r.checked && r !== e.target)?.id.replace('InstructionBtn', '').toLowerCase();
-
-                    if (currentType) {
-                        console.log(`Saving content for ${currentType} before switching`);
-                        saveCurrentInstructionContent(currentType);
-                    }
+    // Function to handle radio button changes
+    function handleInstructionChange(e) {
+        if (e.target.checked) {
+            // Only save content if the textarea exists
+            if (instructionTextarea) {
+                const currentType = Array.from(instructionTypeRadios)
+                    .find(r => r.checked && r !== e.target)?.id.replace('InstructionBtn', '').toLowerCase();
+                if (currentType) {
+                    console.log(`Saving content for ${currentType} before switching`);
+                    saveCurrentInstructionContent(currentType);
                 }
-
-                // Extract type from button ID
-                const type = e.target.id.replace('InstructionBtn', '').toLowerCase();
-                console.log(`Switching to instruction type: ${type}`);
-
-                // Update UI with the new type
-                updateInstructionUI(type);
             }
-        });
-    });
+            const type = e.target.id.replace('InstructionBtn', '').toLowerCase();
+            updateInstructionUI(type);
+        }
+    }
 
     // Function to save the current instruction content
     function saveCurrentInstructionContent(specificType) {
         if (!instructionTextarea) return;
-
         const selectedType = specificType || Array.from(instructionTypeRadios)
             .find(r => r.checked)?.id.replace('InstructionBtn', '').toLowerCase();
-
         if (!selectedType) return;
-
         console.log(`Saving content for ${selectedType}:`, instructionTextarea.value);
-
         if (selectedType === 'chat' || selectedType === 'vision' ||
             selectedType === 'caption' || selectedType === 'prompt') {
             // Only save if the content has actually changed
             if (MP.settings.instructions[selectedType] !== instructionTextarea.value) {
                 MP.settings.instructions[selectedType] = instructionTextarea.value;
-                console.log(`Saved to MP.settings.instructions.${selectedType}`);
-            } else {
-                console.log(`Content for ${selectedType} unchanged, not saving`);
             }
         } else if (MP.settings.instructions?.custom) {
-            // This is a custom instruction
+            // This is a custom instruction so we need to ensure the object exists
             if (!MP.settings.instructions.custom[selectedType]) {
                 MP.settings.instructions.custom[selectedType] = {};
             }
-
             const currentContent = typeof MP.settings.instructions.custom[selectedType] === 'object'
                 ? MP.settings.instructions.custom[selectedType].content || ''
                 : MP.settings.instructions.custom[selectedType] || '';
-
             // Only save if changed
             if (currentContent !== instructionTextarea.value) {
                 if (typeof MP.settings.instructions.custom[selectedType] === 'object') {
@@ -525,13 +1174,9 @@ function initInstructionsUI() {
                 } else {
                     MP.settings.instructions.custom[selectedType] = instructionTextarea.value;
                 }
-                console.log(`Saved to MP.settings.instructions.custom.${selectedType}`);
-            } else {
-                console.log(`Custom content for ${selectedType} unchanged, not saving`);
             }
         }
     }
-
     // Save the current instruction when it changes
     if (instructionTextarea) {
         // Use a debounced approach to avoid excessive saves
@@ -541,21 +1186,20 @@ function initInstructionsUI() {
             if (saveTimeout) {
                 clearTimeout(saveTimeout);
             }
-
             // Set a new timeout to save after typing stops
             saveTimeout = setTimeout(() => {
                 const selectedType = Array.from(instructionTypeRadios)
                     .find(r => r.checked)?.id.replace('InstructionBtn', '').toLowerCase();
-
                 if (selectedType) {
-                    console.log(`Saving ${selectedType} after input change`);
                     saveCurrentInstructionContent(selectedType);
                 }
                 saveTimeout = null;
             }, 500); // Wait 500ms after typing stops
         });
     }
-
+    instructionTypeRadios.forEach(radio => {
+        radio.addEventListener('change', handleInstructionChange);
+    });
     // Ensure instructions are properly initialized
     if (!MP.settings.instructions) {
         console.log("Initializing empty instructions object");
@@ -563,66 +1207,63 @@ function initInstructionsUI() {
             chat: '',
             vision: '',
             caption: '',
-            prompt: ''
+            prompt: '',
+            custom: {},
+            featureMap: { ...DEFAULT_FEATURE_MAPPINGS }
         };
-    } else {
-        console.log("Current instructions:", MP.settings.instructions);
     }
-
     // Initialize with the selected instruction type (default to chat)
     const selectedType = Array.from(instructionTypeRadios)
         .find(r => r.checked)?.id.replace('InstructionBtn', '').toLowerCase() || 'chat';
-
-    console.log(`Initial selected instruction type: ${selectedType}`);
-
     // Make sure the correct radio button is checked
     const selectedRadio = document.getElementById(`${selectedType}InstructionBtn`);
     if (selectedRadio) {
         selectedRadio.checked = true;
-        console.log(`Set radio button ${selectedRadio.id} to checked`);
     }
-
-    // Update UI with the selected type's content
-    console.log(`Initializing UI with ${selectedType} instructions`);
     updateInstructionUI(selectedType);
-
+    renderCustomInstructionsList();
+    populateFeatureSelects();
+    // Set up instruction management buttons
+    const addCustomInstructionBtn = document.getElementById('addCustomInstructionBtn');
+    if (addCustomInstructionBtn) {
+        addCustomInstructionBtn.addEventListener('click', () => showCustomInstructionModal());
+    }
+    const exportInstructionsBtn = document.getElementById('exportInstructionsBtn');
+    if (exportInstructionsBtn) {
+        exportInstructionsBtn.addEventListener('click', exportCustomInstructions);
+    }
+    const importInstructionsBtn = document.getElementById('importInstructionsBtn');
+    const importInstructionsInput = document.getElementById('importInstructionsInput');
+    if (importInstructionsBtn && importInstructionsInput) {
+        importInstructionsBtn.addEventListener('click', () => {
+            importInstructionsInput.click();
+        });
+        importInstructionsInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                importCustomInstructions(e.target.files[0]);
+                e.target.value = ''; // Reset input
+            }
+        });
+    }
     return {
         updateInstructionUI,
         saveCurrentInstructionContent,
-        addCustomInstructionType: function (key, config) {
-            // Add a new instruction type
-            instructionTypes[key] = config;
-
-            // Create and add a new radio button if it doesn't exist
-            if (!document.getElementById(`${key}InstructionBtn`)) {
-                const instructionTypeGroup = document.getElementById('instructionTypeGroup');
-                if (instructionTypeGroup) {
-                    // Create the radio input
-                    const radio = document.createElement('input');
-                    radio.type = 'radio';
-                    radio.className = 'btn-check';
-                    radio.name = 'instructionType';
-                    radio.id = `${key}InstructionBtn`;
-
-                    // Create the label
-                    const label = document.createElement('label');
-                    label.className = 'btn btn-outline-primary';
-                    label.htmlFor = `${key}InstructionBtn`;
-                    label.textContent = config.title || key;
-
-                    // Add to the group
-                    instructionTypeGroup.appendChild(radio);
-                    instructionTypeGroup.appendChild(label);
-
-                    // Add event listener
-                    radio.addEventListener('change', (e) => {
-                        saveCurrentInstructionContent();
-                        updateInstructionUI(key);
-                    });
-                }
-            }
-        }
+        instructionTypes,
+        handleInstructionChange
     };
+}
+
+/**
+ * Shows the edit modal for a custom instruction
+ * @param {string} id - The ID of the instruction to edit
+ */
+function showEditInstructionModal(id) {
+    if (!id || !MP.settings.instructions?.custom?.[id]) {
+        console.error(`Custom instruction "${id}" not found`);
+        return;
+    }
+    // Call the existing showCustomInstructionModal function with the ID
+    showCustomInstructionModal(id);
 }
 
 /**
@@ -630,35 +1271,32 @@ function initInstructionsUI() {
  */
 function initSettingsModal() {
     try {
-        console.log("Initializing settings modal with current settings:", MP.settings);
-
         // Ensure the instructions object has the correct structure
         if (!MP.settings.instructions) {
             MP.settings.instructions = {
                 chat: '',
                 vision: '',
                 caption: '',
-                prompt: ''
+                prompt: '',
+                custom: {},
+                featureMap: { ...DEFAULT_FEATURE_MAPPINGS }
             };
+        } else {
+            if (!MP.settings.instructions.custom) {
+                MP.settings.instructions.custom = {};
+            }
+            if (!MP.settings.instructions.featureMap) {
+                MP.settings.instructions.featureMap = { ...DEFAULT_FEATURE_MAPPINGS };
+            }
         }
-
-        // Log all instruction types to debug
-        console.log("Current instructions by type:");
-        console.log("Chat:", MP.settings.instructions.chat);
-        console.log("Vision:", MP.settings.instructions.vision);
-        console.log("Caption:", MP.settings.instructions.caption);
-        console.log("Prompt:", MP.settings.instructions.prompt);
-
         // Initialize the linked models state
         const isLinked = MP.settings.linkChatAndVisionModels !== false; // Default to true if not set
-
         // Set the toggle to match the stored setting
         const linkModelsToggle = document.getElementById('linkModelsToggle');
         if (linkModelsToggle) {
             linkModelsToggle.checked = isLinked;
             updateLinkedModelsUI(isLinked);
         }
-
         // Select the correct backend based on current settings
         const currentBackend = MP.settings.backend || 'ollama';
         const currentBackendRadio = document.getElementById(`${currentBackend}LLMBtn`);
@@ -666,35 +1304,24 @@ function initSettingsModal() {
             currentBackendRadio.checked = true;
         }
         updateBaseUrlVisibility(currentBackend, false);
-
-        // Set base URL if needed
         const backendUrl = document.getElementById('backendUrl');
         if (backendUrl) {
             backendUrl.value = MP.settings.backends[currentBackend]?.baseurl || '';
         }
-
-        // Select the correct vision backend based on current settings
         const currentVisionBackend = MP.settings.visionbackend || 'ollama';
         const currentVisionBackendRadio = document.getElementById(`${currentVisionBackend}VisionBtn`);
         if (currentVisionBackendRadio) {
             currentVisionBackendRadio.checked = true;
         }
         updateBaseUrlVisibility(currentVisionBackend, true);
-
-        // Set vision base URL if needed
         const visionBackendUrl = document.getElementById('visionBackendUrl');
         if (visionBackendUrl) {
             visionBackendUrl.value = MP.settings.backends[currentVisionBackend]?.baseurl || '';
         }
-
-        // Initialize the instructions UI
         initInstructionsUI();
-
         // Show loading state before fetching models
         const modelSelect = document.getElementById("modelSelect");
         const visionModelSelect = document.getElementById("visionModel");
-
-        // Use the already defined backend variables from above
         if (modelSelect) {
             modelSelect.innerHTML = '';
             const loadingOption = new Option(`Loading ${currentBackend} models...`, '');
@@ -707,14 +1334,10 @@ function initSettingsModal() {
             loadingOption.disabled = true;
             visionModelSelect.add(loadingOption);
         }
-
-        // Fetch models for the selected backends
-        console.log(`Fetching initial models for ${currentBackend} and ${currentVisionBackend} backends`);
         fetchModels().then(result => {
             console.log('Initial models loaded:', result);
         }).catch(error => {
             console.error('Error loading initial models:', error);
-            // Show error options if there's a failure
             if (modelSelect) {
                 modelSelect.innerHTML = '';
                 const errorOption = new Option('Error loading models', '');
@@ -728,17 +1351,12 @@ function initSettingsModal() {
                 visionModelSelect.add(errorOption);
             }
         });
-
-        // Add event listeners for backend selection
+        // Add event listeners for chat backend selection
         const linkingBackendRadios = document.querySelectorAll('input[name="llmBackend"]');
         linkingBackendRadios.forEach(radio => {
             radio.addEventListener('change', async (e) => {
                 const backend = e.target.id.replace('LLMBtn', '').toLowerCase();
-
-                // Update UI for base URL input
                 updateBaseUrlVisibility(backend, false);
-
-                // Show loading state in the model dropdown
                 const modelSelect = document.getElementById("modelSelect");
                 if (modelSelect) {
                     modelSelect.innerHTML = '';
@@ -746,23 +1364,16 @@ function initSettingsModal() {
                     loadingOption.disabled = true;
                     modelSelect.add(loadingOption);
                 }
-
                 try {
-                    // Get current base URL
                     const backendUrl = document.getElementById('backendUrl');
                     const baseUrl = backendUrl ? backendUrl.value : '';
-
-                    // Update MP.settings directly
                     MP.settings.backend = backend;
-
-                    // Update baseurl if needed
                     if (baseUrl && needsBaseUrl(backend)) {
                         if (!MP.settings.backends[backend]) {
                             MP.settings.backends[backend] = {};
                         }
                         MP.settings.backends[backend].baseurl = baseUrl;
                     }
-
                     // Save settings with minimal data (just backend)
                     const payload = {
                         settings: {
@@ -772,8 +1383,7 @@ function initSettingsModal() {
                             }
                         }
                     };
-
-                    // Use genericRequest which will automatically add session_id
+                    // Use Swarm's built in genericRequest which will automatically add session_id
                     await new Promise((resolve, reject) => {
                         genericRequest('SaveSettingsAsync', payload,
                             (data) => {
@@ -787,8 +1397,6 @@ function initSettingsModal() {
                             (error) => reject(error)
                         );
                     });
-
-                    // Fetch models with the updated settings
                     await fetchModels();
                 } catch (error) {
                     console.error(`Error fetching models for ${backend}:`, error);
@@ -807,11 +1415,7 @@ function initSettingsModal() {
         visionBackendRadios.forEach(radio => {
             radio.addEventListener('change', async (e) => {
                 const backend = e.target.id.replace('VisionBtn', '').toLowerCase();
-
-                // Update UI for base URL input
                 updateBaseUrlVisibility(backend, true);
-
-                // Show loading state in the model dropdown
                 const modelSelect = document.getElementById("visionModel");
                 if (modelSelect) {
                     modelSelect.innerHTML = '';
@@ -819,24 +1423,16 @@ function initSettingsModal() {
                     loadingOption.disabled = true;
                     modelSelect.add(loadingOption);
                 }
-
                 try {
-                    // Get current base URL
                     const backendUrl = document.getElementById('visionBackendUrl');
                     const baseUrl = backendUrl ? backendUrl.value : '';
-
-                    // Update MP.settings directly
                     MP.settings.visionbackend = backend;
-
-                    // Update baseurl if needed
                     if (baseUrl && needsBaseUrl(backend)) {
                         if (!MP.settings.backends[backend]) {
                             MP.settings.backends[backend] = {};
                         }
                         MP.settings.backends[backend].baseurl = baseUrl;
                     }
-
-                    // Save settings with minimal data (just vision backend)
                     const payload = {
                         settings: {
                             visionbackend: backend,
@@ -845,10 +1441,6 @@ function initSettingsModal() {
                             }
                         }
                     };
-
-                    // Save settings
-                    console.log(`Saving vision backend settings for ${backend}`);
-
                     // Use genericRequest which will automatically add session_id
                     await new Promise((resolve, reject) => {
                         genericRequest('SaveSettingsAsync', payload,
@@ -863,8 +1455,6 @@ function initSettingsModal() {
                             (error) => reject(error)
                         );
                     });
-
-                    // Fetch models with the updated settings
                     await fetchModels();
                 } catch (error) {
                     console.error(`Error fetching vision models for ${backend}:`, error);
@@ -889,7 +1479,6 @@ function initSettingsModal() {
                         visionBackendUrl.value = e.target.value;
                     }
                 }
-
                 // Original functionality to update models when URL changes
                 const currentBackend = document.querySelector('input[name="llmBackend"]:checked')?.id.replace('LLMBtn', '').toLowerCase() || MP.settings.backend;
                 if (needsBaseUrl(currentBackend)) {
@@ -900,14 +1489,12 @@ function initSettingsModal() {
                         const loadingOption = new Option(`Loading ${currentBackend} models with new URL...`, '');
                         loadingOption.disabled = true;
                         modelSelect.add(loadingOption);
-
                         // Temporarily update settings for API call
                         const originalBaseUrl = MP.settings.backends[currentBackend]?.baseurl;
                         if (!MP.settings.backends[currentBackend]) {
                             MP.settings.backends[currentBackend] = {};
                         }
                         MP.settings.backends[currentBackend].baseurl = e.target.value;
-
                         // Fetch models with new base URL
                         console.log(`Fetching models for ${currentBackend} with new base URL: ${e.target.value}`);
                         fetchModels().then(result => {
@@ -1103,6 +1690,20 @@ if (typeof window !== 'undefined') {
     window.resetSettings = resetSettings;
     window.loadSettings = loadSettings;
     window.updateLinkedModelsUI = updateLinkedModelsUI;
+    window.getInstructionForFeature = getInstructionForFeature;
+    window.getInstructionContent = getInstructionContent;
+    window.showCustomInstructionModal = showCustomInstructionModal;
+    window.saveCustomInstructionFromForm = saveCustomInstructionFromForm;
+    window.handleInstructionChange = function (e) {
+        const instructionTypeRadios = document.querySelectorAll('input[name="instructionType"]');
+        const type = e.target.id.replace('InstructionBtn', '').toLowerCase();
+        if (type && instructionTypeRadios) {
+            const ui = initInstructionsUI();
+            if (ui && ui.handleInstructionChange) {
+                ui.handleInstructionChange(e);
+            }
+        }
+    };
 }
 
 // Add to MP namespace
@@ -1115,6 +1716,15 @@ if (typeof MP !== 'undefined') {
         loadSettings,
         updateLinkedModelsUI,
         fetchModels,
-        initInstructionsUI
+        initInstructionsUI,
+        getInstructionForFeature,
+        getInstructionContent,
+        showCustomInstructionModal,
+        saveCustomInstructionFromForm,
+        addCustomInstruction,
+        updateCustomInstruction,
+        deleteCustomInstruction,
+        exportCustomInstructions,
+        importCustomInstructions
     };
 }

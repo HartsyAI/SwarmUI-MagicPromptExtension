@@ -135,7 +135,7 @@ if (!window.VisionTab) {
                 loadingSpinner.classList.add('active');
                 captionContent.style.display = 'none';
                 const payload = MP.RequestBuilder.createRequestPayload(
-                    MP.settings.instructions.caption || "Generate a detailed caption for this image",
+                    getInstructionContent(getInstructionForFeature('caption') || 'caption') || "Generate a detailed caption for this image",
                     this.elements.imagePreview.src.split(',')[1],
                     "caption"
                 );

@@ -183,7 +183,6 @@ if (!window.ChatHandler) {
             const { chatInput, loadingIndicator, visionModeRadio } = this.elements;
             const input = chatInput.value.trim();
             if (!input || this.isTyping) return;
-
             // Check if we're in vision mode and there's no image
             const previewImage = document.getElementById('preview_image');
             if (visionModeRadio.checked && (!previewImage || !previewImage.src)) {
@@ -200,11 +199,12 @@ if (!window.ChatHandler) {
                 const promptMode = document.getElementById('prompt_mode')?.checked;
                 const visionMode = document.getElementById('vision_mode')?.checked;
                 const currentImage = previewImage?.src ? previewImage.src.split(',')[1] : null;
-                const action = visionMode ? 'vision' : (promptMode ? 'prompt' : 'chat');
+                // Determine the feature based on mode
+                const featureAction = visionMode ? 'vision-mode' : (promptMode ? 'prompt-mode' : 'chat-mode');
                 const payload = MP.RequestBuilder.createRequestPayload(
                     input,
                     currentImage, // Get image if in vision mode
-                    action
+                    featureAction
                 );
                 // Show typing indicator
                 loadingIndicator.style.display = 'block';

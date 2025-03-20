@@ -238,6 +238,7 @@
                                     <div class="settings-header-icon">📝</div>
                                     <h6 class="settings-section-title">Response Instructions</h6>
                                 </div>
+                                <button type="button" class="btn btn-sm btn-outline-primary me-2" id="addCustomInstructionBtn">Add Custom</button>
                                 <button class="collapse-toggle" aria-expanded="false">▼</button>
                             </div>
                             <div class="collapse" id="instructionsCollapse">
@@ -270,6 +271,96 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Feature Associations Card -->
+                        <div class="settings-card">
+                            <div class="settings-header d-flex align-items-center" data-bs-toggle="collapse" data-bs-target="#featureAssociationsCollapse">
+                                <div class="d-flex align-items-center">
+                                    <div class="settings-header-icon">🔗</div>
+                                    <h6 class="settings-section-title">Feature Associations</h6>
+                                </div>
+                                <button class="collapse-toggle" aria-expanded="false">▼</button>
+                            </div>
+                            <div class="collapse" id="featureAssociationsCollapse">
+                                <div class="settings-content">
+                                    <p class="mb-3 text-muted">Associate specific instructions with each feature in MagicPrompt</p>
+
+                                    <!-- Enhance Prompt Feature -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Enhance Prompt Button</label>
+                                        <select class="form-select" id="feature-enhance-prompt">
+                                            <!-- Populated dynamically -->
+                                        </select>
+                                        <div class="form-text">Select which instruction to use when enhancing prompts</div>
+                                    </div>
+
+                                    <!-- Magic Vision Feature -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Magic Vision Button</label>
+                                        <select class="form-select" id="feature-magic-vision">
+                                            <!-- Populated dynamically -->
+                                        </select>
+                                        <div class="form-text">Select which instruction to use for image analysis</div>
+                                    </div>
+
+                                    <!-- Chat Mode Feature -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Chat Mode</label>
+                                        <select class="form-select" id="feature-chat-mode">
+                                            <!-- Populated dynamically -->
+                                        </select>
+                                        <div class="form-text">Select which instruction to use for chat conversations</div>
+                                    </div>
+
+                                    <!-- Vision Mode Feature -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Vision Mode</label>
+                                        <select class="form-select" id="feature-vision-mode">
+                                            <!-- Populated dynamically -->
+                                        </select>
+                                        <div class="form-text">Select which instruction to use for vision mode</div>
+                                    </div>
+
+                                    <!-- Caption Feature -->
+                                    <div class="mb-3">
+                                        <label class="form-label">Image Caption</label>
+                                        <select class="form-select" id="feature-caption">
+                                            <!-- Populated dynamically -->
+                                        </select>
+                                        <div class="form-text">Select which instruction to use for image captioning</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Custom Instruction Management Card -->
+                        <div class="settings-card">
+                            <div class="settings-header d-flex align-items-center" data-bs-toggle="collapse" data-bs-target="#instructionManagementCollapse">
+                                <div class="d-flex align-items-center">
+                                    <div class="settings-header-icon">🔧</div>
+                                    <h6 class="settings-section-title">Instruction Management</h6>
+                                </div>
+                                <button class="collapse-toggle" aria-expanded="false">▼</button>
+                            </div>
+                            <div class="collapse" id="instructionManagementCollapse">
+                                <div class="settings-content">
+                                    <div class="d-flex gap-3 mb-3">
+                                        <button class="basic-button" id="exportInstructionsBtn">Export Instructions</button>
+                                        <div class="position-relative">
+                                            <input type="file" id="importInstructionsInput" accept="application/json" class="import-input">
+                                            <button class="basic-button" id="importInstructionsBtn">Import Instructions</button>
+                                        </div>
+                                    </div>
+
+                                    <div id="customInstructionsList" class="custom-instructions-list">
+                                        <!-- Custom instructions listed here -->
+                                        <div class="text-center text-muted py-3" id="noCustomInstructionsMsg">
+                                            No custom instructions yet. Click "Add Custom" to create one.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <!-- Footer Buttons -->
@@ -278,6 +369,92 @@
                     <div class="save-buttons">
                         <button type="button" class="basic-button" onclick="event.preventDefault(); saveSettings().then(() => closeSettingsModal())">Save and Close</button>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Instruction Modal -->
+    <div class="modal fade" id="customInstructionModal" tabindex="-1" aria-labelledby="customInstructionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="customInstructionModalLabel">Add Custom Instruction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="customInstructionForm">
+                        <input type="hidden" id="instructionId" value="">
+
+                        <!-- Title field -->
+                        <div class="mb-3">
+                            <label for="instructionTitle" class="form-label">Title*</label>
+                            <input type="text" class="form-control" id="instructionTitle" required>
+                            <div class="form-text">A name for this instruction set (will appear in the radio buttons)</div>
+                        </div>
+
+                        <!-- Tooltip field -->
+                        <div class="mb-3">
+                            <label for="instructionTooltip" class="form-label">Tooltip</label>
+                            <input type="text" class="form-control" id="instructionTooltip">
+                            <div class="form-text">Helpful description shown when hovering over this instruction</div>
+                        </div>
+
+                        <!-- Categories -->
+                        <div class="mb-3">
+                            <label class="form-label">Categories*</label>
+                            <div class="d-flex flex-wrap gap-2">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="chat" name="instructionCategory" id="categoryChat">
+                                    <label class="form-check-label" for="categoryChat">Chat</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="vision" name="instructionCategory" id="categoryVision">
+                                    <label class="form-check-label" for="categoryVision">Vision</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="caption" name="instructionCategory" id="categoryCaption">
+                                    <label class="form-check-label" for="categoryCaption">Caption</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="prompt" name="instructionCategory" id="categoryPrompt">
+                                    <label class="form-check-label" for="categoryPrompt">Prompt</label>
+                                </div>
+                            </div>
+                            <div class="form-text">Select which features can use this instruction</div>
+                        </div>
+
+                        <!-- Instruction content -->
+                        <div class="mb-3">
+                            <label for="instructionContent" class="form-label">Instruction Content*</label>
+                            <textarea class="form-control" id="instructionContent" rows="6" required></textarea>
+                            <div class="form-text">The prompt instructions to send to the AI</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="basic-button" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="basic-button" id="saveCustomInstructionBtn">Save Instruction</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Delete Modal -->
+    <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirm Delete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to delete this custom instruction?</p>
+                    <p class="text-danger small">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="basic-button" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="basic-button danger" id="confirmDeleteBtn">Delete</button>
                 </div>
             </div>
         </div>

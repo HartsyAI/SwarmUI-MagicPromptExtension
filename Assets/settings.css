@@ -11,6 +11,9 @@ TABLE OF CONTENTS:
 4. Button Styles
 5. Expandable Sections
 6. Instruction UI
+7. Feature Associations
+8. Custom Instruction Management
+9. Custom Instruction Modal
 =========================================================== */
 
 /* 1. MODAL CORE STRUCTURE
@@ -90,6 +93,24 @@ TABLE OF CONTENTS:
         font-weight: 600;
         color: var(--text);
     }
+
+    /* Add Custom button in header */
+    #settingsModal #addCustomInstructionBtn {
+        border: 1px solid var(--emphasis);
+        background: transparent;
+        color: var(--emphasis);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        margin-right: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+        #settingsModal #addCustomInstructionBtn:hover {
+            background: var(--emphasis);
+            color: var(--button-foreground-hover);
+        }
 
     /* 4. COLLAPSE CONTROLS
    Expand/collapse section toggles */
@@ -209,51 +230,199 @@ TABLE OF CONTENTS:
         gap: 0.25rem;
     }
 
-    /* 7. FOOTER SECTION */
+    /* 7. FEATURE ASSOCIATIONS
+   Styles for feature-to-instruction mapping */
 
-    #settingsModal .modal-footer {
+    #settingsModal #featureAssociationsCollapse .form-select {
+        margin-bottom: 0.25rem;
+    }
+
+    /* 8. CUSTOM INSTRUCTION MANAGEMENT
+   Styles for the instruction management section */
+
+    #settingsModal .position-relative {
+        position: relative;
+    }
+
+    #settingsModal .import-input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        z-index: 1;
+    }
+
+    #settingsModal .custom-instructions-list {
+        margin-top: 1rem;
+        border: var(--border-style);
+        border-radius: 4px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+
+    #settingsModal .custom-instruction-item {
+        padding: 0.75rem;
         display: flex;
         justify-content: space-between;
-        padding: var(--section-padding);
-        border-top: var(--border-style);
+        align-items: center;
+        border-bottom: var(--border-style);
     }
 
-        #settingsModal .modal-footer .save-buttons {
-            display: flex;
-            gap: 0.5rem;
+        #settingsModal .custom-instruction-item:last-child {
+            border-bottom: none;
         }
 
-        #settingsModal .modal-footer .danger {
-            margin-right: auto;
-        }
+    #settingsModal .custom-instruction-info {
+        flex: 1;
+    }
 
-    /* 8. BUTTONS */
+    #settingsModal .custom-instruction-title {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
 
-    #settingsModal .basic-button {
-        padding: 0.5rem 1rem;
+    #settingsModal .custom-instruction-categories {
+        font-size: 0.8rem;
+        color: var(--text-color-secondary);
+    }
+
+    #settingsModal .custom-instruction-category {
+        display: inline-block;
+        padding: 0.125rem 0.375rem;
+        background: var(--shadow);
+        border-radius: 0.25rem;
+        margin-right: 0.25rem;
+        margin-bottom: 0.25rem;
+        font-size: 0.7rem;
+    }
+
+    #settingsModal .custom-instruction-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    #settingsModal .custom-instruction-action {
+        background: transparent;
         border: none;
-        border-radius: 4px;
-        background-color: var(--button-background);
-        color: var(--button-text);
         cursor: pointer;
+        padding: 0.25rem;
+        font-size: 1rem;
+        color: var(--text);
+        opacity: 0.7;
+        transition: opacity 0.2s;
     }
 
-        #settingsModal .basic-button:hover {
-            background-color: var(--button-background-hover);
+        #settingsModal .custom-instruction-action:hover {
+            opacity: 1;
         }
 
-        #settingsModal .basic-button.danger {
-            --danger-color: #dc3545;
-            --danger-hover: #c82333;
-            --danger-active: #bd2130;
-            background-color: var(--danger-color);
-            color: white;
+        #settingsModal .custom-instruction-action.delete {
+            color: var(--danger-color);
         }
 
-            #settingsModal .basic-button.danger:hover {
-                background-color: var(--danger-hover);
-            }
+/* 9. CUSTOM INSTRUCTION MODAL
+   Styles for the add/edit custom instruction modal */
 
-            #settingsModal .basic-button.danger:active {
-                background-color: var(--danger-active);
-            }
+#customInstructionModal .modal-dialog {
+    max-width: 500px;
+}
+
+#customInstructionModal .form-text {
+    font-size: 0.8rem;
+    color: var(--text-color-secondary);
+}
+
+#customInstructionModal .form-check {
+    margin-right: 0.5rem;
+}
+
+#confirmDeleteModal .modal-footer {
+    justify-content: space-between;
+}
+
+/* 10. FOOTER SECTION */
+
+#settingsModal .modal-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--section-padding);
+    border-top: var(--border-style);
+}
+
+    #settingsModal .modal-footer .save-buttons {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    #settingsModal .modal-footer .danger {
+        margin-right: auto;
+    }
+
+/* 11. BUTTONS */
+
+.basic-button,
+#customInstructionModal .basic-button,
+#confirmDeleteModal .basic-button {
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 4px;
+    background-color: var(--button-background);
+    color: var(--button-text);
+    cursor: pointer;
+}
+
+    .basic-button:hover,
+    #customInstructionModal .basic-button:hover,
+    #confirmDeleteModal .basic-button:hover {
+        background-color: var(--button-background-hover);
+    }
+
+    .basic-button.danger,
+    #customInstructionModal .basic-button.danger,
+    #confirmDeleteModal .basic-button.danger {
+        --danger-color: #dc3545;
+        --danger-hover: #c82333;
+        --danger-active: #bd2130;
+        background-color: var(--danger-color);
+        color: white;
+    }
+
+        .basic-button.danger:hover,
+        #customInstructionModal .basic-button.danger:hover,
+        #confirmDeleteModal .basic-button.danger:hover {
+            background-color: var(--danger-hover);
+        }
+
+        .basic-button.danger:active,
+        #customInstructionModal .basic-button.danger:active,
+        #confirmDeleteModal .basic-button.danger:active {
+            background-color: var(--danger-active);
+        }
+
+/* Custom styling for radio buttons with edit/delete icons */
+#settingsModal #instructionTypeGroup .btn-outline-primary .custom-instruction-actions {
+    margin-left: 0.5rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+#settingsModal #instructionTypeGroup .btn-outline-primary .edit-icon,
+#settingsModal #instructionTypeGroup .btn-outline-primary .delete-icon {
+    font-size: 0.75rem;
+    opacity: 0.7;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+    #settingsModal #instructionTypeGroup .btn-outline-primary .edit-icon:hover,
+    #settingsModal #instructionTypeGroup .btn-outline-primary .delete-icon:hover {
+        opacity: 1;
+    }
+
+#settingsModal #instructionTypeGroup .btn-outline-primary .delete-icon {
+    color: var(--danger-color);
+}
