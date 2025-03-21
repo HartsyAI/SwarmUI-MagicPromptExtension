@@ -238,110 +238,92 @@
                                     <div class="settings-header-icon">📝</div>
                                     <h6 class="settings-section-title">Instructions</h6>
                                 </div>
-                                <button type="button" class="btn btn-sm btn-outline-primary me-2" id="addCustomInstructionBtn">Add Custom</button>
+                                <div class="header-buttons">
+                                    <button type="button" class="btn btn-sm mp-import-btn" id="importInstructionsBtn">
+                                        <i class="fas fa-file-import"></i> Import
+                                    </button>
+                                    <input type="file" id="importInstructionsInput" accept="application/json" class="import-input">
+                                    <button type="button" class="btn btn-sm mp-add-instruction-btn" id="addCustomInstructionBtn">Create Custom Instruction</button>
+                                </div>
                                 <button class="collapse-toggle" aria-expanded="false">▼</button>
                             </div>
                             <div class="collapse" id="instructionsConsolidatedCollapse">
-                                <!-- Tabbed Navigation -->
-                                <ul class="nav nav-tabs mb-3" id="instructionsTabNav" role="tablist">
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link active" id="edit-tab" data-bs-toggle="tab" data-bs-target="#edit-tab-pane" type="button" role="tab" aria-controls="edit-tab-pane" aria-selected="true">Edit</button>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="assign-tab" data-bs-toggle="tab" data-bs-target="#assign-tab-pane" type="button" role="tab" aria-controls="assign-tab-pane" aria-selected="false">Assign</button>
-                                    </li>
-                                    <li class="nav-item" role="presentation">
-                                        <button class="nav-link" id="manage-tab" data-bs-toggle="tab" data-bs-target="#manage-tab-pane" type="button" role="tab" aria-controls="manage-tab-pane" aria-selected="false">Manage</button>
-                                    </li>
-                                </ul>
+                                <!-- Edit Instruction Section -->
+                                <div class="instruction-section">
+                                    <h6 class="section-subtitle">Edit Instructions</h6>
+                                    <div class="mb-3">
+                                        <label class="form-label">Instruction Type</label>
+                                        <div class="btn-group btn-group-sm mb-2 instruction-type-group" role="group" id="instructionTypeGroup">
+                                            <input type="radio" class="btn-check" name="instructionType" id="chatInstructionBtn" autocomplete="off" checked>
+                                            <label class="btn btn-outline-primary instruction-type-btn" for="chatInstructionBtn">Chat</label>
 
-                                <!-- Tab Content -->
-                                <div class="tab-content" id="instructionsTabContent">
-                                    <!-- Edit Tab -->
-                                    <div class="tab-pane fade show active" id="edit-tab-pane" role="tabpanel" aria-labelledby="edit-tab" tabindex="0">
-                                        <div class="mb-3">
-                                            <label class="form-label">Instruction Type</label>
-                                            <div class="btn-group btn-group-sm mb-2 instruction-type-group" role="group" id="instructionTypeGroup">
-                                                <input type="radio" class="btn-check" name="instructionType" id="chatInstructionBtn" autocomplete="off" checked>
-                                                <label class="btn btn-outline-primary instruction-type-btn" for="chatInstructionBtn">Chat</label>
+                                            <input type="radio" class="btn-check" name="instructionType" id="visionInstructionBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary instruction-type-btn" for="visionInstructionBtn">Vision</label>
 
-                                                <input type="radio" class="btn-check" name="instructionType" id="visionInstructionBtn" autocomplete="off">
-                                                <label class="btn btn-outline-primary instruction-type-btn" for="visionInstructionBtn">Vision</label>
+                                            <input type="radio" class="btn-check" name="instructionType" id="captionInstructionBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary instruction-type-btn" for="captionInstructionBtn">Caption</label>
 
-                                                <input type="radio" class="btn-check" name="instructionType" id="captionInstructionBtn" autocomplete="off">
-                                                <label class="btn btn-outline-primary instruction-type-btn" for="captionInstructionBtn">Caption</label>
-
-                                                <input type="radio" class="btn-check" name="instructionType" id="promptInstructionBtn" autocomplete="off">
-                                                <label class="btn btn-outline-primary instruction-type-btn" for="promptInstructionBtn">Enhance Prompt</label>
-                                            </div>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label id="instructionLabel" class="form-label" for="instructionTextarea">
-                                                Chat Instructions
-                                                <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should behave in chat conversations. These define the AI's personality and response style."></i>
-                                            </label>
-                                            <textarea class="form-control" id="instructionTextarea" rows="6"
-                                                      placeholder="Configure the AI's chat personality and behavior"></textarea>
-                                            <div class="form-text" id="instructionHelpText">Define how the AI should behave in chat conversations</div>
+                                            <input type="radio" class="btn-check" name="instructionType" id="promptInstructionBtn" autocomplete="off">
+                                            <label class="btn btn-outline-primary instruction-type-btn" for="promptInstructionBtn">Enhance Prompt</label>
                                         </div>
                                     </div>
+                                    <div class="mb-4">
+                                        <label id="instructionLabel" class="form-label" for="instructionTextarea">
+                                            Chat Instructions
+                                            <i class="fas fa-info-circle" data-bs-toggle="tooltip" title="Instructions for how the AI should behave in chat conversations. These define the AI's personality and response style."></i>
+                                        </label>
+                                        <textarea class="form-control" id="instructionTextarea" rows="6"
+                                                  placeholder="Configure the AI's chat personality and behavior"></textarea>
+                                        <div class="form-text" id="instructionHelpText">Define how the AI should behave in chat conversations</div>
+                                    </div>
+                                </div>
 
-                                    <!-- Assign Tab -->
-                                    <div class="tab-pane fade" id="assign-tab-pane" role="tabpanel" aria-labelledby="assign-tab" tabindex="0">
-                                        <p class="mb-3 text-muted">Associate specific instructions with each feature in MagicPrompt</p>
+                                <!-- Feature Associations Section -->
+                                <div class="instruction-section feature-associations-section">
+                                    <h6 class="section-subtitle">Feature Associations</h6>
+                                    <p class="text-muted mb-3">Associate specific instructions with each feature in MagicPrompt</p>
 
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label class="form-label">Enhance Prompt Button</label>
-                                                <select class="form-select" id="feature-enhance-prompt">
-                                                    <!-- Populated dynamically -->
-                                                </select>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label class="form-label">Magic Vision Button</label>
-                                                <select class="form-select" id="feature-magic-vision">
-                                                    <!-- Populated dynamically -->
-                                                </select>
-                                            </div>
+                                    <div class="feature-association-grid">
+                                        <div class="feature-association-item">
+                                            <label class="form-label">Enhance Prompt Button</label>
+                                            <select class="form-select" id="feature-enhance-prompt">
+                                                <!-- Populated dynamically -->
+                                            </select>
                                         </div>
-
-                                        <div class="row">
-                                            <div class="col-md-4 mb-3">
-                                                <label class="form-label">Chat Mode</label>
-                                                <select class="form-select" id="feature-chat-mode">
-                                                    <!-- Populated dynamically -->
-                                                </select>
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label class="form-label">Vision Mode</label>
-                                                <select class="form-select" id="feature-vision-mode">
-                                                    <!-- Populated dynamically -->
-                                                </select>
-                                            </div>
-                                            <div class="col-md-4 mb-3">
-                                                <label class="form-label">Image Caption</label>
-                                                <select class="form-select" id="feature-caption">
-                                                    <!-- Populated dynamically -->
-                                                </select>
-                                            </div>
+                                        <div class="feature-association-item">
+                                            <label class="form-label">Magic Vision Button</label>
+                                            <select class="form-select" id="feature-magic-vision">
+                                                <!-- Populated dynamically -->
+                                            </select>
+                                        </div>
+                                        <div class="feature-association-item">
+                                            <label class="form-label">Chat Mode</label>
+                                            <select class="form-select" id="feature-chat-mode">
+                                                <!-- Populated dynamically -->
+                                            </select>
+                                        </div>
+                                        <div class="feature-association-item">
+                                            <label class="form-label">Vision Mode</label>
+                                            <select class="form-select" id="feature-vision-mode">
+                                                <!-- Populated dynamically -->
+                                            </select>
+                                        </div>
+                                        <div class="feature-association-item">
+                                            <label class="form-label">Image Caption</label>
+                                            <select class="form-select" id="feature-caption">
+                                                <!-- Populated dynamically -->
+                                            </select>
                                         </div>
                                     </div>
+                                </div>
 
-                                    <!-- Manage Tab -->
-                                    <div class="tab-pane fade" id="manage-tab-pane" role="tabpanel" aria-labelledby="manage-tab" tabindex="0">
-                                        <div class="d-flex gap-3 mb-3">
-                                            <button class="basic-button" id="exportInstructionsBtn">Export Instructions</button>
-                                            <div class="position-relative">
-                                                <input type="file" id="importInstructionsInput" accept="application/json" class="import-input">
-                                                <button class="basic-button" id="importInstructionsBtn">Import Instructions</button>
-                                            </div>
-                                        </div>
-
-                                        <div id="customInstructionsList" class="custom-instructions-list">
-                                            <!-- Custom instructions listed here -->
-                                            <div class="text-center text-muted py-3" id="noCustomInstructionsMsg">
-                                                No custom instructions yet. Click "Add Custom" to create one.
-                                            </div>
+                                <!-- Custom Instructions Management Section -->
+                                <div class="instruction-section">
+                                    <h6 class="section-subtitle">Custom Instructions</h6>
+                                    <div id="customInstructionsList" class="custom-instructions-list">
+                                        <!-- Custom instructions listed here -->
+                                        <div class="text-center text-muted py-3" id="noCustomInstructionsMsg">
+                                            No custom instructions yet. Click "Create Custom Instruction" to create one.
                                         </div>
                                     </div>
                                 </div>
@@ -351,9 +333,9 @@
                 </div>
                 <!-- Footer Buttons -->
                 <div class="modal-footer">
-                    <button type="button" class="basic-button danger" onclick="event.preventDefault(); resetSettings()">Reset to Defaults</button>
+                    <button type="button" class="mp-reset-btn" onclick="event.preventDefault(); resetSettings()">Reset to Defaults</button>
                     <div class="save-buttons">
-                        <button type="button" class="basic-button" onclick="event.preventDefault(); saveSettings().then(() => closeSettingsModal())">Save and Close</button>
+                        <button type="button" class="mp-save-close-btn" onclick="event.preventDefault(); saveSettings().then(() => closeSettingsModal())">Save and Close</button>
                     </div>
                 </div>
             </div>
@@ -365,16 +347,20 @@
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="customInstructionModalLabel">Add Custom Instruction</h5>
+                    <h5 class="modal-title" id="customInstructionModalLabel">Create Custom Instruction</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="text-end mb-3">
-                        <div class="btn-group btn-group-sm" role="group" aria-label="Creation Method">
+                    <div class="creation-method-selector mb-3">
+                        <div class="btn-group btn-group-sm w-100" role="group" aria-label="Creation Method">
                             <input type="radio" class="btn-check" name="creationMethod" id="manualEntryBtn" autocomplete="off" checked>
-                            <label class="btn btn-outline-primary" for="manualEntryBtn">Manual Entry</label>
+                            <label class="btn btn-outline-primary creation-method-btn" for="manualEntryBtn">
+                                <i class="fas fa-pencil-alt"></i> Manual Entry
+                            </label>
                             <input type="radio" class="btn-check" name="creationMethod" id="aiGenerateBtn" autocomplete="off">
-                            <label class="btn btn-outline-primary" for="aiGenerateBtn">AI Generate</label>
+                            <label class="btn btn-outline-primary creation-method-btn" for="aiGenerateBtn">
+                                <i class="fas fa-robot"></i> AI Assisted Creation
+                            </label>
                         </div>
                     </div>
 
@@ -383,40 +369,40 @@
 
                         <!-- Title field -->
                         <div class="mb-3">
-                            <label for="instructionTitle" class="form-label">Title*</label>
+                            <label for="instructionTitle" class="form-label">Instruction Name*</label>
                             <input type="text" class="form-control" id="instructionTitle" required>
-                            <div class="form-text">A name for this instruction set (will appear in the radio buttons)</div>
+                            <div class="form-text">Provide a descriptive name for this instruction (appears in selection options)</div>
                         </div>
 
                         <!-- Tooltip field -->
                         <div class="mb-3">
-                            <label for="instructionTooltip" class="form-label">Tooltip</label>
+                            <label for="instructionTooltip" class="form-label">Tooltip Description</label>
                             <input type="text" class="form-control" id="instructionTooltip">
-                            <div class="form-text">Helpful description shown when hovering over this instruction</div>
+                            <div class="form-text">Brief explanation shown when hovering over this instruction</div>
                         </div>
 
                         <!-- Categories -->
-                        <div class="mb-3">
-                            <label class="form-label">Categories*</label>
-                            <div class="d-flex flex-wrap gap-2">
-                                <div class="form-check">
+                        <div class="mb-4">
+                            <label class="form-label">Applicable Features*</label>
+                            <div class="categories-container">
+                                <div class="category-option">
                                     <input class="form-check-input" type="checkbox" value="chat" name="instructionCategory" id="categoryChat">
                                     <label class="form-check-label" for="categoryChat">Chat</label>
                                 </div>
-                                <div class="form-check">
+                                <div class="category-option">
                                     <input class="form-check-input" type="checkbox" value="vision" name="instructionCategory" id="categoryVision">
                                     <label class="form-check-label" for="categoryVision">Vision</label>
                                 </div>
-                                <div class="form-check">
+                                <div class="category-option">
                                     <input class="form-check-input" type="checkbox" value="caption" name="instructionCategory" id="categoryCaption">
                                     <label class="form-check-label" for="categoryCaption">Caption</label>
                                 </div>
-                                <div class="form-check">
+                                <div class="category-option">
                                     <input class="form-check-input" type="checkbox" value="prompt" name="instructionCategory" id="categoryPrompt">
                                     <label class="form-check-label" for="categoryPrompt">Prompt</label>
                                 </div>
                             </div>
-                            <div class="form-text">Select which features can use this instruction</div>
+                            <div class="form-text">Select the features where this instruction can be used</div>
                         </div>
 
                         <!-- Manual Entry Fields -->
@@ -424,22 +410,30 @@
                             <!-- Instruction content -->
                             <div class="mb-3">
                                 <label for="instructionContent" class="form-label">Instruction Content*</label>
-                                <textarea class="form-control" id="instructionContent" rows="6" required></textarea>
-                                <div class="form-text">The prompt instructions to send to the AI</div>
+                                <textarea class="form-control" id="instructionContent" rows="8" required></textarea>
+                                <div class="form-text">Enter the system instructions to send to the AI model</div>
                             </div>
                         </div>
 
                         <!-- AI Generation Fields -->
                         <div id="aiGenerationFields" style="display: none;">
                             <div class="mb-3">
-                                <label for="aiPromptDescription" class="form-label">Describe What You Want*</label>
-                                <textarea class="form-control" id="aiPromptDescription" rows="6" placeholder="Describe the behavior, personality, or specific instructions you want for your AI assistant..."></textarea>
-                                <div class="form-text">Be detailed about your goals and any specific phrases or style you want included</div>
+                                <label for="aiPromptDescription" class="form-label">Describe Your Desired AI Behavior*</label>
+                                <textarea class="form-control" id="aiPromptDescription" rows="6"
+                                          placeholder="Example: I want an AI assistant that specializes in technical writing with a friendly tone. It should explain complex concepts simply, use plenty of examples, and avoid jargon..."></textarea>
+                                <div class="form-text">
+                                    <p>Provide a detailed description of how you want the AI to behave:</p>
+                                    <ul class="mt-1 mb-0 ps-3">
+                                        <li>Describe personality, tone, and writing style</li>
+                                        <li>Specify what topics or tasks it should excel at</li>
+                                        <li>Include any specific phrases or formats it should use</li>
+                                    </ul>
+                                </div>
                             </div>
 
                             <div class="mb-3 ai-generation-status" style="display: none;">
                                 <div class="d-flex align-items-center">
-                                    <span class="me-2">Generating instruction</span>
+                                    <span class="me-2">Generating your custom instruction...</span>
                                     <div class="spinner-border spinner-border-sm text-primary" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
@@ -451,18 +445,21 @@
 
                             <div class="mb-3 ai-generation-result" style="display: none;">
                                 <label class="form-label">Generated Instruction</label>
-                                <textarea class="form-control" id="generatedInstructionContent" rows="6" readonly></textarea>
-                                <div class="d-flex justify-content-end mt-2">
-                                    <button type="button" class="btn btn-sm btn-outline-primary" id="regenerateInstructionBtn">Regenerate</button>
+                                <textarea class="form-control" id="generatedInstructionContent" rows="8" readonly></textarea>
+                                <div class="d-flex justify-content-between mt-2">
+                                    <div class="form-text">Review the generated instruction and make any desired edits</div>
+                                    <button type="button" class="btn btn-sm mp-regenerate-btn" id="regenerateInstructionBtn">
+                                        <i class="fas fa-sync-alt"></i> Regenerate
+                                    </button>
                                 </div>
                             </div>
                         </div>
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="basic-button" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="basic-button" id="generateWithAIBtn" style="display: none;">Generate</button>
-                    <button type="button" class="basic-button" id="saveCustomInstructionBtn">Save Instruction</button>
+                    <button type="button" class="mp-cancel-btn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="mp-generate-btn" id="generateWithAIBtn" style="display: none;">Generate</button>
+                    <button type="button" class="mp-save-instruction-btn" id="saveCustomInstructionBtn">Save Instruction</button>
                 </div>
             </div>
         </div>
@@ -481,11 +478,26 @@
                     <p class="text-danger small">This action cannot be undone.</p>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="basic-button" data-bs-dismiss="modal">Cancel</button>
-                    <button type="button" class="basic-button danger" id="confirmDeleteBtn">Delete</button>
+                    <button type="button" class="mp-cancel-btn" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="mp-delete-btn" id="confirmDeleteBtn">Delete</button>
                 </div>
             </div>
         </div>
     </div>
+
+    <!-- Custom Instruction Item Template (for JavaScript reference) -->
+    <template id="customInstructionItemTemplate">
+        <div class="custom-instruction-item">
+            <div class="custom-instruction-info">
+                <div class="custom-instruction-title"></div>
+                <div class="custom-instruction-categories"></div>
+            </div>
+            <div class="custom-instruction-actions">
+                <button class="custom-instruction-action export" title="Export"><i class="fas fa-download"></i></button>
+                <button class="custom-instruction-action edit" title="Edit"><i class="fas fa-edit"></i></button>
+                <button class="custom-instruction-action delete" title="Delete"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    </template>
 </body>
 </html>

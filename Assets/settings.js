@@ -710,63 +710,93 @@ function renderCustomInstructionsList() {
             child.remove();
         }
     });
-    // Check if we have any custom instructions
     const customInstructions = MP.settings.instructions?.custom || {};
     const instructionCount = Object.keys(customInstructions).length;
     // Show/hide the "no instructions" message
     if (noInstructionsMsg) {
         noInstructionsMsg.style.display = instructionCount > 0 ? 'none' : 'block';
     }
-    // If no instructions, stop here
     if (instructionCount === 0) return;
-    // Add each instruction to the list
+    const template = document.getElementById('customInstructionItemTemplate');
     Object.entries(customInstructions).forEach(([id, instruction]) => {
-        // Create item container
-        const item = document.createElement('div');
-        item.className = 'custom-instruction-item';
-        item.dataset.id = id;
-        // Create info section
-        const info = document.createElement('div');
-        info.className = 'custom-instruction-info';
-        // Create title
-        const title = document.createElement('div');
-        title.className = 'custom-instruction-title';
-        title.textContent = instruction.title || id;
-        info.appendChild(title);
-        // Create categories
-        if (instruction.categories && instruction.categories.length > 0) {
-            const categoriesContainer = document.createElement('div');
-            categoriesContainer.className = 'custom-instruction-categories';
-            instruction.categories.forEach(category => {
-                const categorySpan = document.createElement('span');
-                categorySpan.className = 'custom-instruction-category';
-                categorySpan.textContent = category;
-                categoriesContainer.appendChild(categorySpan);
-            });
-            info.appendChild(categoriesContainer);
+        if (template) {
+            // Use the template if available
+            const clone = template.content.cloneNode(true);
+            const item = clone.querySelector('.custom-instruction-item');
+            item.dataset.id = id;
+            const titleElem = item.querySelector('.custom-instruction-title');
+            if (titleElem) titleElem.textContent = instruction.title || id;
+            const categoriesElem = item.querySelector('.custom-instruction-categories');
+            if (categoriesElem && instruction.categories && instruction.categories.length > 0) {
+                instruction.categories.forEach(category => {
+                    const categorySpan = document.createElement('span');
+                    categorySpan.className = 'custom-instruction-category';
+                    categorySpan.textContent = category;
+                    categoriesElem.appendChild(categorySpan);
+                });
+            }
+            const exportBtn = item.querySelector('.custom-instruction-action.export');
+            const editBtn = item.querySelector('.custom-instruction-action.edit');
+            const deleteBtn = item.querySelector('.custom-instruction-action.delete');
+            if (exportBtn) {
+                exportBtn.addEventListener('click', () => exportInstruction(id));
+            }
+            if (editBtn) {
+                editBtn.addEventListener('click', () => exportInstruction(id));
+            }
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', () => exportInstruction(id));
+            }
+            container.appendChild(item);
+        } else {
+            // Fallback if template not available
+            const item = document.createElement('div');
+            item.className = 'custom-instruction-item';
+            item.dataset.id = id;
+            const info = document.createElement('div');
+            info.className = 'custom-instruction-info';
+            const title = document.createElement('div');
+            title.className = 'custom-instruction-title';
+            title.textContent = instruction.title || id;
+            info.appendChild(title);
+            if (instruction.categories && instruction.categories.length > 0) {
+                const categoriesContainer = document.createElement('div');
+                categoriesContainer.className = 'custom-instruction-categories';
+                instruction.categories.forEach(category => {
+                    const categorySpan = document.createElement('span');
+                    categorySpan.className = 'custom-instruction-category';
+                    categorySpan.textContent = category;
+                    categoriesContainer.appendChild(categorySpan);
+                });
+                info.appendChild(categoriesContainer);
+            }
+            const actions = document.createElement('div');
+            actions.className = 'custom-instruction-actions';
+            // Export button
+            const exportBtn = document.createElement('button');
+            exportBtn.className = 'custom-instruction-action export';
+            exportBtn.innerHTML = '<i class="fas fa-download"></i>';
+            exportBtn.title = 'Export';
+            exportBtn.addEventListener('click', () => exportInstruction(id));
+            actions.appendChild(exportBtn);
+            // Edit button
+            const editBtn = document.createElement('button');
+            editBtn.className = 'custom-instruction-action edit';
+            editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+            editBtn.title = 'Edit';
+            editBtn.addEventListener('click', () => showEditInstructionModal(id));
+            actions.appendChild(editBtn);
+            // Delete button
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'custom-instruction-action delete';
+            deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+            deleteBtn.title = 'Delete';
+            deleteBtn.addEventListener('click', () => showDeleteConfirmation(id));
+            actions.appendChild(deleteBtn);
+            item.appendChild(info);
+            item.appendChild(actions);
+            container.appendChild(item);
         }
-        // Create actions
-        const actions = document.createElement('div');
-        actions.className = 'custom-instruction-actions';
-        // Edit button
-        const editBtn = document.createElement('button');
-        editBtn.className = 'custom-instruction-action edit';
-        editBtn.innerHTML = '✏️';
-        editBtn.title = 'Edit';
-        editBtn.addEventListener('click', () => showEditInstructionModal(id));
-        actions.appendChild(editBtn);
-        // Delete button
-        const deleteBtn = document.createElement('button');
-        deleteBtn.className = 'custom-instruction-action delete';
-        deleteBtn.innerHTML = '🗑️';
-        deleteBtn.title = 'Delete';
-        deleteBtn.addEventListener('click', () => showDeleteConfirmation(id));
-        actions.appendChild(deleteBtn);
-        // Add sections to item
-        item.appendChild(info);
-        item.appendChild(actions);
-        // Add item to container
-        container.appendChild(item);
     });
 }
 
@@ -924,7 +954,7 @@ async function generateInstructionWithAI() {
         alert('Please enter a description of what you want the instruction to accomplish');
         return;
     }
-    // Get selected categories
+    // Get selected categories to determine how the AI will create the instructions
     const selectedCategories = Array.from(
         document.querySelectorAll('input[name="instructionCategory"]:checked')
     ).map(checkbox => checkbox.value);
@@ -934,7 +964,7 @@ async function generateInstructionWithAI() {
         return;
     }
     try {
-        // Show generating status
+        // Show generating status using an animation
         const statusElement = document.querySelector('.ai-generation-status');
         const resultElement = document.querySelector('.ai-generation-result');
         const generateButton = document.getElementById('generateWithAIBtn');
@@ -943,13 +973,29 @@ async function generateInstructionWithAI() {
         resultElement.style.display = 'none';
         generateButton.disabled = true;
         saveButton.disabled = true;
-        // Create prompt for the AI
+        // Create enhanced prompt for the AI
         const prompt = `
-            Create a system instruction for an AI assistant based on this description:
-            "${description}"
-            This instruction will be used for the following purposes: ${selectedCategories.join(', ')}
-            The instruction should be concise but detailed, focused on guiding the AI's behavior for the specified purposes.
-            Do not include any explanations, disclaimers, or meta-text - just provide the instruction itself.
+            I need you to create a detailed system instruction for an AI language model. This instruction will be used as a "system prompt" that guides how another AI responds to users.
+
+            User Description: "${description}"
+
+            This instruction will be used for the following features: ${selectedCategories.join(', ')}
+
+            Guidelines for creating this system instruction:
+            1. Write in a clear, direct style addressing the AI model ("You are...", "Your task is to...", etc.)
+            2. Include specific guidance on response format, tone, and content boundaries
+            3. Provide examples where helpful
+            4. Focus specifically on the selected categories (${selectedCategories.join(', ')})
+
+            Specific requirements based on categories:
+            ${selectedCategories.includes('chat') ? "- CHAT: Include instructions for conversation flow, personality, and response style" : ""}
+            ${selectedCategories.includes('vision') ? "- VISION: Include instructions for analyzing and describing images with appropriate detail" : ""}
+            ${selectedCategories.includes('caption') ? "- CAPTION: Include instructions for generating descriptive, accurate image captions with the right level of detail" : ""}
+            ${selectedCategories.includes('prompt') ? "- PROMPT: Include instructions for enhancing user prompts for text-to-image generation with specific emphasis on improving detail, style elements, and composition" : ""}
+
+            The instruction should be comprehensive but focused, without unnecessary explanations or meta-commentary. Do not include phrases like "As an AI language model" or refer to yourself in the instruction.
+
+            Respond with ONLY the system instruction text, without any introductory comments, explanations, or formatting instructions.
             `.trim();
         // Make API request using the current LLM backend
         const payload = MP.RequestBuilder.createRequestPayload(
@@ -1059,21 +1105,22 @@ function saveCustomInstructionFromForm() {
 }
 
 /**
- * Exports custom instructions as a JSON file
+ * Exports a single custom instruction as a JSON file
+ * @param {string} id - Instruction ID to export
  */
-function exportCustomInstructions() {
-    const customInstructions = MP.settings.instructions?.custom || {};
-    if (Object.keys(customInstructions).length === 0) {
-        alert('No custom instructions to export');
+function exportInstruction(id) {
+    if (!id || !MP.settings.instructions?.custom?.[id]) {
+        console.error(`Custom instruction "${id}" not found`);
         return;
     }
+    const instruction = MP.settings.instructions.custom[id];
     // Create JSON blob and trigger download
-    const json = JSON.stringify(customInstructions, null, 2);
+    const json = JSON.stringify(instruction, null, 2);
     const blob = new Blob([json], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'magicprompt-custom-instructions.json';
+    a.download = `instruction-${instruction.title || id}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a); // Clean up
@@ -1328,7 +1375,7 @@ function initInstructionsUI() {
     }
     const exportInstructionsBtn = document.getElementById('exportInstructionsBtn');
     if (exportInstructionsBtn) {
-        exportInstructionsBtn.addEventListener('click', exportCustomInstructions);
+        exportInstructionsBtn.addEventListener('click', exportCustomInstruction);
     }
     const importInstructionsBtn = document.getElementById('importInstructionsBtn');
     const importInstructionsInput = document.getElementById('importInstructionsInput');
