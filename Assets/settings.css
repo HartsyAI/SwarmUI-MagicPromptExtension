@@ -14,6 +14,7 @@ TABLE OF CONTENTS:
 7. Feature Associations
 8. Custom Instruction Management
 9. Custom Instruction Modal
+10. Tabbed Interface for Instructions
 =========================================================== */
 
 /* 1. MODAL CORE STRUCTURE
@@ -97,8 +98,8 @@ TABLE OF CONTENTS:
     /* Add Custom button in header */
     #settingsModal #addCustomInstructionBtn {
         border: 1px solid var(--emphasis);
-        background: transparent;
-        color: var(--emphasis);
+        background-color: var(--emphasis);
+        color: var(--button-foreground-hover);
         padding: 0.25rem 0.5rem;
         font-size: 0.75rem;
         border-radius: 4px;
@@ -108,8 +109,7 @@ TABLE OF CONTENTS:
     }
 
         #settingsModal #addCustomInstructionBtn:hover {
-            background: var(--emphasis);
-            color: var(--button-foreground-hover);
+            opacity: 0.9;
         }
 
     /* 4. COLLAPSE CONTROLS
@@ -197,30 +197,21 @@ TABLE OF CONTENTS:
         margin-bottom: 1rem;
         display: flex;
         flex-wrap: wrap;
-        gap: 0; /* Remove gap between buttons */
+        gap: 0.5rem;
+        width: 100%;
     }
 
         #settingsModal #instructionTypeGroup .btn-outline-primary {
-            border-radius: 0;
+            border-radius: 4px;
             padding: 0.25rem 0.5rem;
             font-size: 0.875rem;
             margin: 0;
-            border-right: none;
+            width: auto;
+            flex: 0 0 auto;
         }
 
-            #settingsModal #instructionTypeGroup .btn-outline-primary:first-of-type {
-                border-top-left-radius: 4px;
-                border-bottom-left-radius: 4px;
-            }
-
-            #settingsModal #instructionTypeGroup .btn-outline-primary:last-of-type {
-                border-top-right-radius: 4px;
-                border-bottom-right-radius: 4px;
-                border-right: 1px solid var(--shadow);
-            }
-
     #settingsModal #instructionTextarea {
-        min-height: 150px;
+        min-height: 450px;
         resize: vertical;
     }
 
@@ -326,8 +317,57 @@ TABLE OF CONTENTS:
 /* 9. CUSTOM INSTRUCTION MODAL
    Styles for the add/edit custom instruction modal */
 
-#customInstructionModal .modal-dialog {
-    max-width: 500px;
+/* Custom Instruction Modal Size - High specificity */
+body .modal#customInstructionModal .modal-dialog {
+    max-width: 800px !important;
+    width: 100% !important;
+    margin: 1.75rem auto !important;
+}
+
+/* Large screens */
+@media (min-width: 1600px) {
+    body .modal#customInstructionModal .modal-dialog {
+        max-width: 1000px !important;
+        width: 100% !important;
+    }
+}
+
+/* Medium screens */
+@media (max-width: 992px) {
+    body .modal#customInstructionModal .modal-dialog {
+        max-width: 90% !important;
+        width: 90% !important;
+    }
+}
+
+/* Small screens */
+@media (max-width: 768px) {
+    body .modal#customInstructionModal .modal-dialog {
+        max-width: 95% !important;
+        width: 95% !important;
+    }
+}
+
+/* Ensure the modal content expands properly */
+body .modal#customInstructionModal .modal-content {
+    min-height: 400px;
+    width: 100% !important;
+}
+
+/* Ensure the dialog is centered */
+body .modal#customInstructionModal.show {
+    display: flex !important;
+    align-items: center;
+}
+
+#customInstructionModal .modal-header {
+    background-color: var(--background);
+    border-bottom: 1px solid var(--border-color);
+}
+
+#customInstructionModal .modal-footer {
+    background-color: var(--background);
+    border-top: 1px solid var(--border-color);
 }
 
 #customInstructionModal .form-text {
@@ -339,11 +379,242 @@ TABLE OF CONTENTS:
     margin-right: 0.5rem;
 }
 
+#customInstructionModal .form-control,
+#customInstructionModal textarea,
+#customInstructionModal input[type="text"] {
+    background-color: var(--background);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+
+#customInstructionModal .btn-group .btn-outline-primary {
+    border: 1px solid var(--shadow);
+    background: var(--shadow);
+    color: var(--emphasis-text);
+    padding: 0.25rem 0.5rem;
+}
+
+#customInstructionModal .btn-group .btn-check:checked + .btn-outline-primary {
+    background: var(--emphasis);
+    border-color: var(--emphasis);
+    color: var(--button-foreground-hover);
+}
+
+#customInstructionModal .btn-group .btn-outline-primary:hover {
+    background: color-mix(in srgb, var(--emphasis-soft) 70%, white);
+    color: var(--emphasis-text);
+}
+
+/* MagicPrompt specific button styling to avoid conflicts */
+#customInstructionModal .mp-button-primary {
+    background-color: var(--emphasis);
+    color: var(--button-foreground-hover);
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+    #customInstructionModal .mp-button-primary:hover {
+        opacity: 0.9;
+    }
+
+#customInstructionModal .mp-button-secondary {
+    background-color: var(--background-gray);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+    #customInstructionModal .mp-button-secondary:hover {
+        background-color: var(--shadow);
+    }
+
+#customInstructionModal #generateWithAIBtn {
+    background-color: var(--emphasis);
+    color: var(--button-foreground-hover);
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+    #customInstructionModal #generateWithAIBtn:hover {
+        opacity: 0.9;
+    }
+
+#customInstructionModal #regenerateInstructionBtn {
+    color: var(--emphasis);
+    border-color: var(--emphasis);
+    background-color: transparent;
+    border: 1px solid;
+    border-radius: 4px;
+    padding: 0.25rem 0.75rem;
+}
+
+    #customInstructionModal #regenerateInstructionBtn:hover {
+        background-color: color-mix(in srgb, var(--emphasis) 10%, transparent);
+    }
+
+#customInstructionModal .ai-generation-status .spinner-border {
+    color: var(--emphasis);
+}
+
+#customInstructionModal .ai-generation-status .progress-bar {
+    background-color: var(--emphasis);
+}
+
+#customInstructionModal .ai-generation-status .progress {
+    background-color: var(--background-gray);
+}
+
+#customInstructionModal #generatedInstructionContent {
+    background-color: var(--background-gray);
+}
+
+#confirmDeleteModal .modal-content {
+    background-color: var(--background);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+
+#confirmDeleteModal .modal-header {
+    background-color: var(--background);
+    border-bottom: 1px solid var(--border-color);
+}
+
 #confirmDeleteModal .modal-footer {
+    background-color: var(--background);
+    border-top: 1px solid var(--border-color);
     justify-content: space-between;
 }
 
-/* 10. FOOTER SECTION */
+/* 10. TABBED INTERFACE FOR INSTRUCTIONS
+   Styles for the tabbed interface in consolidated instructions section */
+
+#instructionsTabNav {
+    border-bottom: 1px solid var(--border-color);
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+}
+
+    #instructionsTabNav .nav-link {
+        color: var(--text);
+        background-color: transparent;
+        border: 1px solid transparent;
+        border-bottom: none;
+        margin-bottom: -1px;
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+        padding: 0.5rem 1rem;
+        font-size: 0.9rem;
+    }
+
+        #instructionsTabNav .nav-link:hover {
+            border-color: var(--shadow);
+            background-color: var(--background-soft);
+        }
+
+        #instructionsTabNav .nav-link.active {
+            color: var(--emphasis);
+            background-color: var(--background);
+            border-color: var(--border-color);
+            border-bottom-color: transparent;
+        }
+
+#instructionsTabContent {
+    padding: 0.75rem;
+}
+
+/* Instruction Type Radio Button Group - Fixed width and multi-row support */
+.instruction-type-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    width: 100%;
+}
+
+.instruction-type-btn {
+    display: inline-block;
+    width: auto !important;
+    flex: 0 0 auto !important;
+    min-width: 0;
+    border-radius: 4px !important;
+    margin-right: 0.25rem;
+    white-space: nowrap;
+}
+
+/* Remove duplicate controls in radio buttons */
+#settingsModal #instructionTypeGroup .btn-outline-primary .custom-instruction-actions {
+    display: none;
+}
+
+/* Feature Associations layout improvements */
+#assign-tab-pane .row {
+    margin-left: -0.5rem;
+    margin-right: -0.5rem;
+}
+
+#assign-tab-pane .col-md-4,
+#assign-tab-pane .col-md-6 {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+#assign-tab-pane .form-label {
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+    color: var(--text);
+}
+
+#assign-tab-pane .form-select {
+    font-size: 0.9rem;
+    padding: 0.3rem 0.5rem;
+    background-color: var(--background);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+
+/* Make the instruction form more compact */
+#edit-tab-pane .form-label {
+    margin-bottom: 0.25rem;
+    color: var(--text);
+}
+
+#edit-tab-pane #instructionTextarea {
+    min-height: 120px;
+    resize: vertical;
+    background-color: var(--background);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+
+/* Manage tab styling */
+#manage-tab-pane .custom-instructions-list {
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--background);
+}
+
+/* MagicPrompt specific buttons for the manage tab */
+#manage-tab-pane .mp-button {
+    background-color: var(--emphasis);
+    color: var(--button-foreground-hover);
+    border: 1px solid var(--emphasis);
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+    #manage-tab-pane .mp-button:hover {
+        opacity: 0.9;
+    }
+
+/* 11. FOOTER SECTION */
 
 #settingsModal .modal-footer {
     display: flex;
@@ -361,68 +632,79 @@ TABLE OF CONTENTS:
         margin-right: auto;
     }
 
-/* 11. BUTTONS */
+/* 12. SPECIFIC BUTTON STYLING FOR MAGICPROMPT 
+   These are unique to MagicPrompt and won't affect SwarmUI buttons */
 
-.basic-button,
-#customInstructionModal .basic-button,
-#confirmDeleteModal .basic-button {
-    padding: 0.5rem 1rem;
+.mp-save-close-btn {
+    background-color: var(--emphasis);
+    color: var(--button-foreground-hover);
     border: none;
     border-radius: 4px;
-    background-color: var(--button-background);
-    color: var(--button-text);
+    padding: 0.5rem 1rem;
     cursor: pointer;
 }
 
-    .basic-button:hover,
-    #customInstructionModal .basic-button:hover,
-    #confirmDeleteModal .basic-button:hover {
-        background-color: var(--button-background-hover);
+    .mp-save-close-btn:hover {
+        opacity: 0.9;
     }
 
-    .basic-button.danger,
-    #customInstructionModal .basic-button.danger,
-    #confirmDeleteModal .basic-button.danger {
-        --danger-color: #dc3545;
-        --danger-hover: #c82333;
-        --danger-active: #bd2130;
-        background-color: var(--danger-color);
-        color: white;
-    }
-
-        .basic-button.danger:hover,
-        #customInstructionModal .basic-button.danger:hover,
-        #confirmDeleteModal .basic-button.danger:hover {
-            background-color: var(--danger-hover);
-        }
-
-        .basic-button.danger:active,
-        #customInstructionModal .basic-button.danger:active,
-        #confirmDeleteModal .basic-button.danger:active {
-            background-color: var(--danger-active);
-        }
-
-/* Custom styling for radio buttons with edit/delete icons */
-#settingsModal #instructionTypeGroup .btn-outline-primary .custom-instruction-actions {
-    margin-left: 0.5rem;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-#settingsModal #instructionTypeGroup .btn-outline-primary .edit-icon,
-#settingsModal #instructionTypeGroup .btn-outline-primary .delete-icon {
-    font-size: 0.75rem;
-    opacity: 0.7;
+.mp-reset-btn {
+    background-color: var(--danger-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
     cursor: pointer;
-    transition: opacity 0.2s;
 }
 
-    #settingsModal #instructionTypeGroup .btn-outline-primary .edit-icon:hover,
-    #settingsModal #instructionTypeGroup .btn-outline-primary .delete-icon:hover {
-        opacity: 1;
+    .mp-reset-btn:hover {
+        opacity: 0.9;
     }
 
-#settingsModal #instructionTypeGroup .btn-outline-primary .delete-icon {
-    color: var(--danger-color);
+.mp-cancel-btn {
+    background-color: var(--background-gray);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+    .mp-cancel-btn:hover {
+        background-color: var(--shadow);
+    }
+
+.mp-save-instruction-btn {
+    background-color: var(--emphasis);
+    color: var(--button-foreground-hover);
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+    .mp-save-instruction-btn:hover {
+        opacity: 0.9;
+    }
+
+/* AI Generation Fields Styling */
+#aiGenerationFields .spinner-border {
+    width: 1rem;
+    height: 1rem;
+    color: var(--emphasis);
+}
+
+#aiGenerationFields .progress {
+    height: 0.5rem;
+    background-color: var(--background-soft);
+}
+
+#aiGenerationFields .progress-bar {
+    background-color: var(--emphasis);
+}
+
+#aiGenerationFields textarea {
+    background-color: var(--background);
+    color: var(--text);
+    border: 1px solid var(--border-color);
 }

@@ -16,7 +16,8 @@ const DEFAULT_FEATURE_MAPPINGS = {
     'chat-mode': 'chat',
     'vision-mode': 'vision',
     'prompt-mode': 'prompt',
-    'caption': 'caption'
+    'caption': 'caption',
+    'generate-instruction': 'chat'
 };
 
 // Helper function to check if a backend needs base URL configuration
@@ -34,6 +35,24 @@ function updateBaseUrlVisibility(backend, isVision = false) {
 }
 
 /**
+ * Creates a debounced function that delays invoking func until after wait milliseconds
+ * @param {Function} func - Function to debounce
+ * @param {number} wait - Milliseconds to wait
+ * @returns {Function} Debounced function
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+/**
  * Loads settings from the backend
  * @returns {Promise<Object>} Settings object
  * @throws {Error} If settings cannot be loaded
@@ -44,8 +63,6 @@ async function loadSettings() {
             genericRequest('GetSettingsAsync', {}, data => {
                 if (data.success) {
                     const serverSettings = data.settings;
-                    console.log("Received settings from server:", serverSettings);
-
                     // Create settings object preserving server values
                     const settings = {
                         // Core settings
@@ -69,49 +86,34 @@ async function loadSettings() {
                             featureMap: { ...DEFAULT_FEATURE_MAPPINGS }
                         }
                     };
-
                     // Handle the instructions specifically to ensure all types are properly loaded
                     if (serverSettings.instructions) {
-                        console.log("Processing instructions from server");
-
                         // Explicitly handle each instruction type
                         if (typeof serverSettings.instructions.chat === 'string') {
                             settings.instructions.chat = serverSettings.instructions.chat;
-                            console.log("Loaded chat instructions");
                         }
-
                         if (typeof serverSettings.instructions.vision === 'string') {
                             settings.instructions.vision = serverSettings.instructions.vision;
-                            console.log("Loaded vision instructions");
                         }
 
                         if (typeof serverSettings.instructions.caption === 'string') {
                             settings.instructions.caption = serverSettings.instructions.caption;
-                            console.log("Loaded caption instructions");
                         }
-
                         if (typeof serverSettings.instructions.prompt === 'string') {
                             settings.instructions.prompt = serverSettings.instructions.prompt;
-                            console.log("Loaded prompt instructions");
                         }
-
                         // Handle any custom instructions
                         if (serverSettings.instructions.custom) {
                             settings.instructions.custom = serverSettings.instructions.custom;
-                            console.log("Loaded custom instructions");
                         }
-
                         // Handle feature mappings
                         if (serverSettings.instructions.featureMap) {
                             settings.instructions.featureMap = {
                                 ...DEFAULT_FEATURE_MAPPINGS,
                                 ...serverSettings.instructions.featureMap
                             };
-                            console.log("Loaded feature mappings");
                         }
                     }
-
-                    console.log("Final processed settings:", settings);
                     MP.settings = settings;
                     resolve(settings);
                 } else {
@@ -137,39 +139,32 @@ async function saveSettings(skipFeatureMappings = false) {
     try {
         // Check if models are linked
         const isLinked = document.getElementById('linkModelsToggle')?.checked;
-
         // Get the selected backends
         const selectedChatBackend = document.querySelector('input[name="llmBackend"]:checked');
         const selectedVisionBackend = document.querySelector('input[name="visionBackendSelect"]:checked');
-
         // Extract backend IDs
         const chatBackendId = selectedChatBackend ?
             selectedChatBackend.id.replace('LLMBtn', '').toLowerCase() :
             MP.settings.backend;
-
         // If linked, use chat backend for vision too
         const visionBackendId = isLinked ? chatBackendId :
             (selectedVisionBackend ?
                 selectedVisionBackend.id.replace('VisionBtn', '').toLowerCase() :
                 MP.settings.visionbackend);
-
         // Get models and use chat model for vision if linked
         const chatModel = document.getElementById('modelSelect')?.value || MP.settings.model;
         const visionModel = isLinked ? chatModel :
             (document.getElementById('visionModel')?.value || MP.settings.visionmodel);
-
         // Get base URLs
         const chatBaseUrl = document.getElementById('backendUrl')?.value ||
             MP.settings.backends[chatBackendId]?.baseurl;
         const visionBaseUrl = isLinked ? chatBaseUrl :
             (document.getElementById('visionBackendUrl')?.value ||
                 MP.settings.backends[visionBackendId]?.baseurl);
-
         // Save feature mappings if not skipped
         if (!skipFeatureMappings) {
             saveFeatureMappingsFromUI();
         }
-
         // Create settings object matching exact structure expected by C# DefaultSettings
         const settings = {
             // Core settings
@@ -193,15 +188,12 @@ async function saveSettings(skipFeatureMappings = false) {
             },
             instructions: MP.settings.instructions
         };
-
         // Update MP.settings with the new values
         MP.settings = settings;
-
         // Create request payload with settings properly wrapped
         const payload = {
             settings
         };
-
         // Use genericRequest which will automatically add session_id
         genericRequest('SaveSettingsAsync', payload,
             (data) => {
@@ -209,18 +201,18 @@ async function saveSettings(skipFeatureMappings = false) {
                     console.log('Settings saved successfully');
                 } else {
                     console.error(`Failed to save settings: ${data.error || 'Unknown error'}`);
-                    showError(`Failed to save settings: ${data.error || 'Unknown error'}`);
+                    // showError(`Failed to save settings: ${data.error || 'Unknown error'}`);
                 }
             },
             0,  // depth
             (error) => {
                 console.error('Error saving settings:', error);
-                showError(`Error saving settings: ${error}`);
+                // showError(`Error saving settings: ${error}`);
             }
         );
     } catch (error) {
         console.error('Error in saveSettings:', error);
-        showError(`Error in saveSettings: ${error.message}`);
+        // showError(`Error in saveSettings: ${error.message}`);
     }
 }
 
@@ -255,7 +247,7 @@ async function resetSettings() {
         closeSettingsModal();
     } catch (error) {
         console.error('Settings reset error:', error);
-        showError(`Failed to reset settings: ${error.message}`);
+        // showError(`Failed to reset settings: ${error.message}`);
     }
 }
 
@@ -266,18 +258,15 @@ async function resetSettings() {
 async function fetchModels() {
     const modelSelect = document.getElementById("modelSelect");
     const visionModelSelect = document.getElementById("visionModel");
-
     if (!modelSelect || !visionModelSelect) {
         console.error('Model select elements not found');
         return Promise.reject(new Error('Model select elements not found'));
     }
-
     // Create a request semaphore
     if (MP.fetchingModels) {
         console.log('Models already being fetched, waiting for current request to complete');
         return MP.fetchingModelsPromise;
     }
-
     try {
         // Set semaphore
         MP.fetchingModels = true;
@@ -286,9 +275,6 @@ async function fetchModels() {
             // These will be temporarily set by the radio button handlers
             const chatBackendId = MP.settings.backend || 'ollama';
             const visionBackendId = MP.settings.visionbackend || 'ollama';
-
-            console.log(`Fetching models for chat backend: ${chatBackendId}, vision backend: ${visionBackendId}`);
-
             // Fetch models for both backends
             const response = await new Promise((resolve, reject) => {
                 genericRequest('GetModelsAsync', {
@@ -314,7 +300,6 @@ async function fetchModels() {
             // Add chat models
             if (Array.isArray(response.models)) {
                 const existingModelIds = new Set();
-
                 // Clear existing options if not already cleared
                 if (modelSelect.options.length > 0) {
                     modelSelect.innerHTML = '';
@@ -322,7 +307,6 @@ async function fetchModels() {
                     const defaultOption = new Option('-- Select a model --', '');
                     modelSelect.add(defaultOption);
                 }
-
                 response.models.forEach(model => {
                     if (!model.model || existingModelIds.has(model.model)) {
                         if (!model.model) {
@@ -330,7 +314,6 @@ async function fetchModels() {
                         }
                         return;
                     }
-
                     existingModelIds.add(model.model);
                     const option = new Option(model.name || model.model, model.model);
                     modelSelect.add(option.cloneNode(true));
@@ -350,7 +333,6 @@ async function fetchModels() {
                     const defaultOption = new Option('-- Select a vision model --', '');
                     visionModelSelect.add(defaultOption);
                 }
-
                 response.visionmodels.forEach(model => {
                     if (!model.model || existingVisionModelIds.has(model.model)) {
                         if (!model.model) {
@@ -358,7 +340,6 @@ async function fetchModels() {
                         }
                         return;
                     }
-
                     existingVisionModelIds.add(model.model);
                     const option = new Option(model.name || model.model, model.model);
                     visionModelSelect.add(option);
@@ -367,17 +348,14 @@ async function fetchModels() {
                     setModelIfExists(visionModelSelect, MP.settings.visionmodel);
                 }
             }
-
-            console.log(`Models populated - Chat: ${modelSelect.options.length - 1}, Vision: ${visionModelSelect.options.length - 1}`);
             // Return the fetched data for debugging
             return response;
         })();
-
         await MP.fetchingModelsPromise;
         return MP.fetchingModelsPromise;
     } catch (error) {
         console.error('Error fetching models:', error);
-        showError(`Failed to fetch models: ${error.message}`);
+        // showError(`Failed to fetch models: ${error.message}`);
         return Promise.reject(error);
     } finally {
         // Clear semaphore
@@ -406,12 +384,10 @@ function setModelIfExists(select, modelId) {
  */
 function getInstructionContent(type) {
     if (!type) return '';
-
     // Handle built-in instruction types
     if (type === 'chat' || type === 'vision' || type === 'caption' || type === 'prompt') {
         return MP.settings.instructions[type] || '';
     }
-
     // Handle custom instruction types
     if (MP.settings.instructions?.custom?.[type]) {
         const customInstruction = MP.settings.instructions.custom[type];
@@ -419,7 +395,6 @@ function getInstructionContent(type) {
             ? customInstruction.content || ''
             : customInstruction || '';
     }
-
     return '';
 }
 
@@ -432,7 +407,6 @@ function getInstructionForFeature(feature) {
     if (!feature || !MP.settings.instructions?.featureMap) {
         return null;
     }
-
     return MP.settings.instructions.featureMap[feature] || null;
 }
 
@@ -556,7 +530,6 @@ function saveFeatureMappingsFromUI() {
             setInstructionForFeature(feature, select.value, true); // Pass true to skipSave
         }
     });
-    
     // Save settings after updating all feature mappings
     saveSettings(true); // Pass true to skipFeatureMappings to prevent recursion
 }
@@ -661,15 +634,9 @@ function addCustomInstructionToUI(id, instruction) {
         radio.id = `${id}InstructionBtn`;
         // Create label for radio button
         const label = document.createElement('label');
-        label.className = 'btn btn-outline-primary';
+        label.className = 'btn btn-outline-primary instruction-type-btn';
         label.htmlFor = radio.id;
-        label.innerHTML = `
-            ${instruction.title}
-            <span class="custom-instruction-actions">
-                <i class="edit-icon" title="Edit">✏️</i>
-                <i class="delete-icon" title="Delete">🗑️</i>
-            </span>
-        `;
+        label.textContent = instruction.title;
         instructionTypeGroup.appendChild(radio);
         instructionTypeGroup.appendChild(label);
         // Add to instruction types for UI updating
@@ -680,22 +647,6 @@ function addCustomInstructionToUI(id, instruction) {
             placeholder: `Enter custom instructions for ${instruction.title}`
         };
         radio.addEventListener('change', handleInstructionChange);
-        const editIcon = label.querySelector('.edit-icon');
-        const deleteIcon = label.querySelector('.delete-icon');
-        if (editIcon) {
-            editIcon.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                showEditInstructionModal(id);
-            });
-        }
-        if (deleteIcon) {
-            deleteIcon.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                showDeleteConfirmation(id);
-            });
-        }
     }
     renderCustomInstructionsList();
 }
@@ -710,17 +661,7 @@ function updateCustomInstructionInUI(id) {
     // Update radio button label
     const label = document.querySelector(`label[for="${id}InstructionBtn"]`);
     if (label) {
-        const labelText = label.childNodes[0];
-        if (labelText && labelText.nodeType === Node.TEXT_NODE) {
-            labelText.nodeValue = instruction.title;
-        } else {
-            // If text node not found, update innerHTML but preserve actions
-            const actionsSpan = label.querySelector('.custom-instruction-actions');
-            label.innerHTML = instruction.title;
-            if (actionsSpan) {
-                label.appendChild(actionsSpan);
-            }
-        }
+        label.textContent = instruction.title;
     }
     // Update instruction types object
     if (instructionTypes[id]) {
@@ -743,18 +684,15 @@ function removeCustomInstructionFromUI(id) {
     if (radio) {
         radio.remove();
     }
-
     // Remove label
     const label = document.querySelector(`label[for="${id}InstructionBtn"]`);
     if (label) {
         label.remove();
     }
-
     // Remove from instruction types
     if (instructionTypes[id]) {
         delete instructionTypes[id];
     }
-
     // Refresh custom instructions list
     renderCustomInstructionsList();
 }
@@ -765,64 +703,51 @@ function removeCustomInstructionFromUI(id) {
 function renderCustomInstructionsList() {
     const container = document.getElementById('customInstructionsList');
     const noInstructionsMsg = document.getElementById('noCustomInstructionsMsg');
-
     if (!container) return;
-
     // Clear existing items (except the "no instructions" message)
     Array.from(container.children).forEach(child => {
         if (child.id !== 'noCustomInstructionsMsg') {
             child.remove();
         }
     });
-
     // Check if we have any custom instructions
     const customInstructions = MP.settings.instructions?.custom || {};
     const instructionCount = Object.keys(customInstructions).length;
-
     // Show/hide the "no instructions" message
     if (noInstructionsMsg) {
         noInstructionsMsg.style.display = instructionCount > 0 ? 'none' : 'block';
     }
-
     // If no instructions, stop here
     if (instructionCount === 0) return;
-
     // Add each instruction to the list
     Object.entries(customInstructions).forEach(([id, instruction]) => {
         // Create item container
         const item = document.createElement('div');
         item.className = 'custom-instruction-item';
         item.dataset.id = id;
-
         // Create info section
         const info = document.createElement('div');
         info.className = 'custom-instruction-info';
-
         // Create title
         const title = document.createElement('div');
         title.className = 'custom-instruction-title';
         title.textContent = instruction.title || id;
         info.appendChild(title);
-
         // Create categories
         if (instruction.categories && instruction.categories.length > 0) {
             const categoriesContainer = document.createElement('div');
             categoriesContainer.className = 'custom-instruction-categories';
-
             instruction.categories.forEach(category => {
                 const categorySpan = document.createElement('span');
                 categorySpan.className = 'custom-instruction-category';
                 categorySpan.textContent = category;
                 categoriesContainer.appendChild(categorySpan);
             });
-
             info.appendChild(categoriesContainer);
         }
-
         // Create actions
         const actions = document.createElement('div');
         actions.className = 'custom-instruction-actions';
-
         // Edit button
         const editBtn = document.createElement('button');
         editBtn.className = 'custom-instruction-action edit';
@@ -830,7 +755,6 @@ function renderCustomInstructionsList() {
         editBtn.title = 'Edit';
         editBtn.addEventListener('click', () => showEditInstructionModal(id));
         actions.appendChild(editBtn);
-
         // Delete button
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'custom-instruction-action delete';
@@ -838,11 +762,9 @@ function renderCustomInstructionsList() {
         deleteBtn.title = 'Delete';
         deleteBtn.addEventListener('click', () => showDeleteConfirmation(id));
         actions.appendChild(deleteBtn);
-
         // Add sections to item
         item.appendChild(info);
         item.appendChild(actions);
-
         // Add item to container
         container.appendChild(item);
     });
@@ -862,7 +784,29 @@ function showCustomInstructionModal(id = null) {
     const tooltipInput = document.getElementById('instructionTooltip');
     const contentTextarea = document.getElementById('instructionContent');
     const saveBtn = document.getElementById('saveCustomInstructionBtn');
+    // Reset form fields
     form.reset();
+    // Set manual entry mode by default
+    document.getElementById('manualEntryBtn').checked = true;
+    // Clear generated content fields
+    const generatedContent = document.getElementById('generatedInstructionContent');
+    if (generatedContent) {
+        generatedContent.value = '';
+    }
+    const resultElement = document.querySelector('.ai-generation-result');
+    if (resultElement) {
+        resultElement.style.display = 'none';
+    }
+    const statusElement = document.querySelector('.ai-generation-status');
+    if (statusElement) {
+        statusElement.style.display = 'none';
+    }
+    // Show manual entry fields, hide AI generation fields
+    document.getElementById('manualEntryFields').style.display = 'block';
+    document.getElementById('aiGenerationFields').style.display = 'none';
+    // Show save button, hide generate button
+    saveBtn.style.display = 'block';
+    document.getElementById('generateWithAIBtn').style.display = 'none';
     // Clear category checkboxes to ensure no old values are carried over
     const categoryCheckboxes = form.querySelectorAll('input[name="instructionCategory"]');
     categoryCheckboxes.forEach(checkbox => {
@@ -891,9 +835,12 @@ function showCustomInstructionModal(id = null) {
         title.textContent = 'Add Custom Instruction'; // Add new instruction
         idInput.value = '';
     }
-    // Show modal and set up save button handler
+    // Show modal and initialize creation mode toggle
     const bootstrapModal = new bootstrap.Modal(modal);
     bootstrapModal.show();
+    // Initialize the toggle functionality
+    toggleInstructionCreationMode();
+    // Set up save button handler
     if (saveBtn) {
         const newSaveBtn = saveBtn.cloneNode(true);
         saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
@@ -922,6 +869,138 @@ function showDeleteConfirmation(id) {
 }
 
 /**
+ * Handles toggling between manual entry and AI generation
+ */
+function toggleInstructionCreationMode() {
+    const manualEntryBtn = document.getElementById('manualEntryBtn');
+    const aiGenerateBtn = document.getElementById('aiGenerateBtn');
+    const manualEntryFields = document.getElementById('manualEntryFields');
+    const aiGenerationFields = document.getElementById('aiGenerationFields');
+    const generateWithAIBtn = document.getElementById('generateWithAIBtn');
+    const saveCustomInstructionBtn = document.getElementById('saveCustomInstructionBtn');
+    // Setup event listeners for the toggle buttons
+    manualEntryBtn.addEventListener('change', updateDisplayMode);
+    aiGenerateBtn.addEventListener('change', updateDisplayMode);
+    // Generate button handler
+    generateWithAIBtn.addEventListener('click', generateInstructionWithAI);
+    // Regenerate button handler
+    document.getElementById('regenerateInstructionBtn')?.addEventListener('click', regenerateInstruction);
+
+    function updateDisplayMode() {
+        if (manualEntryBtn.checked) {
+            // Show manual entry, hide AI generation
+            manualEntryFields.style.display = 'block';
+            aiGenerationFields.style.display = 'none';
+            generateWithAIBtn.style.display = 'none';
+            saveCustomInstructionBtn.style.display = 'block';
+        } else if (aiGenerateBtn.checked) {
+            // Show AI generation, hide manual entry
+            manualEntryFields.style.display = 'none';
+            aiGenerationFields.style.display = 'block';
+            // Check if we already have generated content
+            const generatedContent = document.getElementById('generatedInstructionContent');
+            if (generatedContent && generatedContent.value.trim()) {
+                document.querySelector('.ai-generation-result').style.display = 'block';
+                generateWithAIBtn.style.display = 'none';
+            } else {
+                document.querySelector('.ai-generation-result').style.display = 'none';
+                generateWithAIBtn.style.display = 'block';
+            }
+            document.querySelector('.ai-generation-status').style.display = 'none';
+        }
+    }
+    // Initialize display
+    updateDisplayMode();
+}
+
+/**
+ * Generate instruction using AI based on user description
+ */
+async function generateInstructionWithAI() {
+    const descriptionTextarea = document.getElementById('aiPromptDescription');
+    const description = descriptionTextarea.value.trim();
+    if (!description) {
+        console.error('Please enter a description of what you want the instruction to accomplish');
+        alert('Please enter a description of what you want the instruction to accomplish');
+        return;
+    }
+    // Get selected categories
+    const selectedCategories = Array.from(
+        document.querySelectorAll('input[name="instructionCategory"]:checked')
+    ).map(checkbox => checkbox.value);
+    if (selectedCategories.length === 0) {
+        console.error('Please select at least one category');
+        alert('Please select at least one category');
+        return;
+    }
+    try {
+        // Show generating status
+        const statusElement = document.querySelector('.ai-generation-status');
+        const resultElement = document.querySelector('.ai-generation-result');
+        const generateButton = document.getElementById('generateWithAIBtn');
+        const saveButton = document.getElementById('saveCustomInstructionBtn');
+        statusElement.style.display = 'block';
+        resultElement.style.display = 'none';
+        generateButton.disabled = true;
+        saveButton.disabled = true;
+        // Create prompt for the AI
+        const prompt = `
+            Create a system instruction for an AI assistant based on this description:
+            "${description}"
+            This instruction will be used for the following purposes: ${selectedCategories.join(', ')}
+            The instruction should be concise but detailed, focused on guiding the AI's behavior for the specified purposes.
+            Do not include any explanations, disclaimers, or meta-text - just provide the instruction itself.
+            `.trim();
+        // Make API request using the current LLM backend
+        const payload = MP.RequestBuilder.createRequestPayload(
+            prompt,
+            null,
+            "generate-instruction"
+        );
+        const response = await MP.APIClient.makeRequest(payload);
+        // Hide status, show result
+        statusElement.style.display = 'none';
+        generateButton.disabled = false;
+        saveButton.disabled = false;
+        if (response.success && response.response) {
+            // Update the generated content textarea
+            const generatedContent = document.getElementById('generatedInstructionContent');
+            generatedContent.value = response.response.trim();
+            // Also update the hidden instructionContent field that will be used for saving
+            const instructionContent = document.getElementById('instructionContent');
+            instructionContent.value = response.response.trim();
+            // Show the result section
+            resultElement.style.display = 'block';
+            generateButton.style.display = 'none';
+            saveButton.style.display = 'block';
+        } else {
+            throw new Error(response.error || 'Failed to generate instruction');
+        }
+    } catch (error) {
+        console.error('Instruction generation error:', error);
+        alert(`Failed to generate instruction: ${error.message}`);
+        // Reset UI
+        document.querySelector('.ai-generation-status').style.display = 'none';
+        document.getElementById('generateWithAIBtn').disabled = false;
+        document.getElementById('saveCustomInstructionBtn').disabled = false;
+    }
+}
+
+/**
+ * Regenerate the instruction with a new AI call
+ */
+function regenerateInstruction() {
+    // Clear the generated content
+    document.getElementById('generatedInstructionContent').value = '';
+    // Hide result section
+    document.querySelector('.ai-generation-result').style.display = 'none';
+    // Show generate button
+    document.getElementById('generateWithAIBtn').style.display = 'block';
+    // Generate new instruction
+    generateInstructionWithAI();
+}
+
+/**
  * Saves a custom instruction from the form data
  */
 function saveCustomInstructionFromForm() {
@@ -929,8 +1008,14 @@ function saveCustomInstructionFromForm() {
     const idInput = document.getElementById('instructionId');
     const titleInput = document.getElementById('instructionTitle');
     const tooltipInput = document.getElementById('instructionTooltip');
-    const contentTextarea = document.getElementById('instructionContent');
-    if (!form || !titleInput || !contentTextarea) {
+    // Get content based on selected mode
+    let contentValue = '';
+    if (document.getElementById('manualEntryBtn').checked) {
+        contentValue = document.getElementById('instructionContent').value.trim();
+    } else {
+        contentValue = document.getElementById('generatedInstructionContent').value.trim();
+    }
+    if (!form || !titleInput) {
         console.error('Form elements not found');
         return;
     }
@@ -940,9 +1025,14 @@ function saveCustomInstructionFromForm() {
         titleInput.focus();
         return;
     }
-    if (!contentTextarea.value.trim()) {
-        alert('Please enter instruction content');
-        contentTextarea.focus();
+    if (!contentValue) {
+        if (document.getElementById('manualEntryBtn').checked) {
+            alert('Please enter instruction content');
+            document.getElementById('instructionContent').focus();
+        } else {
+            alert('Please generate instruction content first');
+            document.getElementById('generateWithAIBtn').focus();
+        }
         return;
     }
     const categoryCheckboxes = form.querySelectorAll('input[name="instructionCategory"]:checked');
@@ -953,7 +1043,7 @@ function saveCustomInstructionFromForm() {
     const categories = Array.from(categoryCheckboxes).map(checkbox => checkbox.value);
     const data = {
         title: titleInput.value.trim(),
-        content: contentTextarea.value.trim(),
+        content: contentValue,
         tooltip: tooltipInput.value.trim(),
         categories
     };
@@ -1030,6 +1120,19 @@ function importCustomInstructions(file) {
 }
 
 /**
+ * Shows the edit modal for a custom instruction
+ * @param {string} id - The ID of the instruction to edit
+ */
+function showEditInstructionModal(id) {
+    if (!id || !MP.settings.instructions?.custom?.[id]) {
+        console.error(`Custom instruction "${id}" not found`);
+        return;
+    }
+    // Call the existing showCustomInstructionModal function with the ID
+    showCustomInstructionModal(id);
+}
+
+/**
  * Initialize instructions UI with radio buttons and a single textarea
  * Manages switching between different instruction types
  */
@@ -1084,13 +1187,11 @@ function initInstructionsUI() {
 
     // Update the instruction UI based on selected type
     function updateInstructionUI(type) {
-        console.log(`Updating instruction UI for type: ${type}`);
         const typeConfig = instructionTypes[type];
         if (!typeConfig) {
             console.error(`Instruction type "${type}" not found`);
             return;
         }
-        console.log(`Type config:`, typeConfig);
         // Update the label, tooltip, and help text
         if (instructionLabel) {
             let textNode = Array.from(instructionLabel.childNodes)
@@ -1137,7 +1238,6 @@ function initInstructionsUI() {
                 const currentType = Array.from(instructionTypeRadios)
                     .find(r => r.checked && r !== e.target)?.id.replace('InstructionBtn', '').toLowerCase();
                 if (currentType) {
-                    console.log(`Saving content for ${currentType} before switching`);
                     saveCurrentInstructionContent(currentType);
                 }
             }
@@ -1152,7 +1252,6 @@ function initInstructionsUI() {
         const selectedType = specificType || Array.from(instructionTypeRadios)
             .find(r => r.checked)?.id.replace('InstructionBtn', '').toLowerCase();
         if (!selectedType) return;
-        console.log(`Saving content for ${selectedType}:`, instructionTextarea.value);
         if (selectedType === 'chat' || selectedType === 'vision' ||
             selectedType === 'caption' || selectedType === 'prompt') {
             // Only save if the content has actually changed
@@ -1202,7 +1301,6 @@ function initInstructionsUI() {
     });
     // Ensure instructions are properly initialized
     if (!MP.settings.instructions) {
-        console.log("Initializing empty instructions object");
         MP.settings.instructions = {
             chat: '',
             vision: '',
@@ -1254,16 +1352,44 @@ function initInstructionsUI() {
 }
 
 /**
- * Shows the edit modal for a custom instruction
- * @param {string} id - The ID of the instruction to edit
+ * Closes the settings modal
  */
-function showEditInstructionModal(id) {
-    if (!id || !MP.settings.instructions?.custom?.[id]) {
-        console.error(`Custom instruction "${id}" not found`);
-        return;
+function closeSettingsModal() {
+    try {
+        $('#settingsModal').modal('hide');
+        $('.modal-backdrop').remove();
+        $('body').removeClass('modal-open').css('padding-right', '');
+    } catch (error) {
+        console.error('Error closing settings modal:', error);
     }
-    // Call the existing showCustomInstructionModal function with the ID
-    showCustomInstructionModal(id);
+}
+
+/**
+ * Initialize instructions tab interface
+ */
+function initInstructionsTabInterface() {
+    // Set up tab switching to retain state
+    const tabEl = document.getElementById('instructionsTabNav');
+    if (tabEl) {
+        const triggerTabList = tabEl.querySelectorAll('button');
+        triggerTabList.forEach(triggerEl => {
+            triggerEl.addEventListener('click', event => {
+                event.preventDefault();
+                // Activate this tab
+                const tab = new bootstrap.Tab(triggerEl);
+                tab.show();
+            });
+        });
+    }
+    // Initialize the custom instruction modal
+    initCustomInstructionModal();
+    // Replace the saveCustomInstructionBtn event handler with our enhanced version
+    const saveBtn = document.getElementById('saveCustomInstructionBtn');
+    if (saveBtn) {
+        const newSaveBtn = saveBtn.cloneNode(true);
+        saveBtn.parentNode.replaceChild(newSaveBtn, saveBtn);
+        newSaveBtn.addEventListener('click', saveCustomInstructionFromForm);
+    }
 }
 
 /**
@@ -1319,6 +1445,8 @@ function initSettingsModal() {
             visionBackendUrl.value = MP.settings.backends[currentVisionBackend]?.baseurl || '';
         }
         initInstructionsUI();
+        initInstructionsTabInterface();
+
         // Show loading state before fetching models
         const modelSelect = document.getElementById("modelSelect");
         const visionModelSelect = document.getElementById("visionModel");
@@ -1409,7 +1537,6 @@ function initSettingsModal() {
                 }
             });
         });
-
         // Add event listeners for vision backend selection
         const visionBackendRadios = document.querySelectorAll('input[name="visionBackendSelect"]');
         visionBackendRadios.forEach(radio => {
@@ -1467,10 +1594,56 @@ function initSettingsModal() {
                 }
             });
         });
-
-        // Add event listeners for base URL changes
+        // Add event listeners for base URL changes with debounce
         const backendBaseUrl = document.getElementById('backendUrl');
         if (backendBaseUrl) {
+            // Create a debounced save function
+            const debouncedSaveUrl = debounce(async function (value) {
+                try {
+                    const currentBackend = document.querySelector('input[name="llmBackend"]:checked')?.id.replace('LLMBtn', '').toLowerCase() || MP.settings.backend;
+                    if (needsBaseUrl(currentBackend)) {
+                        // Update settings
+                        if (!MP.settings.backends[currentBackend]) {
+                            MP.settings.backends[currentBackend] = {};
+                        }
+                        MP.settings.backends[currentBackend].baseurl = value;
+                        // Create minimal payload
+                        const payload = {
+                            settings: {
+                                backends: {
+                                    [currentBackend]: {
+                                        baseurl: value
+                                    }
+                                }
+                            }
+                        };
+                        // Save settings
+                        await new Promise((resolve, reject) => {
+                            genericRequest('SaveSettingsAsync', payload,
+                                (data) => {
+                                    if (data.success) {
+                                        console.log(`Saved base URL for ${currentBackend}: ${value}`);
+                                        resolve();
+                                    } else {
+                                        console.error(`Failed to save base URL: ${data.error || 'Unknown error'}`);
+                                        reject(new Error(data.error || 'Failed to save base URL'));
+                                    }
+                                },
+                                0,
+                                (error) => {
+                                    console.error('Error saving base URL:', error);
+                                    reject(error);
+                                }
+                            );
+                        });
+                        // Fetch models with new URL
+                        await fetchModels();
+                    }
+                } catch (error) {
+                    console.error('Error saving base URL:', error);
+                }
+            }, 1000); // 1 second debounce
+            // Add input event listener with debounce
             backendBaseUrl.addEventListener('input', function (e) {
                 // Sync with vision URL when linked
                 if (document.getElementById('linkModelsToggle')?.checked) {
@@ -1479,81 +1652,81 @@ function initSettingsModal() {
                         visionBackendUrl.value = e.target.value;
                     }
                 }
-                // Original functionality to update models when URL changes
-                const currentBackend = document.querySelector('input[name="llmBackend"]:checked')?.id.replace('LLMBtn', '').toLowerCase() || MP.settings.backend;
-                if (needsBaseUrl(currentBackend)) {
-                    // Clear and show loading state
-                    const modelSelect = document.getElementById("modelSelect");
-                    if (modelSelect) {
-                        modelSelect.innerHTML = '';
-                        const loadingOption = new Option(`Loading ${currentBackend} models with new URL...`, '');
-                        loadingOption.disabled = true;
-                        modelSelect.add(loadingOption);
-                        // Temporarily update settings for API call
-                        const originalBaseUrl = MP.settings.backends[currentBackend]?.baseurl;
-                        if (!MP.settings.backends[currentBackend]) {
-                            MP.settings.backends[currentBackend] = {};
-                        }
-                        MP.settings.backends[currentBackend].baseurl = e.target.value;
-                        // Fetch models with new base URL
-                        console.log(`Fetching models for ${currentBackend} with new base URL: ${e.target.value}`);
-                        fetchModels().then(result => {
-                            console.log(`Models fetched with new base URL:`, result);
-                        }).catch(error => {
-                            console.error(`Error fetching models with new base URL:`, error);
-                            modelSelect.innerHTML = '';
-                            const errorOption = new Option('Error loading models with new URL', '');
-                            errorOption.disabled = true;
-                            modelSelect.add(errorOption);
-                        }).finally(() => {
-                            // Restore original setting if user hasn't saved
-                            MP.settings.backends[currentBackend].baseurl = originalBaseUrl;
-                        });
-                    }
+                // Show loading indication in the model select
+                const modelSelect = document.getElementById("modelSelect");
+                if (modelSelect) {
+                    modelSelect.innerHTML = '';
+                    const loadingOption = new Option('URL changed, models will update soon...', '');
+                    loadingOption.disabled = true;
+                    modelSelect.add(loadingOption);
                 }
+                // Trigger the debounced save
+                debouncedSaveUrl(e.target.value);
             });
         }
-
-        // Add event listeners for vision base URL changes
+        // Add event listeners for vision base URL changes with debounce
         const visionBackendUrlInput = document.getElementById('visionBackendUrl');
         if (visionBackendUrlInput) {
-            visionBackendUrlInput.addEventListener('input', function (e) {
-                const currentVisionBackend = document.querySelector('input[name="visionBackendSelect"]:checked')?.id.replace('VisionBtn', '').toLowerCase() || MP.settings.visionbackend;
-                if (needsBaseUrl(currentVisionBackend)) {
-                    // Clear and show loading state
-                    const visionModelSelect = document.getElementById("visionModel");
-                    if (visionModelSelect) {
-                        visionModelSelect.innerHTML = '';
-                        const loadingOption = new Option(`Loading ${currentVisionBackend} vision models with new URL...`, '');
-                        loadingOption.disabled = true;
-                        visionModelSelect.add(loadingOption);
-
-                        // Temporarily update settings for API call
-                        const originalBaseUrl = MP.settings.backends[currentVisionBackend]?.baseurl;
+            // Create a debounced save function
+            const debouncedSaveVisionUrl = debounce(async function (value) {
+                try {
+                    const currentVisionBackend = document.querySelector('input[name="visionBackendSelect"]:checked')?.id.replace('VisionBtn', '').toLowerCase() || MP.settings.visionbackend;
+                    if (needsBaseUrl(currentVisionBackend)) {
+                        // Update settings
                         if (!MP.settings.backends[currentVisionBackend]) {
                             MP.settings.backends[currentVisionBackend] = {};
                         }
-                        MP.settings.backends[currentVisionBackend].baseurl = e.target.value;
-
-                        // Fetch models with new base URL
-                        console.log(`Fetching vision models for ${currentVisionBackend} with new base URL: ${e.target.value}`);
-                        fetchModels().then(result => {
-                            console.log(`Vision models fetched with new base URL:`, result);
-                        }).catch(error => {
-                            console.error(`Error fetching vision models with new base URL:`, error);
-                            visionModelSelect.innerHTML = '';
-                            const errorOption = new Option('Error loading vision models with new URL', '');
-                            errorOption.disabled = true;
-                            visionModelSelect.add(errorOption);
-                        }).finally(() => {
-                            // Restore original setting if user hasn't saved
-                            MP.settings.backends[currentVisionBackend].baseurl = originalBaseUrl;
+                        MP.settings.backends[currentVisionBackend].baseurl = value;
+                        // Create minimal payload
+                        const payload = {
+                            settings: {
+                                backends: {
+                                    [currentVisionBackend]: {
+                                        baseurl: value
+                                    }
+                                }
+                            }
+                        };
+                        // Save settings
+                        await new Promise((resolve, reject) => {
+                            genericRequest('SaveSettingsAsync', payload,
+                                (data) => {
+                                    if (data.success) {
+                                        console.log(`Saved vision base URL for ${currentVisionBackend}: ${value}`);
+                                        resolve();
+                                    } else {
+                                        console.error(`Failed to save vision base URL: ${data.error || 'Unknown error'}`);
+                                        reject(new Error(data.error || 'Failed to save vision base URL'));
+                                    }
+                                },
+                                0,
+                                (error) => {
+                                    console.error('Error saving vision base URL:', error);
+                                    reject(error);
+                                }
+                            );
                         });
+                        // Fetch models with new URL
+                        await fetchModels();
                     }
+                } catch (error) {
+                    console.error('Error saving vision base URL:', error);
                 }
+            }, 1000); // 1 second debounce
+            // Add input event listener with debounce
+            visionBackendUrlInput.addEventListener('input', function (e) {
+                // Show loading indication in the model select
+                const visionModelSelect = document.getElementById("visionModel");
+                if (visionModelSelect) {
+                    visionModelSelect.innerHTML = '';
+                    const loadingOption = new Option('URL changed, models will update soon...', '');
+                    loadingOption.disabled = true;
+                    visionModelSelect.add(loadingOption);
+                }
+                // Trigger the debounced save
+                debouncedSaveVisionUrl(e.target.value);
             });
         }
-
         // Add event listener for link models toggle
         const toggleBtn = document.getElementById('linkModelsToggle');
         if (toggleBtn) {
@@ -1562,7 +1735,6 @@ function initSettingsModal() {
                 updateLinkedModelsUI(isLinked);
             });
         }
-
         // Add event listener for model select change
         const modelDropdown = document.getElementById("modelSelect");
         if (modelDropdown) {
@@ -1575,7 +1747,6 @@ function initSettingsModal() {
                 }
             });
         }
-
         // Add event listeners for backend selection
         const linkBackendRadios = document.querySelectorAll('input[name="llmBackend"]');
         linkBackendRadios.forEach(radio => {
@@ -1593,7 +1764,7 @@ function initSettingsModal() {
         });
     } catch (error) {
         console.error('Error initializing settings modal:', error);
-        showError('Error initializing settings modal:', error);
+        // showError('Error initializing settings modal:', error);
     }
 }
 
@@ -1610,35 +1781,28 @@ function updateLinkedModelsUI(isLinked) {
         const chatContent = document.getElementById('chatSettingsCollapse');
         const visionHeader = visionSettingsCard?.querySelector('.settings-section-title');
         const chatHeader = chatSettingsCard?.querySelector('.settings-section-title');
-
         // If elements don't exist, exit early
         if (!visionSettingsCard || !chatSettingsCard) return;
-
         // Get model selects
         const chatModelSelect = document.getElementById("modelSelect");
         const visionModelSelect = document.getElementById("visionModel");
-
         if (isLinked) {
             // Update chat settings header to indicate it's linked
             if (chatHeader) {
                 chatHeader.textContent = 'Chat and Vision Settings (Linked)';
             }
-
             // Hide vision settings section completely
             visionSettingsCard.style.display = 'none';
-
             // Make chat settings always expanded
             if (chatContent && !chatContent.classList.contains('show')) {
                 chatContent.classList.add('show');
                 const button = chatSettingsCard.querySelector('.collapse-toggle');
                 if (button) button.setAttribute('aria-expanded', 'true');
             }
-
             // Sync vision model with chat model
             if (chatModelSelect && visionModelSelect) {
                 visionModelSelect.value = chatModelSelect.value;
             }
-
             // Sync vision backend with chat backend
             const selectedChatBackend = document.querySelector('input[name="llmBackend"]:checked');
             if (selectedChatBackend) {
@@ -1648,7 +1812,6 @@ function updateLinkedModelsUI(isLinked) {
                     visionBackendRadio.checked = true;
                 }
             }
-
             // Sync base URLs
             const backendUrl = document.getElementById('backendUrl');
             const visionBackendUrl = document.getElementById('visionBackendUrl');
@@ -1660,7 +1823,6 @@ function updateLinkedModelsUI(isLinked) {
             if (chatHeader) {
                 chatHeader.textContent = 'Chat LLM Settings';
             }
-
             // Show vision settings
             visionSettingsCard.style.display = 'block';
         }
@@ -1669,17 +1831,29 @@ function updateLinkedModelsUI(isLinked) {
     }
 }
 
-/**
- * Closes the settings modal
- */
-function closeSettingsModal() {
-    try {
-        $('#settingsModal').modal('hide');
-        $('.modal-backdrop').remove();
-        $('body').removeClass('modal-open').css('padding-right', '');
-    } catch (error) {
-        console.error('Error closing settings modal:', error);
-    }
+// Initialize custom instruction modal
+function initCustomInstructionModal() {
+    const modal = document.getElementById('customInstructionModal');
+    // Set up the creation mode toggle when the modal opens
+    modal.addEventListener('show.bs.modal', () => {
+        // Reset mode to manual entry
+        document.getElementById('manualEntryBtn').checked = true;
+        // Initialize the toggle functionality
+        toggleInstructionCreationMode();
+        // Clear generated content fields
+        const generatedContent = document.getElementById('generatedInstructionContent');
+        if (generatedContent) {
+            generatedContent.value = '';
+        }
+        const resultElement = document.querySelector('.ai-generation-result');
+        if (resultElement) {
+            resultElement.style.display = 'none';
+        }
+        const statusElement = document.querySelector('.ai-generation-status');
+        if (statusElement) {
+            statusElement.style.display = 'none';
+        }
+    });
 }
 
 // Expose functions to global scope
@@ -1694,6 +1868,11 @@ if (typeof window !== 'undefined') {
     window.getInstructionContent = getInstructionContent;
     window.showCustomInstructionModal = showCustomInstructionModal;
     window.saveCustomInstructionFromForm = saveCustomInstructionFromForm;
+    window.toggleInstructionCreationMode = toggleInstructionCreationMode;
+    window.generateInstructionWithAI = generateInstructionWithAI;
+    window.regenerateInstruction = regenerateInstruction;
+    window.initCustomInstructionModal = initCustomInstructionModal;
+    window.initInstructionsTabInterface = initInstructionsTabInterface;
     window.handleInstructionChange = function (e) {
         const instructionTypeRadios = document.querySelectorAll('input[name="instructionType"]');
         const type = e.target.id.replace('InstructionBtn', '').toLowerCase();
@@ -1725,6 +1904,11 @@ if (typeof MP !== 'undefined') {
         updateCustomInstruction,
         deleteCustomInstruction,
         exportCustomInstructions,
-        importCustomInstructions
+        importCustomInstructions,
+        toggleInstructionCreationMode,
+        generateInstructionWithAI,
+        regenerateInstruction,
+        initCustomInstructionModal,
+        initInstructionsTabInterface
     };
 }
