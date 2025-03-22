@@ -742,10 +742,10 @@ function renderCustomInstructionsList() {
                 exportBtn.addEventListener('click', () => exportInstruction(id));
             }
             if (editBtn) {
-                editBtn.addEventListener('click', () => exportInstruction(id));
+                editBtn.addEventListener('click', () => showEditInstructionModal(id));
             }
             if (deleteBtn) {
-                deleteBtn.addEventListener('click', () => exportInstruction(id));
+                deleteBtn.addEventListener('click', () => showDeleteConfirmation(id));
             }
             container.appendChild(item);
         } else {
