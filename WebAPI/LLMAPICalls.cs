@@ -350,6 +350,7 @@ public class LLMAPICalls : MagicPromptAPI
                 "vision" => settings["instructions"]?["vision"]?.ToString() ?? "",
                 "prompt" => settings["instructions"]?["prompt"]?.ToString() ?? "",
                 "caption" => settings["instructions"]?["caption"]?.ToString() ?? "",
+                "generate-instruction" => settings["instructions"]?["instructiongen"]?.ToString() ?? "",
                 _ => settings["instructions"]?["chat"]?.ToString() ?? ""
             };
             messageContent.Instructions = instructions;

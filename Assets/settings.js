@@ -17,7 +17,7 @@ const DEFAULT_FEATURE_MAPPINGS = {
     'vision-mode': 'vision',
     'prompt-mode': 'prompt',
     'caption': 'caption',
-    'generate-instruction': 'chat'
+    'generate-instruction': 'instructiongen'
 };
 
 // Helper function to check if a backend needs base URL configuration
@@ -975,28 +975,26 @@ async function generateInstructionWithAI() {
         saveButton.disabled = true;
         // Create enhanced prompt for the AI
         const prompt = `
-            I need you to create a detailed system instruction for an AI language model. This instruction will be used as a "system prompt" that guides how another AI responds to users.
+          I need you to create a SYSTEM PROMPT that will be given to an AI language model.
 
-            User Description: "${description}"
-
-            This instruction will be used for the following features: ${selectedCategories.join(', ')}
-
-            Guidelines for creating this system instruction:
-            1. Write in a clear, direct style addressing the AI model ("You are...", "Your task is to...", etc.)
-            2. Include specific guidance on response format, tone, and content boundaries
-            3. Provide examples where helpful
-            4. Focus specifically on the selected categories (${selectedCategories.join(', ')})
-
-            Specific requirements based on categories:
-            ${selectedCategories.includes('chat') ? "- CHAT: Include instructions for conversation flow, personality, and response style" : ""}
-            ${selectedCategories.includes('vision') ? "- VISION: Include instructions for analyzing and describing images with appropriate detail" : ""}
-            ${selectedCategories.includes('caption') ? "- CAPTION: Include instructions for generating descriptive, accurate image captions with the right level of detail" : ""}
-            ${selectedCategories.includes('prompt') ? "- PROMPT: Include instructions for enhancing user prompts for text-to-image generation with specific emphasis on improving detail, style elements, and composition" : ""}
-
-            The instruction should be comprehensive but focused, without unnecessary explanations or meta-commentary. Do not include phrases like "As an AI language model" or refer to yourself in the instruction.
-
-            Respond with ONLY the system instruction text, without any introductory comments, explanations, or formatting instructions.
-            `.trim();
+          This system prompt should be based on this description:
+          "${description}"
+  
+          For these categories: ${selectedCategories.join(', ')}
+  
+          Category purposes:
+          - Chat category: The AI responds to general user questions and conversations
+          - Vision category: The AI analyzes uploaded images and provides descriptions
+          - Caption category: The AI generates Stable Diffusion prompts from images
+          - Prompt category: The AI enhances user text into detailed image generation prompts
+  
+          IMPORTANT: A system prompt is a set of instructions GIVEN TO AN AI, not instructions for humans.
+          It should be written in second person ("You are...", "Your goal is...") addressing the AI directly.
+  
+          Your response must contain ONLY the system prompt text itself with no bullet points, headings, or explanations.
+          Bad example: "System Prompt: You are an AI that..."
+          Good example: "You are an AI that..."
+        `;
         // Make API request using the current LLM backend
         const payload = MP.RequestBuilder.createRequestPayload(
             prompt,
