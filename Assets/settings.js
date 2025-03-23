@@ -385,25 +385,20 @@ function setModelIfExists(select, modelId) {
 function getInstructionContent(type) {
     console.log(`getInstructionContent called with: "${type}"`);
     if (!type) {
-        console.log(`Returning empty string: type is empty`);
         return '';
     }
     // Handle built-in instruction types
     if (type === 'chat' || type === 'vision' || type === 'caption' || type === 'prompt') {
-        console.log(`Returning built-in instruction: ${type}`);
         return MP.settings.instructions[type] || '';
     }
     // Handle custom instruction types
-    console.log(`Looking for custom instruction: "${type}"`);
-    console.log(`Available custom instructions:`, Object.keys(MP.settings.instructions.custom || {}));
     if (MP.settings.instructions?.custom?.[type]) {
         const customInstruction = MP.settings.instructions.custom[type];
-        console.log(`Found custom instruction: ${typeof customInstruction === 'object' ? 'object' : 'string'}`);
+        if (customInstruction?.deleted === true) return '';
         return typeof customInstruction === 'object'
             ? customInstruction.content || ''
             : customInstruction || '';
     }
-    console.log(`Custom instruction not found, returning empty string`);
     return '';
 }
 
@@ -453,7 +448,8 @@ function getInstructionsForCategory(category) {
     if (!category) return [];
     const instructions = [];
     // Add the built-in instruction for this category
-    if (category === 'chat' || category === 'vision' || category === 'caption' || category === 'prompt') {
+    if (category === 'chat' || category === 'vision' ||
+        category === 'caption' || category === 'prompt') {
         instructions.push({
             id: category,
             title: getCategoryTitle(category),
@@ -463,6 +459,7 @@ function getInstructionsForCategory(category) {
     // Add custom instructions that work with this category
     if (MP.settings.instructions?.custom) {
         Object.entries(MP.settings.instructions.custom).forEach(([id, instruction]) => {
+            if (instruction?.deleted === true) return;
             // Handle both string and object formats
             if (typeof instruction === 'object') {
                 if (instruction.categories && instruction.categories.includes(category)) {
@@ -614,17 +611,20 @@ function deleteCustomInstruction(id) {
         console.error(`Custom instruction "${id}" not found`);
         return false;
     }
-    delete MP.settings.instructions.custom[id];
-    // Remove from feature mappings and revert to default then save settings
+    MP.settings.instructions.custom[id] = {
+        deleted: true,
+        deletedAt: new Date().toISOString()
+    };
+    // Handle feature mappings as before
     if (MP.settings.instructions.featureMap) {
         Object.entries(MP.settings.instructions.featureMap).forEach(([feature, instructionId]) => {
             if (instructionId === id) {
-                // Revert to default
                 const categoryForFeature = DEFAULT_FEATURE_MAPPINGS[feature];
                 MP.settings.instructions.featureMap[feature] = categoryForFeature;
             }
         });
     }
+    // Update UI and save
     removeCustomInstructionFromUI(id);
     populateFeatureSelects();
     saveSettings();

@@ -171,7 +171,44 @@ public class SessionSettings : MagicPromptAPI
                         }
                         continue;
                     }
-                    // Handle nested objects
+                    // Special handling for custom instructions
+                    if (path == "instructions.custom")
+                    {
+                        if (target[key] == null || target[key] is not JObject)
+                        {
+                            target[key] = new JObject();
+                        }
+                        JObject targetCustom = target[key] as JObject;
+                        JObject sourceCustom = value as JObject;
+                        // Handle each custom instruction
+                        foreach (JProperty instruction in sourceCustom.Properties())
+                        {
+                            // Check if the instruction is marked as deleted
+                            if (instruction.Value["deleted"]?.Value<bool>() == true)
+                            {
+                                // Remove the instruction if it exists
+                                if (targetCustom[instruction.Name] != null)
+                                {
+                                    targetCustom.Remove(instruction.Name);
+                                    Logs.Debug($"Deleted custom instruction: {instruction.Name}");
+                                }
+                            }
+                            else if (instruction.Value is JObject instructionObj)
+                            {
+                                if (targetCustom[instruction.Name] == null || targetCustom[instruction.Name] is not JObject)
+                                {
+                                    targetCustom[instruction.Name] = new JObject();
+                                }
+                                MergeSettings(targetCustom[instruction.Name] as JObject, instructionObj, $"{path}.{instruction.Name}");
+                            }
+                            else
+                            {
+                                targetCustom[instruction.Name] = instruction.Value;
+                            }
+                        }
+                        continue;
+                    }
+                    // Handle nested objects like "keys" or "backends"
                     if (value is JObject sourceObj)
                     {
                         if (target[key] == null || target[key] is not JObject)
@@ -180,7 +217,7 @@ public class SessionSettings : MagicPromptAPI
                         }
                         MergeSettings(target[key] as JObject, sourceObj, path);
                     }
-                    // Handle arrays or simple values
+                    // Handle arrays or simple values like "model" or "backend"
                     else
                     {
                         if (value != null && value.Type != JTokenType.Null)
