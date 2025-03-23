@@ -12,7 +12,7 @@ const FIXED_URL_BACKENDS = ['openai', 'anthropic', 'openrouter'];
 // Define default feature to instruction mappings
 const DEFAULT_FEATURE_MAPPINGS = {
     'enhance-prompt': 'prompt',
-    'magic-vision': 'vision',
+    'magic-vision': 'caption',
     'chat-mode': 'chat',
     'vision-mode': 'vision',
     'prompt-mode': 'prompt',
@@ -383,18 +383,27 @@ function setModelIfExists(select, modelId) {
  * @returns {string} The instruction content
  */
 function getInstructionContent(type) {
-    if (!type) return '';
+    console.log(`getInstructionContent called with: "${type}"`);
+    if (!type) {
+        console.log(`Returning empty string: type is empty`);
+        return '';
+    }
     // Handle built-in instruction types
     if (type === 'chat' || type === 'vision' || type === 'caption' || type === 'prompt') {
+        console.log(`Returning built-in instruction: ${type}`);
         return MP.settings.instructions[type] || '';
     }
     // Handle custom instruction types
+    console.log(`Looking for custom instruction: "${type}"`);
+    console.log(`Available custom instructions:`, Object.keys(MP.settings.instructions.custom || {}));
     if (MP.settings.instructions?.custom?.[type]) {
         const customInstruction = MP.settings.instructions.custom[type];
+        console.log(`Found custom instruction: ${typeof customInstruction === 'object' ? 'object' : 'string'}`);
         return typeof customInstruction === 'object'
             ? customInstruction.content || ''
             : customInstruction || '';
     }
+    console.log(`Custom instruction not found, returning empty string`);
     return '';
 }
 
@@ -404,10 +413,16 @@ function getInstructionContent(type) {
  * @returns {string} The instruction type to use
  */
 function getInstructionForFeature(feature) {
+    console.log(`getInstructionForFeature called with: "${feature}"`);
+    console.log(`Current feature map:`, MP.settings.instructions.featureMap);
+
     if (!feature || !MP.settings.instructions?.featureMap) {
+        console.log(`Returning null: feature missing or no feature map`);
         return null;
     }
-    return MP.settings.instructions.featureMap[feature] || null;
+    const instructionType = MP.settings.instructions.featureMap[feature];
+    console.log(`Returning instruction type: "${instructionType}"`);
+    return instructionType || null;
 }
 
 /**
@@ -423,6 +438,7 @@ function setInstructionForFeature(feature, instructionType, skipSave = false) {
         MP.settings.instructions.featureMap = { ...DEFAULT_FEATURE_MAPPINGS };
     }
     MP.settings.instructions.featureMap[feature] = instructionType;
+    console.log(`Set instruction for feature "${feature}" to "${instructionType}"`);
     if (!skipSave) {
         saveSettings();
     }
@@ -483,7 +499,7 @@ function getCategoryTitle(category) {
 function populateFeatureSelects() {
     const features = [
         { id: 'enhance-prompt', category: 'prompt' },
-        { id: 'magic-vision', category: 'vision' },
+        { id: 'magic-vision', category: 'caption' },
         { id: 'chat-mode', category: 'chat' },
         { id: 'vision-mode', category: 'vision' },
         { id: 'caption', category: 'caption' }
@@ -1371,10 +1387,6 @@ function initInstructionsUI() {
     if (addCustomInstructionBtn) {
         addCustomInstructionBtn.addEventListener('click', () => showCustomInstructionModal());
     }
-    const exportInstructionsBtn = document.getElementById('exportInstructionsBtn');
-    if (exportInstructionsBtn) {
-        exportInstructionsBtn.addEventListener('click', exportCustomInstruction);
-    }
     const importInstructionsBtn = document.getElementById('importInstructionsBtn');
     const importInstructionsInput = document.getElementById('importInstructionsInput');
     if (importInstructionsBtn && importInstructionsInput) {
@@ -1426,6 +1438,28 @@ function initInstructionsTabInterface() {
             });
         });
     }
+    // Prevent header buttons from triggering collapse
+    document.querySelectorAll('.header-buttons button').forEach(button => {
+        button.addEventListener('click', (e) => { e.stopPropagation(); });
+    });
+    // Initialize auto-resize for textareas
+    const textareas = document.querySelectorAll('#settingsModal textarea, #customInstructionModal textarea');
+    textareas.forEach(textarea => {
+        textarea.addEventListener('input', function () {
+            this.style.height = 'auto';
+            const maxHeight = parseInt(getComputedStyle(this).getPropertyValue('max-height'), 10);
+            const scrollHeight = this.scrollHeight;
+            if (scrollHeight <= maxHeight) {
+                this.style.height = scrollHeight + 'px';
+            } else {
+                this.style.height = maxHeight + 'px';
+            }
+        });
+        // Initial resize
+        if (textarea.offsetParent !== null) { // Only process visible textareas
+            textarea.dispatchEvent(new Event('input'));
+        }
+    });
     // Initialize the custom instruction modal
     initCustomInstructionModal();
     // Replace the saveCustomInstructionBtn event handler with our enhanced version
@@ -1813,6 +1847,32 @@ function initSettingsModal() {
     }
 }
 
+// Add this function at the end of settings.js
+function showSettingsModal() {
+    try {
+        const modal = document.getElementById('settingsModal');
+        if (!modal) return;
+        // Check if there's already an instance
+        let modalInstance = bootstrap.Modal.getInstance(modal);
+        // If modal is already visible, do nothing
+        if (modal.classList.contains('show')) {
+            return;
+        }
+        // Initialize modal contents
+        initSettingsModal();
+        // Use existing instance or create a new one
+        if (modalInstance) {
+            modalInstance.show();
+        } else {
+            // Only create a new instance if one doesn't exist
+            modalInstance = new bootstrap.Modal(modal);
+            modalInstance.show();
+        }
+    } catch (error) {
+        console.error('Error showing settings modal:', error);
+    }
+}
+
 /**
  * Updates UI for linked/unlinked chat and vision models
  * @param {boolean} isLinked - Whether models are linked
@@ -1904,6 +1964,7 @@ function initCustomInstructionModal() {
 // Expose functions to global scope
 if (typeof window !== 'undefined') {
     window.initSettingsModal = initSettingsModal;
+    window.showSettingsModal = showSettingsModal;
     window.closeSettingsModal = closeSettingsModal;
     window.saveSettings = saveSettings;
     window.resetSettings = resetSettings;
@@ -1948,7 +2009,6 @@ if (typeof MP !== 'undefined') {
         addCustomInstruction,
         updateCustomInstruction,
         deleteCustomInstruction,
-        exportCustomInstructions,
         importCustomInstructions,
         toggleInstructionCreationMode,
         generateInstructionWithAI,

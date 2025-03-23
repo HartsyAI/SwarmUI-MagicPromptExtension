@@ -10,7 +10,8 @@ TABLE OF CONTENTS:
    - Buttons 
    - Form Controls
 3. Utility Classes & Animations
-4. Prompt Enhancement Buttons
+4. Prompt Enhancement Buttons & Loading
+5. Mini-Settings Panel
 =========================================================== */
 
 /* 1. CORE LAYOUT & CONTAINER STYLES 
@@ -179,8 +180,8 @@ body.dragging {
         overflow: hidden;
     }
 
-/* 4. PROMPT ENHANCEMENT BUTTONS
-   Styling for the Enhance Prompt and Magic Vision buttons */
+/* 4. PROMPT ENHANCEMENT BUTTONS & LOADING
+   Styling for the Generate Tab enhancements */
 
 .magicprompt.prompt-buttons-container {
     position: absolute;
@@ -190,6 +191,7 @@ body.dragging {
     top: 0;
     padding-top: 0.5rem;
     display: flex;
+    align-items: center;
     gap: 1rem;
     margin-bottom: 0.5rem;
     white-space: nowrap;
@@ -198,8 +200,8 @@ body.dragging {
 .magicprompt.prompt-button {
     padding: 0.2rem 0.8rem;
     display: flex;
-    align-items: center; /* Centers content vertically */
-    justify-content: center; /* Centers content horizontally */
+    align-items: center;
+    justify-content: center;
     background-color: var(--emphasis-soft);
     color: var(--emphasis-text);
     border: 1px solid var(--button-border);
@@ -207,10 +209,165 @@ body.dragging {
     font-weight: bold;
     font-size: 0.7em;
     min-width: 2rem;
-    height: 1rem; /* Fixed height */
+    height: 1rem;
 }
 
     .magicprompt.prompt-button:hover {
         background-color: color-mix(in srgb, var(--emphasis-soft) 70%, white);
         color: var(--emphasis-text);
     }
+
+/* Loading animation for prompt enhancement - fixed width to prevent layout shift */
+.magicprompt.prompt-loading {
+    width: 30px;
+    height: 1rem;
+    margin-right: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+    .magicprompt.prompt-loading.active {
+        opacity: 1;
+    }
+
+    .magicprompt.prompt-loading .dot {
+        width: 6px;
+        height: 6px;
+        background: var(--emphasis);
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out;
+    }
+
+        .magicprompt.prompt-loading .dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .magicprompt.prompt-loading .dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        .magicprompt.prompt-loading .dot:nth-child(3) {
+            animation-delay: 0s;
+        }
+
+/* Bounce animation for loading dots */
+@keyframes bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+        opacity: 0.3;
+    }
+
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Generate tab settings button */
+.magicprompt.prompt-settings-button {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 0.9em;
+    width: 1.5rem;
+    height: 1rem;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    padding: 0;
+}
+
+    .magicprompt.prompt-settings-button:hover {
+        opacity: 1;
+    }
+
+/* 5. MINI-SETTINGS PANEL
+   Styling for the feature-specific settings panel */
+.magicprompt.prompt-settings-panel {
+    background-color: var(--background);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    width: 300px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+}
+
+.magicprompt .settings-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+    .magicprompt .settings-panel-header h3 {
+        margin: 0;
+        font-size: 1em;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+.magicprompt .panel-close-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.2em;
+    color: var(--text);
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .magicprompt .panel-close-btn:hover {
+        opacity: 1;
+    }
+
+.magicprompt .settings-panel-body {
+    padding: 16px;
+}
+
+.magicprompt .feature-setting {
+    margin-bottom: 16px;
+}
+
+    .magicprompt .feature-setting:last-child {
+        margin-bottom: 0;
+    }
+
+    .magicprompt .feature-setting label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+        color: var(--text);
+        font-size: 0.9em;
+    }
+
+.magicprompt .feature-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--background);
+    color: var(--text);
+    font-size: 0.9em;
+}
+
+.magicprompt .setting-description {
+    margin-top: 4px;
+    font-size: 0.8em;
+    color: var(--text-color-secondary, #777);
+    line-height: 1.4;
+}

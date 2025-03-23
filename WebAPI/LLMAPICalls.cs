@@ -342,20 +342,24 @@ public class LLMAPICalls : MagicPromptAPI
             {
                 return CreateErrorResponse($"Failed to get endpoint for {backend}");
             }
-            // Get action type from request
-            string action = requestData["action"]?.ToString()?.ToLower() ?? "chat";
-            // Select instructions based on action type
-            string instructions = action switch
+            // Get the instructions from the request if provided
+            string clientProvidedInstructions = messageContentToken["instructions"]?.ToString();
+            // Only perform server-side lookup if client didn't provide instructions
+            if (string.IsNullOrEmpty(clientProvidedInstructions))
             {
-                "vision" => settings["instructions"]?["vision"]?.ToString() ?? "",
-                "prompt" => settings["instructions"]?["prompt"]?.ToString() ?? "",
-                "caption" => settings["instructions"]?["caption"]?.ToString() ?? "",
-                "generate-instruction" => settings["instructions"]?["instructiongen"]?.ToString() ?? "",
-                _ => settings["instructions"]?["chat"]?.ToString() ?? ""
-            };
-            messageContent.Instructions = instructions;
+                string action = requestData["action"]?.ToString()?.ToLower() ?? "chat";
+                clientProvidedInstructions = action switch
+                {
+                    "vision" => settings["instructions"]?["vision"]?.ToString() ?? "",
+                    "prompt" => settings["instructions"]?["prompt"]?.ToString() ?? "",
+                    "caption" => settings["instructions"]?["caption"]?.ToString() ?? "",
+                    "generate-instruction" => settings["instructions"]?["instructiongen"]?.ToString() ?? "",
+                    _ => settings["instructions"]?["chat"]?.ToString() ?? ""
+                };
+            }
+            messageContent.Instructions = clientProvidedInstructions;
             messageContent.Text = $"{messageContent.Text}";
-            // Create request with proper headers
+            // Create request with proper headers and body
             using HttpRequestMessage request = new(HttpMethod.Post, endpoint);
             if (!ConfigureRequest(request, backend, settings, session, out string error))
             {
@@ -366,7 +370,7 @@ public class LLMAPICalls : MagicPromptAPI
             object requestBody = GetSchemaType(backend, messageContent, modelId, messageType);
             string jsonContent = JsonSerializer.Serialize(requestBody);
             request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-            // Send request
+            // Send request and handle response
             HttpResponseMessage response = await _httpClient.SendAsync(request);
             string responseContent = await response.Content.ReadAsStringAsync();
             if (response.IsSuccessStatusCode)

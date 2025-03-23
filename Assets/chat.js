@@ -105,12 +105,14 @@ if (!window.ChatHandler) {
             });
             // Button events
             submitButton.addEventListener('click', this.submitInput);
-            settingsButton.addEventListener('click', () => {
-                const modal = document.getElementById('settingsModal');
-                const bootstrapModal = new bootstrap.Modal(modal);
-                initSettingsModal(); // Initialize settings before showing modal
-                bootstrapModal.show();
-            });
+            const chatSettingsButton = document.getElementById('settings_button');
+            if (chatSettingsButton) {
+                chatSettingsButton.onclick = null;
+                chatSettingsButton.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    window.showSettingsModal();
+                });
+            }
             // Mode events
             chatModeRadio.addEventListener('change', this.handleModeChange);
             visionModeRadio.addEventListener('change', this.handleModeChange);
