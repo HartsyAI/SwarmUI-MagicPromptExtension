@@ -188,7 +188,7 @@ body.dragging {
     /* Calculate position to align with textarea, accounting for the + button width */
     left: calc(2.5rem + ((100% - 2.5rem - 11rem) / 2));
     transform: translateX(-50%);
-    top: 0;
+    top: -5px;
     padding-top: 0.5rem;
     display: flex;
     align-items: center;
@@ -274,8 +274,8 @@ body.dragging {
     color: var(--text);
     font-size: 0.9em;
     width: 1.5rem;
-    height: 1rem;
-    margin-left: 0.5rem;
+    height: -2rem;
+    margin-left: -0.8rem;
     cursor: pointer;
     display: flex;
     align-items: center;

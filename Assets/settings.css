@@ -210,7 +210,6 @@ TABLE OF CONTENTS:
         border: 1px solid var(--shadow);
         background: var(--shadow);
         color: var(--emphasis-text);
-        padding: 0.25rem 0.5rem;
     }
 
     #settingsModal .btn-check:checked + .btn-outline-primary {
@@ -254,7 +253,6 @@ TABLE OF CONTENTS:
     margin-bottom: 1rem;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.25rem;
     width: 100%;
 }
 

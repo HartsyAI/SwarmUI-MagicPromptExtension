@@ -97,15 +97,17 @@ The MagicPrompt Extension can be used with any LLM model that works on the suppo
 * **Chat Model:** Choose the specific model you want to use.
 * **Base URL:** Enter the URL for your LLM API server (e.g., `http://localhost:11434` for local Ollama).
 
+> [!NOTE]
+> Chat and Vision settings are linked by default. If you would like to use different models for each, you can toggle this in settings.
+
 **Vision Settings:**
 * **Vision Backend:** Choose your preferred LLM vision backend (e.g., Ollama, OpenAI, Anthropic).
 * **Vision Model:** Choose the specific vision model you want to use.
 * **Base URL:** Enter the base URL for your vision API if required.
 
 **API Key Management:**
-* **Backend Selection:** Choose the API you are using (OpenAI or Anthropic).
-* **Enter API Key:** Input your API key for the selected service.
-* **Save:** Clicking this button saves the api key only and refreshed the settings.
+* API are now stored using the Swarm internal key manager. 
+* Navigate to the User --> User Info tab and enter your keys into the new table and click save.
 
 **Response Instructions:**
 * **Chat Instructions:** Enter or edit the system instructions for chatting with your selected model.
