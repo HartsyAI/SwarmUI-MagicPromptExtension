@@ -36,6 +36,7 @@ The MagicPrompt Extension provides a simple and intuitive way directly in SwarmU
 * Provides an intuitive interface within SwarmUI, including a button in the Generate tab and a dedicated MagicPrompt tab.
 * Includes vision support, allowing you to upload images, generate captions, and use images as context for prompts.
 * Compatible with other SwarmUI extensions.
+* Add Custom AI Instructions and map them to specific features, see [configuration](#configuration) for more details
 
 ### Vision Support
 The extension now includes comprehensive vision support, allowing you to interact with language models using images. Key features include:
@@ -105,18 +106,51 @@ The MagicPrompt Extension can be used with any LLM model that works on the suppo
 * **Vision Model:** Choose the specific vision model you want to use.
 * **Base URL:** Enter the base URL for your vision API if required.
 
-**API Key Management:**
-* API are now stored using the Swarm internal key manager. 
-* Navigate to the User --> User Info tab and enter your keys into the new table and click save.
+**Instruction System:**
+The MagicPrompt Extension now features a flexible instruction system that allows you to customize how the AI responds in different contexts:
 
-**Response Instructions:**
-* **Chat Instructions:** Enter or edit the system instructions for chatting with your selected model.
-* **Vision Instructions:** Enter or edit the system instructions for chatting with your selected vision model.
-* **Image Caption Instructions:** Enter or edit the system instructions for how the vision model will caption images.
-* **Text-to-Image Prompt Instructions:** Enter or edit the system instructions for rewriting your prompt. 
+![Instructions](Images/Screenshots/instructions.PNG)
+
+* **Built-in Instructions:** Four primary instruction types are included:
+  * **Chat Instructions:** Controls how the AI behaves in chat conversations.
+  * **Vision Instructions:** Determines how the AI analyzes and describes images.
+  * **Image Caption Instructions:** Guides how the AI generates captions for uploaded images.
+  * **Text-to-Image Prompt Instructions:** Defines how the AI enhances and formats your prompts.
+
+* **Custom Instructions:** Create your own specialized instructions for specific tasks:
+  * Click the "Create Custom Instruction" button in the Instructions tab.
+  * Provide a title, description, and the instruction content.
+  * Assign your instruction to relevant categories (chat, vision, caption, prompt).
+  * Optionally use AI assistance to help generate the instruction content.
+
+* **Feature Mapping:**
+  * Connect specific features to instruction sets through the "Features" tab.
+  * For example, you can set which instruction set the "Enhance Prompt" button uses.
+  * You can also configure feature mappings directly from the mini-settings panel accessed via the gear icon next to the buttons in the Generate tab.
+  
+* **Import/Export:**
+  * Share custom instructions by exporting them as JSON files.
+  * Import instructions created by others to extend your collection.
+
+  Example:
+  ```json
+{
+  "id": "custom-1742830899626",
+  "title": "Test Me",
+  "content": "a big old test",
+  "tooltip": "for testing",
+  "categories": [
+    "chat",
+    "vision",
+    "caption",
+    "prompt"
+  ],
+  "created": "2025-03-24T15:41:39.627Z",
+  "updated": "2025-03-24T15:41:39.627Z"
+}
+  ```
 
 2. **Save:**
-* **Save and Refresh:** Save and refresh the settings to allow models to load etc.. without closing the settings.
 * **Save and Close:** Save and close your selected settings.
 * **Reset to Defaults:** This is the something is wrong button. Click it if something is wrong.
 
@@ -187,6 +221,8 @@ If you encounter any issues check these common solutions before you open an issu
 * Version 1.3: Added working Anthropic support and a new button in the Generate tab to rewrite prompts
 * Version 1.4: Added support for OpenRouter API (requires API key)
 * Version 2.0: Vision support and a rewrite of most of the extension
+* Version 2.1: API keys are now handled in Users tab
+* Version 2.2: Added custom instructions feature
 
 ## License
 ----------
