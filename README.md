@@ -134,22 +134,20 @@ The MagicPrompt Extension now features a flexible instruction system that allows
 
   Example:
   ```json
-{
-  "id": "custom-1742830899626",
-  "title": "Test Me",
-  "content": "a big old test",
-  "tooltip": "for testing",
-  "categories": [
-    "chat",
-    "vision",
-    "caption",
-    "prompt"
-  ],
-  "created": "2025-03-24T15:41:39.627Z",
-  "updated": "2025-03-24T15:41:39.627Z"
-}
-  ```
-
+  {
+    "id": "custom-1742830899626",
+    "title": "Test Me",
+    "content": "a big old test",
+    "tooltip": "for testing",
+    "categories": [
+      "chat",
+      "vision",
+      "caption",
+      "prompt"
+    ],
+    "created": "2025-03-24T15:41:39.627Z",
+    "updated": "2025-03-24T15:41:39.627Z"
+  }
 2. **Save:**
 * **Save and Close:** Save and close your selected settings.
 * **Reset to Defaults:** This is the something is wrong button. Click it if something is wrong.
@@ -158,7 +156,6 @@ The MagicPrompt Extension now features a flexible instruction system that allows
 
 ## Usage
 --------
-
 The MagicPrompt Extension offers two primary ways to enhance your prompts and interact with your LLM: through the "Enhance Prompt" and "Magic Vision" button in the Generate tab and the Chat and Vision sections in the dedicated "MagicPrompt" tab.
 
 **Generate Tab:**
@@ -167,8 +164,10 @@ The MagicPrompt Extension offers two primary ways to enhance your prompts and in
 1. **Enter your prompt:** In the Generate tab, type your initial prompt in the positive prompt box.
 2. **Use MagicPrompt:** Click the "Enhance Prompt" button to rewrite and enhance your prompt based on your configured settings. This will rewrite your prompt and replace it in the prompt box.
 
-1. **Caption selected image:** Make sure you have an image selected and your caption instructions are giving you the response from your selected model you desire.
-2. **Use Magic Vision:** Click the "Magic Vision" button and it will caption your image giving you (depending on your caption instructions) a prompt to generate a similar image.
+3. **Caption selected image:** Make sure you have an image selected and your caption instructions are giving you the response from your selected model you desire.
+4. **Use Magic Vision:** Click the "Magic Vision" button and it will caption your image giving you (depending on your caption instructions) a prompt to generate a similar image.
+5. **Quickly Change Instructions:** Click on the cog icon next to the MagicVision button to quickly change which system instruction is used. This is where you can swap between the defaults and your custom instructions.
+![MiniModal](Images/Screenshots/minimodal.PNG)
 
 **MagicPrompt Tab:**
 
@@ -189,7 +188,7 @@ The MagicPrompt Extension offers two primary ways to enhance your prompts and in
 
 **Settings:**
 
-* Access the settings by clicking the settings button within the MagicPrompt tab to configure various options, including the LLM backend, API keys, and vision settings.
+* Access the settings by clicking the settings button within the MagicPrompt tab to configure various options, including the LLM backends, model selection, and custom system instructions.
 ![Settings](Images/Screenshots/settings.PNG)
 
 ## Troubleshooting
