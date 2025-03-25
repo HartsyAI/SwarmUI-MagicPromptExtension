@@ -69,8 +69,7 @@ public class MagicPromptAPI
                     }
                     else
                     {
-                        Logs.Error("OpenAI response is null or has no choices.");
-                        return null;
+                        throw new InvalidOperationException("The response from OpenAI could not be processed (no choices found)");
                     }
                     break;
                 case "anthropic":
@@ -81,8 +80,7 @@ public class MagicPromptAPI
                     }
                     else
                     {
-                        Logs.Error("Anthropic response is null or has no content.");
-                        return null;
+                        throw new InvalidOperationException("The response from Anthropic could not be processed (no content found)");
                     }
                     break;
                 case "ollama":
@@ -93,8 +91,7 @@ public class MagicPromptAPI
                     }
                     else
                     {
-                        Logs.Error("Message object is null in the Ollama response.");
-                        return null;
+                        throw new InvalidOperationException("The response from Ollama could not be processed (null message)");
                     }
                     break;
                 case "openaiapi":
@@ -105,46 +102,30 @@ public class MagicPromptAPI
                     }
                     else
                     {
-                        Logs.Error("OpenAI API response is null or has no choices.");
-                        return null;
+                        throw new InvalidOperationException("The response from the OpenAI-compatible API could not be processed (no choices found)");
                     }
                     break;
                 case "openrouter":
-                    // First check for error response
-                    try 
+                    // First check for error response using the ErrorHandler
+                    if (ErrorHandler.TryParseOpenRouterError(responseContent, out string openRouterErrorMessage))
                     {
-                        OpenRouterError errorResponse = JsonConvert.DeserializeObject<OpenRouterError>(responseContent);
-                        if (errorResponse?.Error != null)
-                        {
-                            string errorMessage = errorResponse.Error.Message;
-                            if (errorResponse.Error.Metadata != null)
-                            {
-                                // For maintenance errors, show the detailed message
-                                if (errorResponse.Error.Metadata.Raw?.Contains("maintenance") == true)
-                                {
-                                    errorMessage = errorResponse.Error.Metadata.Raw;
-                                }
-                                // For other errors, just show a clean user-friendly message
-                                else if (errorMessage == "Invalid URL")
-                                {
-                                    errorMessage = "The provided image appears to be invalid or corrupted. Please try uploading a different image.";
-                                }
-                                else if (!string.IsNullOrEmpty(errorResponse.Error.Metadata.Raw))
-                                {
-                                    errorMessage = $"Error from {errorResponse.Error.Metadata.ProviderName}: {errorMessage}";
-                                }
-                            }
-                            Logs.Error($"OpenRouter API error: {errorMessage}");
-                            return null;
-                        }
-                    }
-                    catch
-                    {
-                        // Not an error response, continue with normal processing
+                        throw new InvalidOperationException(openRouterErrorMessage);
                     }
                     OpenRouterResponse openRouterResponse = JsonConvert.DeserializeObject<OpenRouterResponse>(responseContent);
                     if (openRouterResponse?.Choices != null && openRouterResponse.Choices.Count > 0)
                     {
+                        // Check if the response was cut off due to token limits
+                        if (openRouterResponse.Choices[0].FinishReason == "length" || 
+                            openRouterResponse.Choices[0].NativeFinishReason == "length")
+                        {
+                            Logs.Warning($"OpenRouter response was cut off due to token limit. Model: {openRouterResponse.Model}");
+                            throw new InvalidOperationException(
+                                ErrorHandler.FormatErrorMessage("token_limit", 
+                                $"The response from {openRouterResponse.Model} was cut off because it reached the maximum allowed length.", 
+                                "openrouter")
+                            );
+                        }
+                        
                         OpenRouterMessage message = openRouterResponse.Choices[0].Message;
                         if (message != null)
                         {
@@ -171,13 +152,11 @@ public class MagicPromptAPI
                     }
                     if (string.IsNullOrEmpty(messageContent))
                     {
-                        Logs.Error("OpenRouter response is null or has no choices.");
-                        return null;
+                        throw new InvalidOperationException("The response from OpenRouter could not be processed (no choices found)");
                     }
                     break;
                 default:
-                    Logs.Error("Unsupported LLM backend.");
-                    return null;
+                    throw new InvalidOperationException("Unsupported LLM backend.");
             }
             if (!string.IsNullOrEmpty(messageContent) && messageContent.StartsWith("AI: "))
             {
@@ -188,7 +167,27 @@ public class MagicPromptAPI
         catch (Exception ex)
         {
             Logs.Error($"Error deserializing response: {ex.Message}");
-            return null;
+            
+            // Check if the exception is related to quota issues
+            if (ex.Message.Contains("insufficient_quota") || ex.Message.Contains("quota exceeded"))
+            {
+                throw new InvalidOperationException(
+                    ErrorHandler.FormatErrorMessage("quota", ex.Message, llmBackend)
+                );
+            }
+            
+            // Check for token limit issues
+            if (ex.Message.Contains("token") && (ex.Message.Contains("limit") || ex.Message.Contains("exceed")))
+            {
+                throw new InvalidOperationException(
+                    ErrorHandler.FormatErrorMessage("token_limit", ex.Message, llmBackend)
+                );
+            }
+            
+            // For all other exceptions, use generic_exception handler
+            throw new InvalidOperationException(
+                ErrorHandler.FormatErrorMessage("generic_exception", ex.Message, llmBackend)
+            );
         }
     }
 
@@ -209,7 +208,7 @@ public class MagicPromptAPI
                     else
                     {
                         Logs.Error("Data array is null or empty.");
-                        return null;
+                        throw new InvalidOperationException("Failed to retrieve models from Ollama. The response data was empty or invalid.");
                     }
                 case "openai":
                     OpenAIResponse openAIResponse = JsonConvert.DeserializeObject<OpenAIResponse>(responseContent);
@@ -222,8 +221,11 @@ public class MagicPromptAPI
                                 Name = x.Id
                             }).ToList();
                     }
-                    Logs.Error("OpenAI response data is null");
-                    return null;
+                    else
+                    {
+                        Logs.Error("OpenAI models data array is null or empty.");
+                        throw new InvalidOperationException("Failed to retrieve models from OpenAI. The response data was empty or invalid.");
+                    }
                 case "anthropic":
                     AnthropicResponse anthropicResponse = JsonConvert.DeserializeObject<AnthropicResponse>(responseContent);
                     if (anthropicResponse?.Data != null)
@@ -235,8 +237,11 @@ public class MagicPromptAPI
                             Version = ExtractVersionFromId(x.Id)
                         }).ToList();
                     }
-                    Logs.Error("Anthropic response data is null");
-                    return null;
+                    else
+                    {
+                        Logs.Error("Anthropic models data array is null or empty.");
+                        throw new InvalidOperationException("Failed to retrieve models from Anthropic. The response data was empty or invalid.");
+                    }
                 case "openaiapi":
                     OpenAIAPIResponse openAIAPIResponse = JsonConvert.DeserializeObject<OpenAIAPIResponse>(responseContent);
                     if (openAIAPIResponse?.Data != null)
@@ -250,7 +255,7 @@ public class MagicPromptAPI
                     else
                     {
                         Logs.Error("Data array is null or empty in OpenAI API response.");
-                        return null;
+                        throw new InvalidOperationException("Failed to retrieve models from OpenAI API. The response data was empty or invalid.");
                     }
                 case "openrouter":
                     try
@@ -271,7 +276,7 @@ public class MagicPromptAPI
                             }).ToList();
                         }
                         Logs.Error("OpenRouter response contains no model data");
-                        return null;
+                        throw new InvalidOperationException("Failed to retrieve models from OpenRouter. The response data was empty or invalid.");
                     }
                     catch (Exception ex)
                     {
@@ -280,13 +285,33 @@ public class MagicPromptAPI
                     }
                 default:
                     Logs.Error("Unsupported backend type.");
-                    return null;
+                    throw new InvalidOperationException("Unsupported backend type.");
             }
         }
         catch (Exception ex)
         {
             Logs.Error($"Error deserializing models: {ex.Message}");
-            return null;
+            
+            // Check if the exception is related to quota issues
+            if (ex.Message.Contains("insufficient_quota") || ex.Message.Contains("quota exceeded"))
+            {
+                throw new InvalidOperationException(
+                    ErrorHandler.FormatErrorMessage("quota", ex.Message, backend)
+                );
+            }
+            
+            // For authentication errors
+            if (ex.Message.Contains("unauthorized") || ex.Message.Contains("authentication"))
+            {
+                throw new InvalidOperationException(
+                    ErrorHandler.FormatErrorMessage("authentication", ex.Message, backend)
+                );
+            }
+            
+            // For all other exceptions use a generic handler
+            throw new InvalidOperationException(
+                ErrorHandler.FormatErrorMessage("generic_exception", ex.Message, backend)
+            );
         }
     }
 

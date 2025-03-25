@@ -75,3 +75,24 @@ public class OpenAIModel
     [JsonProperty("owned_by")]
     public string OwnedBy { get; set; }
 }
+
+public class OpenAIErrorResponse
+{
+    [JsonProperty("error")]
+    public OpenAIError Error { get; set; }
+}
+
+public class OpenAIError
+{
+    [JsonProperty("message")]
+    public string Message { get; set; }
+
+    [JsonProperty("type")]
+    public string Type { get; set; }
+
+    [JsonProperty("param")]
+    public string Param { get; set; }
+
+    [JsonProperty("code")]
+    public object Code { get; set; }
+}

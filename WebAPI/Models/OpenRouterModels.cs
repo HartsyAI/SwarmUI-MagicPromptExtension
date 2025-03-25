@@ -97,6 +97,12 @@ public class OpenRouterChoice
 {
     [JsonProperty("finish_reason")]
     public string FinishReason { get; set; }
+    
+    [JsonProperty("native_finish_reason")]
+    public string NativeFinishReason { get; set; }
+    
+    [JsonProperty("index")]
+    public int Index { get; set; }
 
     [JsonProperty("message")]
     public OpenRouterMessage Message { get; set; }
@@ -170,7 +176,7 @@ public class OpenRouterError
 public class OpenRouterErrorDetails
 {
     [JsonProperty("code")]
-    public int Code { get; set; }
+    public object Code { get; set; }
 
     [JsonProperty("message")]
     public string Message { get; set; }
