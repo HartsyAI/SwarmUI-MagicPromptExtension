@@ -75,37 +75,69 @@ public class LLMAPICalls : MagicPromptAPI
         string endpoint = GetEndpoint(backend, settings, "models");
         if (string.IsNullOrEmpty(endpoint))
         {
-            Logs.Error($"Failed to get endpoint for backend: {backend}");
-            return [];
+            string errorMessage = $"Failed to get endpoint for backend: {backend}";
+            Logs.Error(errorMessage);
+            return new List<ModelData>();
         }
         // Create and configure request
         HttpRequestMessage request = new(HttpMethod.Get, endpoint);
         if (!ConfigureRequest(request, backend, settings, session, out string error))
         {
             Logs.Error(error);
-            return [];
+            return new List<ModelData>();
         }
         
         // Send request and handle response
         try
         {
             HttpResponseMessage response = await _httpClient.SendAsync(request);
+            string responseContent = await response.Content.ReadAsStringAsync();
+            
             if (response.IsSuccessStatusCode)
             {
-                string jsonString = await response.Content.ReadAsStringAsync();
-                List<ModelData> models = MagicPromptAPI.DeserializeModels(jsonString, backend);
-                return models ?? [];
+                List<ModelData> models = MagicPromptAPI.DeserializeModels(responseContent, backend);
+                return models ?? new List<ModelData>();
             }
             else
             {
-                Logs.Error($"Failed to fetch {(isVision ? "vision" : "chat")} models: {response.StatusCode} - {response.ReasonPhrase}");
-                return [];
+                // Handle common HTTP status codes
+                switch ((int)response.StatusCode)
+                {
+                    case 401: // Unauthorized
+                    case 403: // Forbidden
+                        Logs.Error($"API key error fetching models for {backend}: {response.StatusCode}");
+                        // No need to return error to user here, just log it and return empty list
+                        return new List<ModelData>();
+                        
+                    case 429: // Too Many Requests
+                        Logs.Error($"Rate limit exceeded fetching models for {backend}: {response.StatusCode}");
+                        return new List<ModelData>();
+                        
+                    case 500: // Internal Server Error
+                    case 502: // Bad Gateway
+                    case 503: // Service Unavailable 
+                    case 504: // Gateway Timeout
+                        Logs.Error($"Server error fetching models for {backend}: {response.StatusCode}");
+                        return new List<ModelData>();
+                        
+                    default:
+                        // Try to detect error type from response content
+                        string errorType = ErrorHandler.DetectErrorType(responseContent, backend);
+                        Logs.Error($"Error fetching models for {backend} ({errorType}): {responseContent}");
+                        return new List<ModelData>();
+                }
             }
+        }
+        catch (HttpRequestException ex)
+        {
+            // Handle network connectivity issues
+            Logs.Error($"HTTP request error fetching models for {backend}: {ex.Message}");
+            return new List<ModelData>();
         }
         catch (Exception ex)
         {
-            Logs.Error($"Exception fetching {(isVision ? "vision" : "chat")} models: {ex.Message}");
-            return [];
+            Logs.Error($"Exception fetching models for {backend}: {ex.Message}");
+            return new List<ModelData>();
         }
     }
 
@@ -179,24 +211,36 @@ public class LLMAPICalls : MagicPromptAPI
     /// <returns>True if configuration was successful, false otherwise.</returns>
     private static bool ConfigureRequest(HttpRequestMessage request, string backend, JObject settings, Session session, out string error)
     {
+        // Initialize error message as empty
         error = string.Empty;
+        // Validate input parameters
+        if (request == null)
+        {
+            error = ErrorHandler.FormatErrorMessage("generic", "HTTP request object is null");
+            return false;
+        }
+        if (string.IsNullOrEmpty(backend))
+        {
+            error = ErrorHandler.FormatErrorMessage("generic", "Backend name is null or empty");
+            return false;
+        }
+        // Get backends configuration
         JObject backends = settings["backends"] as JObject;
         if (backends == null)
         {
-            error = "Backend configuration not found";
+            error = ErrorHandler.FormatErrorMessage("generic", "Backend configuration not found");
             return false;
         }
+        // Normalize backend name for consistency
+        backend = backend.ToLower();
+        // Process based on backend type
         switch (backend)
         {
             case "openai":
                 string apiKey = session.User.GetGenericData("openai_api", "key") ?? Program.Sessions.GenericSharedUser.GetGenericData("openai_api", "key");
                 if (string.IsNullOrEmpty(apiKey))
                 {
-                    error = "OpenAI API Key not found. To configure:\n" +
-                        "1. Go to the User tab\n" +
-                        "2. Add your OpenAI API key in the API Keys section\n" +
-                        "3. Save your changes\n\n" +
-                        "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
+                    error = ErrorHandler.FormatErrorMessage("authentication", "OpenAI API Key not found", "openai");
                     return false;
                 }
                 request.Headers.Add("Authorization", $"Bearer {apiKey}");
@@ -205,11 +249,7 @@ public class LLMAPICalls : MagicPromptAPI
                 string openRouterKey = session?.User?.GetGenericData("openrouter_api", "key") ?? Program.Sessions.GenericSharedUser.GetGenericData("openrouter_api", "key");
                 if (string.IsNullOrEmpty(openRouterKey))
                 {
-                    error = "OpenRouter API Key not found. To configure:\n" +
-                        "1. Go to the User tab\n" +
-                        "2. Add your OpenRouter API key in the API Keys section\n" +
-                        "3. Save your changes\n\n" +
-                        "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
+                    error = ErrorHandler.FormatErrorMessage("authentication", "OpenRouter API Key not found", "openrouter");
                     return false;
                 }
                 request.Headers.Add("Authorization", $"Bearer {openRouterKey}");
@@ -220,11 +260,7 @@ public class LLMAPICalls : MagicPromptAPI
                 string anthropicKey = session?.User?.GetGenericData("anthropic_api", "key") ?? Program.Sessions.GenericSharedUser.GetGenericData("anthropic_api", "key");
                 if (string.IsNullOrEmpty(anthropicKey))
                 {
-                    error = "Anthropic API Key not found. To configure:\n" +
-                        "1. Go to the User tab\n" +
-                        "2. Add your Anthropic API key in the API Keys section\n" +
-                        "3. Save your changes\n\n" +
-                        "Need help? Visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
+                    error = ErrorHandler.FormatErrorMessage("authentication", "Anthropic API Key not found", "anthropic");
                     return false;
                 }
                 request.Headers.Add("x-api-key", anthropicKey);
@@ -245,13 +281,9 @@ public class LLMAPICalls : MagicPromptAPI
                 }
                 break;
             default:
-                error = $"Unsupported LLM backend: {backend}\n" +
-                    "Please select one of the supported backends:\n" +
-                    "- Ollama (recommended for local use)\n" +
-                    "- OpenAI\n" +
-                    "- OpenRouter\n" +
-                    "- Anthropic\n\n" +
-                    "For backend setup guides, visit: https://github.com/HartsyAI/SwarmUI-MagicPromptExtension";
+                // Handle unsupported backend
+                error = ErrorHandler.FormatErrorMessage("generic",
+                    $"Unsupported LLM backend: {backend}. Please select one of the supported backends: Ollama, OpenAI, OpenRouter, or Anthropic.");
                 return false;
         }
         return true;
@@ -325,7 +357,6 @@ public class LLMAPICalls : MagicPromptAPI
                 Logs.Error(sessionSettings["error"]?.ToString() ?? "Failed to load settings");
                 return CreateErrorResponse(sessionSettings["error"]?.ToString() ?? "Failed to load settings");
             }
-
             JObject settings = sessionSettings["settings"] as JObject;
             if (settings == null)
             {
@@ -342,19 +373,24 @@ public class LLMAPICalls : MagicPromptAPI
             {
                 return CreateErrorResponse($"Failed to get endpoint for {backend}");
             }
-            // Get action type from request
-            string action = requestData["action"]?.ToString()?.ToLower() ?? "chat";
-            // Select instructions based on action type
-            string instructions = action switch
+            // Get the instructions from the request if provided
+            string clientProvidedInstructions = messageContentToken["instructions"]?.ToString();
+            // Only perform server-side lookup if client didn't provide instructions
+            if (string.IsNullOrEmpty(clientProvidedInstructions))
             {
-                "vision" => settings["instructions"]?["vision"]?.ToString() ?? "",
-                "prompt" => settings["instructions"]?["prompt"]?.ToString() ?? "",
-                "caption" => settings["instructions"]?["caption"]?.ToString() ?? "",
-                _ => settings["instructions"]?["chat"]?.ToString() ?? ""
-            };
-            messageContent.Instructions = instructions;
+                string action = requestData["action"]?.ToString()?.ToLower() ?? "chat";
+                clientProvidedInstructions = action switch
+                {
+                    "vision" => settings["instructions"]?["vision"]?.ToString() ?? "",
+                    "prompt" => settings["instructions"]?["prompt"]?.ToString() ?? "",
+                    "caption" => settings["instructions"]?["caption"]?.ToString() ?? "",
+                    "generate-instruction" => settings["instructions"]?["instructiongen"]?.ToString() ?? "",
+                    _ => settings["instructions"]?["chat"]?.ToString() ?? ""
+                };
+            }
+            messageContent.Instructions = clientProvidedInstructions;
             messageContent.Text = $"{messageContent.Text}";
-            // Create request with proper headers
+            // Create request with proper headers and body
             using HttpRequestMessage request = new(HttpMethod.Post, endpoint);
             if (!ConfigureRequest(request, backend, settings, session, out string error))
             {
@@ -365,43 +401,121 @@ public class LLMAPICalls : MagicPromptAPI
             object requestBody = GetSchemaType(backend, messageContent, modelId, messageType);
             string jsonContent = JsonSerializer.Serialize(requestBody);
             request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-            // Send request
-            HttpResponseMessage response = await _httpClient.SendAsync(request);
-            string responseContent = await response.Content.ReadAsStringAsync();
-            if (response.IsSuccessStatusCode)
-            {
-                string llmResponse = await DeserializeResponse(response, backend);
-                if (!string.IsNullOrEmpty(llmResponse))
-                {
-                    return CreateSuccessResponse(llmResponse);
-                }
-            }
-            // Try to extract detailed error from response
             try
             {
-                OpenRouterError errorResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<OpenRouterError>(responseContent);
-                if (errorResponse?.Error?.Metadata?.Raw != null)
+                // Send request and handle response
+                HttpResponseMessage response = await _httpClient.SendAsync(request);
+                string responseContent = await response.Content.ReadAsStringAsync();
+                // Handle API errors indicated by status code
+                if (!response.IsSuccessStatusCode)
                 {
-                    // Use the detailed error message as the response
-                    return CreateSuccessResponse(errorResponse.Error.Metadata.Raw);
+                    // Check for common HTTP status codes
+                    switch ((int)response.StatusCode)
+                    {
+                        case 401: // Unauthorized
+                        case 403: // Forbidden
+                            Logs.Error($"Authentication error: {response.StatusCode} from {backend}");
+                            return CreateSuccessResponse(ErrorHandler.FormatErrorMessage("authentication", 
+                                $"API key error (HTTP {(int)response.StatusCode}): {responseContent}", backend));  
+                        case 429: // Too Many Requests
+                            Logs.Error($"Rate limit exceeded: {response.StatusCode} from {backend}");
+                            return CreateSuccessResponse(ErrorHandler.FormatErrorMessage("quota", 
+                                $"Rate limit exceeded (HTTP 429): {responseContent}", backend));
+                        case 500: // Internal Server Error
+                        case 502: // Bad Gateway
+                        case 503: // Service Unavailable 
+                        case 504: // Gateway Timeout
+                            Logs.Error($"Server error: {response.StatusCode} from {backend}");
+                            return CreateSuccessResponse(ErrorHandler.FormatErrorMessage("server_error", 
+                                $"Server error (HTTP {(int)response.StatusCode}): {responseContent}", backend));
+                        default:
+                            // Try to detect error type from response content
+                            string detectedErrorType = ErrorHandler.DetectErrorType(responseContent, backend);
+                            string formattedError = ErrorHandler.FormatErrorMessage(detectedErrorType, 
+                                $"HTTP error {(int)response.StatusCode}: {responseContent}", backend);
+                            Logs.Error($"HTTP {(int)response.StatusCode} error from {backend}: {responseContent}");
+                            return CreateSuccessResponse(formattedError);
+                    }
                 }
-                else if (errorResponse?.Error?.Message != null)
+                // Use the ErrorHandler to check for known error patterns in the response
+                string errorType = ErrorHandler.DetectErrorType(responseContent, backend);
+                if (errorType != "generic")
                 {
-                    return CreateSuccessResponse(errorResponse.Error.Message);
+                    string formattedError = ErrorHandler.FormatErrorMessage(errorType, responseContent, backend);
+                    Logs.Error($"{errorType} error detected: {responseContent}");
+                    return CreateSuccessResponse(formattedError);
                 }
+                if (response.IsSuccessStatusCode)
+                {
+                    try {
+                        string llmResponse = await DeserializeResponse(response, backend);
+                        if (!string.IsNullOrEmpty(llmResponse))
+                        {
+                            return CreateSuccessResponse(llmResponse);
+                        }
+                    }
+                    catch (Exception ex) {
+                        // Check if the exception message indicates a quota issue
+                        if (ex.Message.Contains("insufficient_quota") || ex.Message.Contains("quota exceeded"))
+                        {
+                            string quotaErrorMessage = ErrorHandler.FormatErrorMessage("quota", ex.Message, backend);
+                            Logs.Error($"API quota limit reached (parsing error): {ex.Message}");
+                            return CreateSuccessResponse(quotaErrorMessage);
+                        }
+                        // Log the error but continue to the general error handling
+                        Logs.Error($"Error deserializing response: {ex.Message}");
+                    }
+                }
+                // Try to extract detailed error from response
+                try
+                {
+                    // Try specific provider error handling first
+                    if (backend.Equals("openai", StringComparison.OrdinalIgnoreCase) ||
+                        backend.Equals("openaiapi", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (ErrorHandler.TryParseOpenAIError(responseContent, out string openAIErrorMessage))
+                        {
+                            return CreateSuccessResponse(openAIErrorMessage);
+                        }
+                    }
+                    // Try OpenRouter error parsing
+                    if (ErrorHandler.TryParseOpenRouterError(responseContent, out string openRouterErrorMessage))
+                    {
+                        return CreateSuccessResponse(openRouterErrorMessage);
+                    }
+                    // Try Ollama error parsing
+                    if (backend.Equals("ollama", StringComparison.OrdinalIgnoreCase) &&
+                        ErrorHandler.TryParseOllamaError(responseContent, out string ollamaErrorMessage))
+                    {
+                        return CreateSuccessResponse(ollamaErrorMessage);
+                    }
+                    // If all specific parsing attempts failed, use generic handling
+                    string errorMessage = ErrorHandler.ProcessErrorResponse(responseContent, backend);
+                    return CreateSuccessResponse(errorMessage);
+                }
+                catch (Exception ex)
+                {
+                    Logs.Error($"Error handling API response: {ex.Message}");
+                    return CreateSuccessResponse("I apologize, but something went wrong. Please try again later.");
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                Logs.Error($"HTTP request error: {ex.Message}");
+                return CreateSuccessResponse(ErrorHandler.FormatErrorMessage("http_request_error", ex.Message, backend));
             }
             catch (Exception ex)
             {
-                Logs.Error($"Error parsing API response: {ex.Message}");
+                Logs.Error($"Error in PhoneHomeAsync: {ex.Message}");
+                string errorMessage = ErrorHandler.FormatErrorMessage("generic_exception", ex.Message, "unknown");
+                return CreateSuccessResponse(errorMessage);
             }
-            // Fallback to generic error if we couldn't parse the detailed one
-            return CreateSuccessResponse("I apologize, but something went wrong. Please try again later.");
         }
         catch (Exception ex)
         {
             Logs.Error($"Error in PhoneHomeAsync: {ex.Message}");
-            return CreateErrorResponse($"Error in PhoneHomeAsync: {ex.Message}" +
-                "I apologize, but an unexpected error occurred. Please try again later.");
+            string errorMessage = ErrorHandler.FormatErrorMessage("generic_exception", ex.Message, "unknown");
+            return CreateSuccessResponse(errorMessage);
         }
     }
 }

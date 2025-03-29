@@ -8,13 +8,15 @@ public class MagicPromptExtension : Extension
 {
     public override void OnPreInit()
     {
-        Logs.Info("MagicPromptExtension Version 2.1 Now with Vision! has started.");
+        Logs.Info("MagicPromptExtension Version 2.2 Now with Vision! has started.");
         ScriptFiles.Add("Assets/magicprompt.js");
         ScriptFiles.Add("Assets/vision.js");
         ScriptFiles.Add("Assets/chat.js");
+        ScriptFiles.Add("Assets/settings.js");
         StyleSheetFiles.Add("Assets/magicprompt.css");
         StyleSheetFiles.Add("Assets/vision.css");
         StyleSheetFiles.Add("Assets/chat.css");
+        StyleSheetFiles.Add("Assets/settings.css");
     }
 
     public override void OnInit()

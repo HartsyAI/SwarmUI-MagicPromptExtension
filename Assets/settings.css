@@ -1,0 +1,740 @@
+/* Settings Modal Styles
+=========================================================
+This file contains styles specific to the settings modal interface 
+for the MagicPrompt extension. It defines the layout, components, 
+and interactive elements of the settings UI.
+
+TABLE OF CONTENTS:
+1. Modal Core Structure
+2. Settings Sections
+3. Form Controls
+4. Button Styles
+5. Expandable Sections
+6. Instruction UI
+7. Feature Associations
+8. Custom Instruction Management
+9. Custom Instruction Modal
+=========================================================== */
+
+/* 1. MODAL CORE STRUCTURE
+   Base styles for the modal dialog */
+
+#settingsModal {
+    /* Base modal styles */
+    --modal-width: 800px;
+    --section-padding: 1.5rem;
+    --border-style: 1px solid var(--border-color);
+}
+
+    #settingsModal .modal-dialog {
+        width: var(--modal-width);
+        max-width: var(--modal-width);
+        min-width: var(--modal-width);
+        margin: 1.75rem auto;
+    }
+
+    #settingsModal .modal-content {
+        width: 100%;
+        min-height: 600px;
+        background: var(--background);
+        border: var(--border-style);
+        border-radius: 8px;
+    }
+
+    /* 2. SETTINGS SECTIONS 
+   Content areas and containers */
+
+    #settingsModal .modal-body {
+        padding: var(--section-padding);
+        min-height: 450px;
+    }
+
+    #settingsModal .settings-container,
+    #settingsModal .settings-card,
+    #settingsModal .settings-grid {
+        width: 100%;
+    }
+
+    #settingsModal .settings-card {
+        margin-bottom: 1rem;
+        border: var(--border-style);
+        border-radius: 4px;
+        background: var(--background-gray);
+    }
+
+    /* 3. SECTION HEADERS 
+   Headers and toggles for sections */
+
+    #settingsModal .settings-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.75rem;
+        cursor: pointer;
+    }
+
+        #settingsModal .settings-header .d-flex {
+            display: flex;
+            align-items: center;
+            padding: 0;
+            margin: 0;
+        }
+
+    #settingsModal .settings-header-icon {
+        font-size: 1em;
+        margin-right: 0.5rem;
+        display: flex;
+        align-items: center;
+    }
+
+    #settingsModal .settings-section-title {
+        margin: 0;
+        font-size: 0.95em;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    /* Header buttons container */
+    #settingsModal .header-buttons {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        position: relative;
+        z-index: 10;
+    }
+
+    /* Import button styling */
+    #settingsModal .mp-import-btn {
+        border: 1px solid var(--border-color);
+        background-color: var(--background);
+        color: var(--text);
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        position: relative;
+        z-index: 11;
+    }
+
+        #settingsModal .mp-import-btn:hover {
+            background-color: var(--shadow);
+        }
+
+        #settingsModal .mp-import-btn i {
+            font-size: 0.85em;
+        }
+
+    /* Add custom instruction button */
+    #settingsModal .mp-add-instruction-btn {
+        border: 1px solid var(--emphasis);
+        background-color: var(--emphasis);
+        color: var(--button-foreground-hover);
+        padding: 0.25rem 0.75rem;
+        font-size: 0.75rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        position: relative;
+        z-index: 11;
+    }
+
+        #settingsModal .mp-add-instruction-btn:hover {
+            opacity: 0.9;
+        }
+
+    /* 4. COLLAPSE CONTROLS
+   Expand/collapse section toggles */
+
+    #settingsModal .collapse-toggle {
+        --toggle-size: 24px;
+        background: none;
+        border: none;
+        color: inherit;
+        font-size: 0.8em;
+        padding: 0.25rem;
+        transition: transform 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: var(--toggle-size);
+        height: var(--toggle-size);
+    }
+
+        #settingsModal .collapse-toggle[aria-expanded="true"] {
+            transform: rotate(180deg);
+        }
+
+    #settingsModal .collapse {
+        padding: 0.75rem;
+        background: var(--background);
+        border-top: var(--border-style);
+        border-radius: 0 0 4px 4px;
+    }
+
+    /* 5. FORM CONTROLS
+   Input fields, selects, radios */
+
+    #settingsModal .form-group {
+        margin-bottom: 1rem;
+    }
+
+    #settingsModal .form-label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--text);
+        font-weight: 500;
+    }
+
+    #settingsModal .form-control,
+    #settingsModal .form-select,
+    #settingsModal .btn-outline-primary {
+        padding: 0.5rem;
+        border: var(--border-style);
+        border-radius: 4px;
+        background: var(--background);
+        color: var(--text);
+    }
+
+    #settingsModal .form-control,
+    #settingsModal .form-select {
+        width: 100%;
+    }
+
+    /* Radio buttons */
+    #settingsModal .btn-check + .btn-outline-primary {
+        /* Unselected state */
+        border: 1px solid var(--shadow);
+        background: var(--shadow);
+        color: var(--emphasis-text);
+    }
+
+    #settingsModal .btn-check:checked + .btn-outline-primary {
+        /* Selected state */
+        background: var(--emphasis);
+        border-color: var(--emphasis);
+        color: var(--button-foreground-hover);
+    }
+
+    #settingsModal .btn-check + .btn-outline-primary:hover {
+        background: color-mix(in srgb, var(--emphasis-soft) 70%, white);
+        color: var(--emphasis-text);
+    }
+
+/* 6. INSTRUCTION SECTIONS
+   Styling for the consolidated instruction sections */
+
+.instruction-section {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--background-soft);
+}
+
+    .instruction-section:last-child {
+        margin-bottom: 0;
+    }
+
+.section-subtitle {
+    font-size: 1rem;
+    margin-bottom: 1rem;
+    color: var(--text);
+    font-weight: 600;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+/* Instruction type buttons */
+#settingsModal #instructionTypeGroup {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+}
+
+    #settingsModal #instructionTypeGroup .btn-outline-primary {
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        margin: 0;
+        width: auto;
+        flex: 0 0 auto;
+    }
+
+#settingsModal #instructionTextarea {
+    min-height: 150px;
+    max-height: 300px;
+    resize: vertical;
+    background-color: var(--background);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+    overflow-y: auto;
+    transition: height 0.2s ease;
+}
+
+/* 7. FEATURE ASSOCIATIONS
+   Styles for feature-to-instruction mapping */
+
+.feature-associations-section {
+    background-color: var(--background-gray);
+}
+
+.feature-association-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .feature-association-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.feature-association-item {
+    padding: 0.75rem;
+    background-color: var(--background);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+    .feature-association-item .form-label {
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+        color: var(--text);
+        font-weight: 500;
+    }
+
+    .feature-association-item .form-select {
+        font-size: 0.9rem;
+        padding: 0.3rem 0.5rem;
+        background-color: var(--background);
+        color: var(--text);
+        border: 1px solid var(--border-color);
+    }
+
+/* 8. CUSTOM INSTRUCTION MANAGEMENT
+   Styles for the instruction management section */
+
+#settingsModal .position-relative {
+    position: relative;
+}
+
+#settingsModal .import-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    overflow: hidden;
+    z-index: -1;
+    visibility: hidden;
+}
+
+#settingsModal .custom-instructions-list {
+    margin-top: 0.5rem;
+    border: var(--border-style);
+    border-radius: 4px;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: var(--background);
+}
+
+#settingsModal .custom-instruction-item {
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: var(--border-style);
+    transition: background-color 0.15s;
+}
+
+    #settingsModal .custom-instruction-item:last-child {
+        border-bottom: none;
+    }
+
+    #settingsModal .custom-instruction-item:hover {
+        background-color: var(--background-gray);
+    }
+
+#settingsModal .custom-instruction-info {
+    flex: 1;
+}
+
+#settingsModal .custom-instruction-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text);
+}
+
+#settingsModal .custom-instruction-categories {
+    font-size: 0.8rem;
+    color: var(--text-color-secondary);
+}
+
+#settingsModal .custom-instruction-category {
+    display: inline-block;
+    padding: 0.125rem 0.375rem;
+    background: var(--shadow);
+    border-radius: 0.25rem;
+    margin-right: 0.25rem;
+    margin-bottom: 0.25rem;
+    font-size: 0.7rem;
+}
+
+#settingsModal .custom-instruction-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+#settingsModal .custom-instruction-action {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+    font-size: 1rem;
+    color: var(--text);
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+    #settingsModal .custom-instruction-action:hover {
+        opacity: 1;
+    }
+
+    #settingsModal .custom-instruction-action.delete {
+        color: var(--danger-color, #dc3545);
+    }
+
+    #settingsModal .custom-instruction-action.edit {
+        color: var(--emphasis);
+    }
+
+    #settingsModal .custom-instruction-action.export {
+        color: var(--emphasis-soft);
+    }
+
+/* 9. CUSTOM INSTRUCTION MODAL
+   Styles for the add/edit custom instruction modal */
+
+/* Force the modal to be larger */
+body .modal#customInstructionModal .modal-dialog {
+    max-width: 800px !important;
+    width: 100% !important;
+    margin: 2rem auto !important;
+    max-height: calc(100vh - 4rem);
+}
+
+/* Large screens */
+@media (min-width: 1600px) {
+    body .modal#customInstructionModal .modal-dialog {
+        max-width: 1000px !important;
+        width: 100% !important;
+    }
+}
+
+/* Medium screens */
+@media (max-width: 992px) {
+    body .modal#customInstructionModal .modal-dialog {
+        max-width: 90% !important;
+        width: 90% !important;
+    }
+}
+
+/* Small screens */
+@media (max-width: 768px) {
+    body .modal#customInstructionModal .modal-dialog {
+        max-width: 95% !important;
+        width: 95% !important;
+    }
+}
+
+/* Ensure the modal content expands properly */
+body .modal#customInstructionModal .modal-content {
+    min-height: 400px;
+    max-height: calc(100vh - 4rem);
+    width: 100% !important;
+    background-color: var(--background);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+    overflow-y: auto;
+}
+
+/* Ensure the dialog is centered */
+body .modal#customInstructionModal.show {
+    display: flex !important;
+    align-items: flex-start;
+    padding-top: 2rem;
+}
+
+#customInstructionModal .modal-header {
+    background-color: var(--background);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text);
+}
+
+#customInstructionModal .modal-footer {
+    background-color: var(--background);
+    border-top: 1px solid var(--border-color);
+}
+
+#customInstructionModal .form-text {
+    font-size: 0.8rem;
+    color: var(--text-color-secondary);
+}
+
+#customInstructionModal .form-check {
+    margin-right: 0.5rem;
+}
+
+#customInstructionModal .form-control,
+#customInstructionModal textarea,
+#customInstructionModal input[type="text"] {
+    background-color: var(--background);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+
+#customInstructionModal textarea {
+    min-height: 100px;
+    max-height: 250px;
+    overflow-y: auto;
+    transition: height 0.2s ease;
+    resize: vertical;
+}
+
+/* Creation Method Buttons */
+#customInstructionModal .creation-method-btn {
+    flex: 1;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 1px solid var(--shadow);
+    background: var(--shadow);
+    color: var(--emphasis-text);
+}
+
+#customInstructionModal .btn-check:checked + .creation-method-btn {
+    background: var(--emphasis);
+    border-color: var(--emphasis);
+    color: var(--button-foreground-hover);
+}
+
+/* Categories container */
+#customInstructionModal .categories-container {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+#customInstructionModal .category-option {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background-color: var(--background-soft);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+}
+
+    #customInstructionModal .category-option label {
+        margin-bottom: 0;
+        font-weight: normal;
+    }
+
+/* AI Generation Fields enhanced styling */
+#customInstructionModal #aiGenerationFields .form-text ul {
+    font-size: 0.8rem;
+}
+
+#customInstructionModal #aiGenerationFields textarea {
+    border: 1px solid var(--border-color);
+    background-color: var(--background);
+    color: var(--text);
+}
+
+#customInstructionModal .ai-generation-status {
+    padding: 1rem;
+    background-color: var(--background-soft);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-bottom: 1rem;
+}
+
+    #customInstructionModal .ai-generation-status .spinner-border {
+        color: var(--emphasis);
+    }
+
+    #customInstructionModal .ai-generation-status .progress {
+        background-color: var(--background-gray);
+        height: 0.5rem;
+    }
+
+    #customInstructionModal .ai-generation-status .progress-bar {
+        background-color: var(--emphasis);
+    }
+
+#customInstructionModal #generatedInstructionContent {
+    background-color: var(--background-gray);
+    border: 1px solid var(--border-color);
+    color: var(--text);
+}
+
+/* Modal-specific buttons */
+#customInstructionModal .mp-cancel-btn {
+    background-color: var(--background-gray);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+    #customInstructionModal .mp-cancel-btn:hover {
+        background-color: var(--shadow);
+    }
+
+#customInstructionModal .mp-generate-btn {
+    background-color: var(--emphasis);
+    color: var(--button-foreground-hover);
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+    #customInstructionModal .mp-generate-btn:hover {
+        opacity: 0.9;
+    }
+
+#customInstructionModal .mp-save-instruction-btn {
+    background-color: var(--emphasis);
+    color: var(--button-foreground-hover);
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+    #customInstructionModal .mp-save-instruction-btn:hover {
+        opacity: 0.9;
+    }
+
+#customInstructionModal .mp-regenerate-btn {
+    color: var(--emphasis);
+    border: 1px solid var(--emphasis);
+    background-color: transparent;
+    border-radius: 4px;
+    padding: 0.25rem 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.8rem;
+}
+
+    #customInstructionModal .mp-regenerate-btn:hover {
+        background-color: color-mix(in srgb, var(--emphasis) 10%, transparent);
+    }
+
+/* Settings Modal Footer Buttons */
+#settingsModal .modal-footer {
+    display: flex;
+    justify-content: space-between;
+    background-color: var(--background);
+    border-top: 1px solid var(--border-color);
+}
+
+#settingsModal .mp-save-close-btn {
+    background-color: var(--emphasis);
+    color: var(--button-foreground-hover);
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+    #settingsModal .mp-save-close-btn:hover {
+        opacity: 0.9;
+    }
+
+#settingsModal .mp-reset-btn {
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    margin-right: auto;
+}
+
+    #settingsModal .mp-reset-btn:hover {
+        background-color: #c82333;
+        opacity: 0.9;
+    }
+
+#settingsModal .save-buttons {
+    margin-left: auto;
+}
+
+/* Confirm Delete Modal Styling */
+#confirmDeleteModal .modal-content {
+    background-color: var(--background);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+}
+
+#confirmDeleteModal .modal-header {
+    background-color: var(--background);
+    border-bottom: 1px solid var(--border-color);
+}
+
+#confirmDeleteModal .modal-footer {
+    background-color: var(--background);
+    border-top: 1px solid var(--border-color);
+    justify-content: space-between;
+}
+
+#confirmDeleteModal .mp-cancel-btn {
+    background-color: var(--background-gray);
+    color: var(--text);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+#confirmDeleteModal .mp-delete-btn {
+    background-color: var(--danger-color, #dc3545);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+#importInstructionsBtn {
+    position: relative;
+    overflow: hidden;
+}
+
+    #importInstructionsBtn .import-input {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        cursor: pointer;
+        pointer-events: auto;
+    }

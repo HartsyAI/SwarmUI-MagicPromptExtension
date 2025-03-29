@@ -9,10 +9,9 @@ TABLE OF CONTENTS:
    - Headers
    - Buttons 
    - Form Controls
-   - Modal Styles
-   - Loading Animations
-3. Settings Modal Specific Styles
-4. Utility Classes & Animations
+3. Utility Classes & Animations
+4. Prompt Enhancement Buttons & Loading
+5. Mini-Settings Panel
 =========================================================== */
 
 /* 1. CORE LAYOUT & CONTAINER STYLES 
@@ -108,8 +107,7 @@ TABLE OF CONTENTS:
 }
 
 /* Radio Button Base Styles */
-.magicprompt .btn-check + .btn-outline-primary,
-#settingsModal .btn-check + .btn-outline-primary {
+.magicprompt .btn-check + .btn-outline-primary {
     /* Unselected state */
     border: 1px solid var(--shadow);
     background: var(--shadow);
@@ -118,8 +116,7 @@ TABLE OF CONTENTS:
 }
 
 /* Radio Button Selected State */
-.magicprompt .btn-check:checked + .btn-outline-primary,
-#settingsModal .btn-check:checked + .btn-outline-primary {
+.magicprompt .btn-check:checked + .btn-outline-primary {
     /* Selected state */
     background: var(--emphasis);
     border-color: var(--emphasis);
@@ -127,8 +124,7 @@ TABLE OF CONTENTS:
 }
 
 /* Hover effect for radio buttons */
-.magicprompt .btn-check + .btn-outline-primary:hover,
-#settingsModal .btn-check + .btn-outline-primary:hover {
+.magicprompt .btn-check + .btn-outline-primary:hover {
     background: color-mix(in srgb, var(--emphasis-soft) 70%, white);
     color: var(--emphasis-text);
 }
@@ -144,184 +140,7 @@ TABLE OF CONTENTS:
     font-size: 0.9em;
 }
 
-/* 3. SETTINGS MODAL STYLES 
-   Styles specific to the settings modal interface */
-
-/* Settings Modal Core Structure*/
-#settingsModal {
-    /* Base modal styles */
-    --modal-width: 800px;
-    --section-padding: 1.5rem;
-    --border-style: 1px solid var(--border-color);
-}
-
-    #settingsModal .modal-dialog {
-        width: var(--modal-width);
-        max-width: var(--modal-width);
-        min-width: var(--modal-width);
-        margin: 1.75rem auto;
-    }
-
-    #settingsModal .modal-content {
-        width: 100%;
-        min-height: 600px;
-        background: var(--background);
-        border: var(--border-style);
-        border-radius: 8px;
-    }
-
-    /* Content Areas 
-   Styles for the main content sections of the modal */
-    #settingsModal .modal-body {
-        padding: var(--section-padding);
-        min-height: 450px;
-    }
-
-    #settingsModal .settings-container,
-    #settingsModal .settings-card,
-    #settingsModal .settings-grid {
-        width: 100%;
-    }
-
-    #settingsModal .settings-card {
-        margin-bottom: 1rem;
-        border: var(--border-style);
-        border-radius: 4px;
-        background: var(--background-gray);
-    }
-
-    /* Settings Headers 
-   Styles for section headers and toggles */
-    #settingsModal .settings-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.75rem;
-        cursor: pointer;
-    }
-
-        #settingsModal .settings-header .d-flex {
-            display: flex;
-            align-items: center;
-            padding: 0;
-            margin: 0;
-        }
-
-    #settingsModal .settings-header-icon {
-        font-size: 1em;
-        margin-right: 0.5rem;
-        display: flex;
-        align-items: center;
-    }
-
-    #settingsModal .settings-section-title {
-        margin: 0;
-        font-size: 0.95em;
-        font-weight: 600;
-        color: var(--text);
-    }
-
-    /* Collapse Controls */
-    #settingsModal .collapse-toggle {
-        --toggle-size: 24px;
-        background: none;
-        border: none;
-        color: inherit;
-        font-size: 0.8em;
-        padding: 0.25rem;
-        transition: transform 0.2s;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: var(--toggle-size);
-        height: var(--toggle-size);
-    }
-
-        #settingsModal .collapse-toggle[aria-expanded="true"] {
-            transform: rotate(180deg);
-        }
-
-    #settingsModal .collapse {
-        padding: 0.75rem;
-        background: var(--background);
-        border-top: var(--border-style);
-        border-radius: 0 0 4px 4px;
-    }
-
-    /* Form Controls */
-    #settingsModal .form-group {
-        margin-bottom: 1rem;
-    }
-
-    #settingsModal .form-label {
-        display: block;
-        margin-bottom: 0.5rem;
-        color: var(--text);
-    }
-
-    #settingsModal .form-control,
-    #settingsModal .form-select,
-    #settingsModal .btn-outline-primary {
-        padding: 0.5rem;
-        border: var(--border-style);
-        border-radius: 4px;
-        background: var(--background);
-        color: var(--text);
-    }
-
-    #settingsModal .form-control,
-    #settingsModal .form-select {
-        width: 100%;
-    }
-
-    /* Footer Section */
-    #settingsModal .modal-footer {
-        display: flex;
-        justify-content: space-between;
-        padding: var(--section-padding);
-        border-top: var(--border-style);
-    }
-
-        #settingsModal .modal-footer .save-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        #settingsModal .modal-footer .danger {
-            margin-right: auto;
-        }
-
-    /* Buttons in Footer */
-    #settingsModal .basic-button {
-        padding: 0.5rem 1rem;
-        border: none;
-        border-radius: 4px;
-        background-color: var(--button-background);
-        color: var(--button-text);
-        cursor: pointer;
-    }
-
-        #settingsModal .basic-button:hover {
-            background-color: var(--button-background-hover);
-        }
-
-        #settingsModal .basic-button.danger {
-            --danger-color: #dc3545;
-            --danger-hover: #c82333;
-            --danger-active: #bd2130;
-            background-color: var(--danger-color);
-            color: white;
-        }
-
-            #settingsModal .basic-button.danger:hover {
-                background-color: var(--danger-hover);
-            }
-
-            #settingsModal .basic-button.danger:active {
-                background-color: var(--danger-active);
-            }
-
-/* 4. UTILITY CLASSES & ANIMATIONS 
+/* 3. UTILITY CLASSES & ANIMATIONS 
    Helper classes and animation definitions */
 
 /* Dragging state for resize handle */
@@ -361,15 +180,18 @@ body.dragging {
         overflow: hidden;
     }
 
-/* Enhance Prompt and Magic Vision buttons */
+/* 4. PROMPT ENHANCEMENT BUTTONS & LOADING
+   Styling for the Generate Tab enhancements */
+
 .magicprompt.prompt-buttons-container {
     position: absolute;
     /* Calculate position to align with textarea, accounting for the + button width */
     left: calc(2.5rem + ((100% - 2.5rem - 11rem) / 2));
     transform: translateX(-50%);
-    top: 0;
+    top: -5px;
     padding-top: 0.5rem;
     display: flex;
+    align-items: center;
     gap: 1rem;
     margin-bottom: 0.5rem;
     white-space: nowrap;
@@ -378,8 +200,8 @@ body.dragging {
 .magicprompt.prompt-button {
     padding: 0.2rem 0.8rem;
     display: flex;
-    align-items: center; /* Centers content vertically */
-    justify-content: center; /* Centers content horizontally */
+    align-items: center;
+    justify-content: center;
     background-color: var(--emphasis-soft);
     color: var(--emphasis-text);
     border: 1px solid var(--button-border);
@@ -387,10 +209,165 @@ body.dragging {
     font-weight: bold;
     font-size: 0.7em;
     min-width: 2rem;
-    height: 1rem; /* Fixed height */
+    height: 1rem;
 }
 
     .magicprompt.prompt-button:hover {
         background-color: color-mix(in srgb, var(--emphasis-soft) 70%, white);
         color: var(--emphasis-text);
     }
+
+/* Loading animation for prompt enhancement - fixed width to prevent layout shift */
+.magicprompt.prompt-loading {
+    width: 30px;
+    height: 1rem;
+    margin-right: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+    .magicprompt.prompt-loading.active {
+        opacity: 1;
+    }
+
+    .magicprompt.prompt-loading .dot {
+        width: 6px;
+        height: 6px;
+        background: var(--emphasis);
+        border-radius: 50%;
+        animation: bounce 1.4s infinite ease-in-out;
+    }
+
+        .magicprompt.prompt-loading .dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .magicprompt.prompt-loading .dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        .magicprompt.prompt-loading .dot:nth-child(3) {
+            animation-delay: 0s;
+        }
+
+/* Bounce animation for loading dots */
+@keyframes bounce {
+    0%, 80%, 100% {
+        transform: scale(0);
+        opacity: 0.3;
+    }
+
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* Generate tab settings button */
+.magicprompt.prompt-settings-button {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 0.9em;
+    width: 1.5rem;
+    height: -2rem;
+    margin-left: -0.8rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+    padding: 0;
+}
+
+    .magicprompt.prompt-settings-button:hover {
+        opacity: 1;
+    }
+
+/* 5. MINI-SETTINGS PANEL
+   Styling for the feature-specific settings panel */
+.magicprompt.prompt-settings-panel {
+    background-color: var(--background);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    width: 300px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+}
+
+.magicprompt .settings-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+    .magicprompt .settings-panel-header h3 {
+        margin: 0;
+        font-size: 1em;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+.magicprompt .panel-close-btn {
+    background: transparent;
+    border: none;
+    font-size: 1.2em;
+    color: var(--text);
+    cursor: pointer;
+    opacity: 0.7;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .magicprompt .panel-close-btn:hover {
+        opacity: 1;
+    }
+
+.magicprompt .settings-panel-body {
+    padding: 16px;
+}
+
+.magicprompt .feature-setting {
+    margin-bottom: 16px;
+}
+
+    .magicprompt .feature-setting:last-child {
+        margin-bottom: 0;
+    }
+
+    .magicprompt .feature-setting label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 500;
+        color: var(--text);
+        font-size: 0.9em;
+    }
+
+.magicprompt .feature-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    background-color: var(--background);
+    color: var(--text);
+    font-size: 0.9em;
+}
+
+.magicprompt .setting-description {
+    margin-top: 4px;
+    font-size: 0.8em;
+    color: var(--text-color-secondary, #777);
+    line-height: 1.4;
+}
