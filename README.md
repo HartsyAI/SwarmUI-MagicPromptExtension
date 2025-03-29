@@ -21,7 +21,7 @@
 ## Introduction
 ---------------
 
-The MagicPrompt Extension provides a simple and intuitive way directly in SwarmUI to generate text prompts for Stable Diffusion images. This uses your local Ollama LLMs. 
+The MagicPrompt Extension provides a simple and intuitive way directly in SwarmUI to generate text prompts for Stable Diffusion images. This uses your free local or paid API LLMs.
 ![MagicPromptTab](Images/Screenshots/mp_tab.PNG)
 
 > [!WARNING]
