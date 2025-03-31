@@ -252,7 +252,7 @@ public class SessionSettings : MagicPromptAPI
             JObject backends = newSettings["backends"] as JObject;
             if (backends != null)
             {
-                foreach (var backend in backends.Properties())
+                foreach (JProperty backend in backends.Properties())
                 {
                     JObject backendObj = backend.Value as JObject;
                     if (backendObj != null && backendObj["apikey"] != null)
@@ -261,7 +261,6 @@ public class SessionSettings : MagicPromptAPI
                     }
                 }
             }
-
             Program.Sessions.GenericSharedUser.SaveGenericData(SETTINGS_KEY, SETTINGS_SUBKEY, newSettings.ToString());
             return new JObject
             {

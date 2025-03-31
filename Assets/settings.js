@@ -264,7 +264,6 @@ async function fetchModels() {
     }
     // Create a request semaphore
     if (MP.fetchingModels) {
-        console.log('Models already being fetched, waiting for current request to complete');
         return MP.fetchingModelsPromise;
     }
     try {
@@ -325,7 +324,6 @@ async function fetchModels() {
             // Add vision models
             if (Array.isArray(response.visionmodels)) {
                 const existingVisionModelIds = new Set();
-
                 // Clear existing options if not already cleared
                 if (visionModelSelect.options.length > 0) {
                     visionModelSelect.innerHTML = '';
@@ -383,7 +381,6 @@ function setModelIfExists(select, modelId) {
  * @returns {string} The instruction content
  */
 function getInstructionContent(type) {
-    console.log(`getInstructionContent called with: "${type}"`);
     if (!type) {
         return '';
     }
@@ -408,15 +405,10 @@ function getInstructionContent(type) {
  * @returns {string} The instruction type to use
  */
 function getInstructionForFeature(feature) {
-    console.log(`getInstructionForFeature called with: "${feature}"`);
-    console.log(`Current feature map:`, MP.settings.instructions.featureMap);
-
     if (!feature || !MP.settings.instructions?.featureMap) {
-        console.log(`Returning null: feature missing or no feature map`);
         return null;
     }
     const instructionType = MP.settings.instructions.featureMap[feature];
-    console.log(`Returning instruction type: "${instructionType}"`);
     return instructionType || null;
 }
 
@@ -433,7 +425,6 @@ function setInstructionForFeature(feature, instructionType, skipSave = false) {
         MP.settings.instructions.featureMap = { ...DEFAULT_FEATURE_MAPPINGS };
     }
     MP.settings.instructions.featureMap[feature] = instructionType;
-    console.log(`Set instruction for feature "${feature}" to "${instructionType}"`);
     if (!skipSave) {
         saveSettings();
     }

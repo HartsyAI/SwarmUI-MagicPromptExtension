@@ -2,11 +2,12 @@ using Newtonsoft.Json.Linq;
 using System.Text.Json;
 using SwarmUI.Utils;
 using SwarmUI.WebAPI;
-using System.Net.Http;
-using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
-using static Hartsy.Extensions.MagicPromptExtension.BackendSchema;
 using SwarmUI.Core;
 using SwarmUI.Accounts;
+using System.Net.Http;
+using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
+
+using static Hartsy.Extensions.MagicPromptExtension.BackendSchema;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI;
 
@@ -16,7 +17,7 @@ public class LLMAPICalls : MagicPromptAPI
 
     /// <summary>Fetches available models from the LLM API endpoint.</summary>
     /// <returns>A JSON object containing the models or an error message.</returns>
-    public static async Task<JObject> GetModelsAsync(Session session = null)
+    public static async Task<JObject> GetModelsAsync(Session session)
     {
         try
         {
