@@ -7,10 +7,12 @@ using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
 using System.Net.Http;
 using Newtonsoft.Json;
 using Microsoft.AspNetCore.Html;
+using System.Net;
+using System.Text.RegularExpressions;
+using System.Linq;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI;
 
-// Define a permission group specifically for MagicPromptAPI
 public static class MagicPromptPermissions
 {
     public static readonly PermInfoGroup MagicPromptPermGroup = new("MagicPrompt", "Permissions related to MagicPrompt functionality for API calls and settings.");
@@ -27,24 +29,47 @@ public class MagicPromptAPI
     /// <summary>Registers the API calls for the extension, enabling methods to be called from JavaScript with appropriate permissions.</summary>
     public static void Register()
     {
-        // Register API calls with permissions
         API.RegisterAPICall(LLMAPICalls.PhoneHomeAsync, true, MagicPromptPermissions.PermPhoneHome);
         API.RegisterAPICall(SessionSettings.GetSettingsAsync, false, MagicPromptPermissions.PermReadConfig);
         API.RegisterAPICall(SessionSettings.SaveSettingsAsync, false, MagicPromptPermissions.PermSaveConfig);
         API.RegisterAPICall(SessionSettings.ResetSettingsAsync, false, MagicPromptPermissions.PermResetConfig);
         API.RegisterAPICall(LLMAPICalls.GetModelsAsync, true, MagicPromptPermissions.PermGetModels);
-
         // All key types must be added to the accepted list first
-        string[] keyTypes = ["openai_api", "anthropic_api", "openrouter_api", "openaiapi_local"]; 
+        string[] keyTypes = ["openai_api", "anthropic_api", "openrouter_api", "openaiapi_local"];
         foreach (string keyType in keyTypes)
         {
             BasicAPIFeatures.AcceptedAPIKeyTypes.Add(keyType);
         }
         // Register API Key tables for each backend
-        UserUpstreamApiKeys.Register(new("openai_api", "openai", "OpenAI (ChatGPT)", "https://platform.openai.com/api-keys", new HtmlString("To use OpenAI models in SwarmUI (via the MagicPrompt extension), you must set your OpenAI API key.")));
-        UserUpstreamApiKeys.Register(new("anthropic_api", "anthropic", "Anthropic (Claude)", "https://console.anthropic.com/settings/keys", new HtmlString("To use Anthropic models like Claude in SwarmUI (via the MagicPrompt extension), you must set your Anthropic API key.")));
-        UserUpstreamApiKeys.Register(new("openrouter_api", "openrouter", "OpenRouter", "https://openrouter.ai/keys", new HtmlString("To use OpenRouter models in SwarmUI (via the MagicPrompt extension), you must set your OpenRouter API key. OpenRouter gives you access to many different models through a single API.")));
-        UserUpstreamApiKeys.Register(new("openaiapi_local", "openaiapi", "OpenAI API (Local)", "#", new HtmlString("For connecting to local servers that implement the OpenAI API schema (like LM Studio, text-generation-webui, or LocalAI). You may need to provide API keys or connection details depending on your local setup.")));
+        RegisterApiKeyIfNeeded("openai_api", "openai", "OpenAI (ChatGPT)", "https://platform.openai.com/api-keys",
+            new HtmlString("To use OpenAI models in SwarmUI (via Hartsy extensions), you must set your OpenAI API key."));
+        RegisterApiKeyIfNeeded("anthropic_api", "anthropic", "Anthropic (Claude)", "https://console.anthropic.com/settings/keys",
+            new HtmlString("To use Anthropic models like Claude in SwarmUI (via Hartsy extensions), you must set your Anthropic API key."));
+        RegisterApiKeyIfNeeded("openrouter_api", "openrouter", "OpenRouter", "https://openrouter.ai/keys",
+            new HtmlString("To use OpenRouter models in SwarmUI (via Hartsy extensions), you must set your OpenRouter API key. OpenRouter gives you access to many different models through a single API."));
+        RegisterApiKeyIfNeeded("openaiapi_local", "openaiapi", "OpenAI API (Local)", "#",
+            new HtmlString("For connecting to local servers that implement the OpenAI API schema (like LM Studio, text-generation-webui, or LocalAI). You may need to provide API keys or connection details depending on your local setup."));
+    }
+
+    /// <summary>Safely registers an API key if it's not already registered</summary>
+    private static void RegisterApiKeyIfNeeded(string keyType, string jsPrefix, string title, string createLink, HtmlString infoHtml)
+    {
+        try
+        {
+            if (!UserUpstreamApiKeys.KeysByType.ContainsKey(keyType))
+            {
+                UserUpstreamApiKeys.Register(new(keyType, jsPrefix, title, createLink, infoHtml));
+                Logs.Debug($"Registered API key type: {keyType}");
+            }
+            else
+            {
+                Logs.Debug($"API key type '{keyType}' already registered, skipping registration");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logs.Warning($"Failed to register API key type '{keyType}': {ex.Message}");
+        }
     }
 
     /// <summary>Makes the JSON response into a structured object and extracts the message content based on the backend type.</summary>
@@ -107,25 +132,24 @@ public class MagicPromptAPI
                     break;
                 case "openrouter":
                     // First check for error response using the ErrorHandler
-                    if (ErrorHandler.TryParseOpenRouterError(responseContent, out string openRouterErrorMessage))
+                    if (ErrorHandler.TryParseOpenRouterError(responseContent, response.StatusCode, out ErrorType errorType, out string errorMessage))
                     {
-                        throw new InvalidOperationException(openRouterErrorMessage);
+                        throw new InvalidOperationException(ErrorHandler.FormatErrorMessage(errorType, errorMessage, llmBackend));
                     }
                     OpenRouterResponse openRouterResponse = JsonConvert.DeserializeObject<OpenRouterResponse>(responseContent);
                     if (openRouterResponse?.Choices != null && openRouterResponse.Choices.Count > 0)
                     {
                         // Check if the response was cut off due to token limits
-                        if (openRouterResponse.Choices[0].FinishReason == "length" || 
+                        if (openRouterResponse.Choices[0].FinishReason == "length" ||
                             openRouterResponse.Choices[0].NativeFinishReason == "length")
                         {
                             Logs.Warning($"OpenRouter response was cut off due to token limit. Model: {openRouterResponse.Model}");
                             throw new InvalidOperationException(
-                                ErrorHandler.FormatErrorMessage("token_limit", 
-                                $"The response from {openRouterResponse.Model} was cut off because it reached the maximum allowed length.", 
+                                ErrorHandler.FormatErrorMessage(ErrorType.TokenLimit,
+                                $"The response from {openRouterResponse.Model} was cut off because it reached the maximum allowed length.",
                                 "openrouter")
                             );
                         }
-                        
                         OpenRouterMessage message = openRouterResponse.Choices[0].Message;
                         if (message != null)
                         {
@@ -167,26 +191,10 @@ public class MagicPromptAPI
         catch (Exception ex)
         {
             Logs.Error($"Error deserializing response: {ex.Message}");
-            
-            // Check if the exception is related to quota issues
-            if (ex.Message.Contains("insufficient_quota") || ex.Message.Contains("quota exceeded"))
-            {
-                throw new InvalidOperationException(
-                    ErrorHandler.FormatErrorMessage("quota", ex.Message, llmBackend)
-                );
-            }
-            
-            // Check for token limit issues
-            if (ex.Message.Contains("token") && (ex.Message.Contains("limit") || ex.Message.Contains("exceed")))
-            {
-                throw new InvalidOperationException(
-                    ErrorHandler.FormatErrorMessage("token_limit", ex.Message, llmBackend)
-                );
-            }
-            
-            // For all other exceptions, use generic_exception handler
+            ErrorType detectedErrorType = ErrorHandler.ConvertStringToErrorType(
+                ErrorHandler.DetectErrorType(ex.Message, response.StatusCode, llmBackend));
             throw new InvalidOperationException(
-                ErrorHandler.FormatErrorMessage("generic_exception", ex.Message, llmBackend)
+                ErrorHandler.FormatErrorMessage(detectedErrorType, ex.Message, llmBackend)
             );
         }
     }
@@ -291,26 +299,10 @@ public class MagicPromptAPI
         catch (Exception ex)
         {
             Logs.Error($"Error deserializing models: {ex.Message}");
-            
-            // Check if the exception is related to quota issues
-            if (ex.Message.Contains("insufficient_quota") || ex.Message.Contains("quota exceeded"))
-            {
-                throw new InvalidOperationException(
-                    ErrorHandler.FormatErrorMessage("quota", ex.Message, backend)
-                );
-            }
-            
-            // For authentication errors
-            if (ex.Message.Contains("unauthorized") || ex.Message.Contains("authentication"))
-            {
-                throw new InvalidOperationException(
-                    ErrorHandler.FormatErrorMessage("authentication", ex.Message, backend)
-                );
-            }
-            
-            // For all other exceptions use a generic handler
+            ErrorType detectedErrorType = ErrorHandler.ConvertStringToErrorType(
+                ErrorHandler.DetectErrorType(ex.Message, HttpStatusCode.OK, backend));
             throw new InvalidOperationException(
-                ErrorHandler.FormatErrorMessage("generic_exception", ex.Message, backend)
+                ErrorHandler.FormatErrorMessage(detectedErrorType, ex.Message, backend)
             );
         }
     }
@@ -318,8 +310,11 @@ public class MagicPromptAPI
     /// <summary>Extracts a version string from a model ID, if present</summary>
     private static string ExtractVersionFromId(string id)
     {
-        var match = System.Text.RegularExpressions.Regex.Match(id, @"\d{8}$");
-        return match.Success ? match.Value : "";
+        if (id.Length >= 8 && id[^8..].All(char.IsDigit))
+        {
+            return id[^8..];
+        }
+        return "";
     }
 
     /// <summary>Creates a user-friendly name from a model ID</summary>
@@ -327,24 +322,26 @@ public class MagicPromptAPI
     {
         // Extract the model name from ID patterns like "claude-3-opus-20240229"
         string baseName = modelId.Split('/').Last();
-        
         // Remove version numbers and dates when possible
-        var match = System.Text.RegularExpressions.Regex.Match(baseName, @"^(.*?)[-:]?\d{8}$");
-        if (match.Success && match.Groups.Count > 1)
+        if (baseName.Length >= 8)
         {
-            baseName = match.Groups[1].Value;
+            int dashPos = baseName.LastIndexOf('-', baseName.Length - 9);
+            int colonPos = baseName.LastIndexOf(':', baseName.Length - 9);
+            int sepPos = Math.Max(dashPos, colonPos);
+            if (sepPos >= 0 && baseName.Skip(sepPos + 1).Take(8).All(char.IsDigit))
+            {
+                baseName = baseName[..sepPos];
+            }
         }
-        
         // Convert kebab-case to Title Case with proper spacing
         string[] parts = baseName.Split('-');
         for (int i = 0; i < parts.Length; i++)
         {
             if (parts[i].Length > 0)
             {
-                parts[i] = char.ToUpper(parts[i][0]) + parts[i].Substring(1);
+                parts[i] = char.ToUpper(parts[i][0]) + parts[i][1..];
             }
         }
-        
         return string.Join(" ", parts);
     }
 

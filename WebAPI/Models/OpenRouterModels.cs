@@ -192,4 +192,7 @@ public class OpenRouterErrorMetadata
 
     [JsonProperty("provider_name")]
     public string ProviderName { get; set; }
+
+    [JsonProperty("reasons")]
+    public string Reasons { get; set; }
 }
