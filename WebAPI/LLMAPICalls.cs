@@ -8,12 +8,13 @@ using System.Net.Http;
 using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
 
 using static Hartsy.Extensions.MagicPromptExtension.BackendSchema;
+using SwarmUI.Backends;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI;
 
 public class LLMAPICalls : MagicPromptAPI
 {
-    private static readonly HttpClient _httpClient = new();
+    protected static readonly HttpClient HttpClient = NetworkBackendUtils.MakeHttpClient();
 
     /// <summary>Fetches available models from the LLM API endpoint.</summary>
     /// <returns>A JSON object containing the models or an error message.</returns>
@@ -91,7 +92,7 @@ public class LLMAPICalls : MagicPromptAPI
         // Send request and handle response
         try
         {
-            HttpResponseMessage response = await _httpClient.SendAsync(request);
+            HttpResponseMessage response = await HttpClient.SendAsync(request);
             string responseContent = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
@@ -383,7 +384,7 @@ public class LLMAPICalls : MagicPromptAPI
             try
             {
                 // Send request and handle response
-                HttpResponseMessage response = await _httpClient.SendAsync(request);
+                HttpResponseMessage response = await HttpClient.SendAsync(request);
                 string responseContent = await response.Content.ReadAsStringAsync();
                 // Handle API errors indicated by status code
                 if (!response.IsSuccessStatusCode)
