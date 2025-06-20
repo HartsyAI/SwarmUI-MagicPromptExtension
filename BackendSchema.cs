@@ -1,3 +1,10 @@
+using SixLabors.ImageSharp.Processing;
+using SwarmUI.Utils;
+using Image = SwarmUI.Utils.Image;
+using ISImage = SixLabors.ImageSharp.Image;
+using ISImage32 = SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>;
+using ISImageFrame32 = SixLabors.ImageSharp.ImageFrame<SixLabors.ImageSharp.PixelFormats.Rgba32>;
+
 namespace Hartsy.Extensions.MagicPromptExtension;
 
 public static class BackendSchema
@@ -46,6 +53,46 @@ public static class BackendSchema
         };
     }
 
+    /// <summary>Compresses image data to optimize for LLM vision models</summary>
+    /// <param name="media">The media content containing image data</param>
+    /// <param name="targetFormat">The target format ("PNG" or "WEBP")</param>
+    /// <returns>Compressed base64 image data without the data URL prefix</returns>
+    public static string CompressImageForVision(MediaContent media, string targetFormat = "WEBP")
+    {
+        if (media.Type != "base64")
+        {
+            return media.Data;
+        }
+        try
+        {
+            Image image = Image.FromDataString($"data:{media.MediaType};base64,{media.Data}");
+            // Skip compression for videos etc..
+            if (image.Type != Image.ImageType.IMAGE)
+            {
+                return media.Data;
+            }
+            ISImage img = image.ToIS;
+            int maxDimension = 256; // TODO: This needs to be tested and adjusted
+            if (img.Width > maxDimension || img.Height > maxDimension)
+            {
+                float scaleFactor = maxDimension / (float)Math.Max(img.Width, img.Height);
+                int newWidth = (int)(img.Width * scaleFactor);
+                int newHeight = (int)(img.Height * scaleFactor);
+                img.Mutate(i => i.Resize(newWidth, newHeight));
+            }
+            // Set compression quality based on format TODO: This needs to be tested and adjusted
+            int quality = targetFormat == "PNG" ? 60 : 40;
+            Image compressedImage = new Image(img).ConvertTo(targetFormat, quality: quality);
+            // Return just the base64 data (without the data:image/webp;base64, prefix)
+            return compressedImage.AsBase64;
+        }
+        catch (Exception ex)
+        {
+            Logs.Error($"Failed to compress image: {ex.Message}");
+            return media.Data;
+        }
+    }
+
     /// <summary>Generates a request body for Ollama backend.</summary>
     private static object OllamaRequestBody(MessageContent content, string model, MessageType messageType)
     {
@@ -60,9 +107,7 @@ public static class BackendSchema
             {
                 role = "user",
                 content = content.Text,
-                images = content.Media.Select(m => m.Data.Replace("data:image/jpeg;base64,", "")
-                                                  .Replace("data:image/png;base64,", ""))
-                                                  .ToArray()
+                images = content.Media.Select(m => CompressImageForVision(m)).ToArray()
             });
             return new
             {
@@ -104,30 +149,22 @@ public static class BackendSchema
         if (messageType == MessageType.Vision && content.Media?.Any() == true)
         {
             List<object> contentList = [];
-            // First add any images
             foreach (MediaContent media in content.Media)
             {
-                // Clean up base64 data - remove data URL prefix if present
-                string imageData = media.Data;
-                if (media.Type == "base64" && imageData.Contains("base64,"))
-                {
-                    imageData = imageData[(imageData.IndexOf("base64,") + 7)..];
-                }
+                string imageData = CompressImageForVision(media);
                 contentList.Add(new
                 {
                     type = "image_url",
                     image_url = media.Type == "base64"
-                        ? new { url = $"data:{media.MediaType};base64,{imageData}" }
+                        ? new { url = $"data:image/webp;base64,{imageData}" }
                         : new { url = media.Data }
                 });
             }
-            // Then add the text prompt
             contentList.Add(new
             {
                 type = "text",
                 text = content.Text
             });
-            // Add as a user message
             messages.Add(new
             {
                 role = "user",
@@ -142,7 +179,6 @@ public static class BackendSchema
                 stream = false
             };
         }
-        // For non-vision requests
         messages.Add(new { role = "user", content = content.Text });
         return new
         {
@@ -164,12 +200,9 @@ public static class BackendSchema
             List<object> messageContent = [];
             foreach (MediaContent media in content.Media)
             {
-                string mediaType = media.MediaType ?? "image/jpeg";
-                string imageData = media.Data;
-                if (imageData.Contains("base64,"))
-                {
-                    imageData = imageData[(imageData.IndexOf("base64,") + 7)..];
-                }
+                // Compress image and convert to PNG. Anthropic only accepts PNG.
+                string imageData = CompressImageForVision(media, "PNG");
+                string mediaType = "image/png";
                 messageContent.Add(new
                 {
                     type = "image",
