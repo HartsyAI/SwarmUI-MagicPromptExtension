@@ -78,7 +78,7 @@ public class SessionSettings : MagicPromptAPI
         ["backends"] = DefaultBackendConfig.DeepClone() // TODO: Change the name of this to something more descriptive
     };
 
-    public static async Task<JObject> GetSettingsAsync()
+    public static async Task<JObject> GetMagicPromptSettings()
     {
         try
         {
@@ -127,7 +127,7 @@ public class SessionSettings : MagicPromptAPI
         }
     }
 
-    public static async Task<JObject> SaveSettingsAsync(JObject settings)
+    public static async Task<JObject> SaveMagicPromptSettings(JObject settings)
     {
         try
         {
@@ -140,7 +140,7 @@ public class SessionSettings : MagicPromptAPI
                 };
             }
             // Get existing settings
-            JObject existingSettings = await GetSettingsAsync();
+            JObject existingSettings = await GetMagicPromptSettings();
             JObject newSettings = [];
             // Helper function to merge objects recursively
             static void MergeSettings(JObject target, JObject source, string parentKey = null)
@@ -270,7 +270,7 @@ public class SessionSettings : MagicPromptAPI
         }
         catch (Exception ex)
         {
-            Logs.Error($"Error in SaveSettingsAsync: {ex.Message}");
+            Logs.Error($"Error in SaveMagicPromptSettings: {ex.Message}");
             return new JObject
             {
                 ["success"] = false,
@@ -280,7 +280,7 @@ public class SessionSettings : MagicPromptAPI
     }
 
     /// <summary>You screw something up? Resets user settings to defaults.</summary>
-    public static async Task<JObject> ResetSettingsAsync()
+    public static async Task<JObject> ResetMagicPromptSettings()
     {
         try
         {

@@ -97,7 +97,7 @@ if (!window.MP) {
                 console.log('Making API request with instructions:', payload.messageContent.instructions);
                 try {
                     return new Promise((resolve, reject) => {
-                        genericRequest('PhoneHomeAsync', payload,
+                        genericRequest('MagicPromptPhoneHome', payload,
                             data => {
                                 if (data.success) {
                                     console.log('API request successful:', data);

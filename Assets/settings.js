@@ -60,7 +60,7 @@ function debounce(func, wait) {
 async function loadSettings() {
   try {
     const response = await new Promise((resolve, reject) => {
-      genericRequest('GetSettingsAsync', {}, (data) => {
+        genericRequest('GetMagicPromptSettings', {}, (data) => {
         if (data.success) {
           const serverSettings = data.settings;
           // Create settings object preserving server values
@@ -210,10 +210,7 @@ async function saveSettings(skipFeatureMappings = false) {
       settings,
     };
     // Use genericRequest which will automatically add session_id
-    genericRequest(
-      'SaveSettingsAsync',
-      payload,
-      (data) => {
+    genericRequest('SaveMagicPromptSettings', payload, (data) => {
         if (data.success) {
           console.log('Settings saved successfully');
         } else {
@@ -249,7 +246,7 @@ async function resetSettings() {
       return;
     }
     const response = await new Promise((resolve, reject) => {
-      genericRequest('ResetSettingsAsync', {}, (response) => {
+      genericRequest('ResetMagicPromptSettings', {}, (response) => {
         if (response.success) {
           resolve(response);
         } else {
@@ -312,7 +309,7 @@ async function fetchModels() {
       // Fetch models for both backends
       const response = await new Promise((resolve, reject) => {
         genericRequest(
-          'GetModelsAsync',
+          'GetMagicPromptModels',
           {
             backend: chatBackendId,
             visionbackend: visionBackendId,
@@ -1779,10 +1776,7 @@ function initSettingsModal() {
           };
           // Use Swarm's built in genericRequest which will automatically add session_id
           await new Promise((resolve, reject) => {
-            genericRequest(
-              'SaveSettingsAsync',
-              payload,
-              (data) => {
+            genericRequest('SaveMagicPromptSettings', payload, (data) => {
                 if (data.success) {
                   resolve();
                 } else {
@@ -1844,12 +1838,8 @@ function initSettingsModal() {
               },
             },
           };
-          // Use genericRequest which will automatically add session_id
           await new Promise((resolve, reject) => {
-            genericRequest(
-              'SaveSettingsAsync',
-              payload,
-              (data) => {
+            genericRequest('SaveMagicPromptSettings', payload, (data) => {
                 if (data.success) {
                   resolve();
                 } else {
@@ -1904,10 +1894,7 @@ function initSettingsModal() {
             };
             // Save settings
             await new Promise((resolve, reject) => {
-              genericRequest(
-                'SaveSettingsAsync',
-                payload,
-                (data) => {
+              genericRequest('SaveMagicPromptSettings', payload, (data) => {
                   if (data.success) {
                     console.log(
                       `Saved base URL for ${currentBackend}: ${value}`
@@ -1989,10 +1976,7 @@ function initSettingsModal() {
             };
             // Save settings
             await new Promise((resolve, reject) => {
-              genericRequest(
-                'SaveSettingsAsync',
-                payload,
-                (data) => {
+              genericRequest('SaveMagicPromptSettings', payload, (data) => {
                   if (data.success) {
                     console.log(
                       `Saved vision base URL for ${currentVisionBackend}: ${value}`

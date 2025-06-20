@@ -18,12 +18,12 @@ public class LLMAPICalls : MagicPromptAPI
 
     /// <summary>Fetches available models from the LLM API endpoint.</summary>
     /// <returns>A JSON object containing the models or an error message.</returns>
-    public static async Task<JObject> GetModelsAsync(Session session)
+    public static async Task<JObject> GetMagicPromptModels(Session session)
     {
         try
         {
             // Get current settings
-            JObject sessionSettings = await SessionSettings.GetSettingsAsync();
+            JObject sessionSettings = await SessionSettings.GetMagicPromptSettings();
             if (!sessionSettings["success"].Value<bool>())
             {
                 return CreateErrorResponse(sessionSettings["error"]?.ToString() ?? "Failed to load settings");
@@ -279,7 +279,7 @@ public class LLMAPICalls : MagicPromptAPI
             "error": string
         }
         """)]
-    public static async Task<JObject> PhoneHomeAsync(JObject requestData, Session session = null)
+    public static async Task<JObject> MagicPromptPhoneHome(JObject requestData, Session session = null)
     {
         try
         {
@@ -331,7 +331,7 @@ public class LLMAPICalls : MagicPromptAPI
                 return CreateErrorResponse("Message content or model ID is missing");
             }
             // Get current settings
-            JObject sessionSettings = await SessionSettings.GetSettingsAsync();
+            JObject sessionSettings = await SessionSettings.GetMagicPromptSettings();
             if (!sessionSettings["success"].Value<bool>())
             {
                 Logs.Error(sessionSettings["error"]?.ToString() ?? "Failed to load settings");
@@ -425,13 +425,13 @@ public class LLMAPICalls : MagicPromptAPI
             }
             catch (Exception ex)
             {
-                Logs.Error($"Error in PhoneHomeAsync: {ex.Message}");
+                Logs.Error($"Error in MagicPromptPhoneHome: {ex.Message}");
                 return CreateSuccessResponse(ErrorHandler.FormatErrorMessage(ErrorType.GenericException, ex.Message, backend));
             }
         }
         catch (Exception ex)
         {
-            Logs.Error($"Error in PhoneHomeAsync: {ex.Message}");
+            Logs.Error($"Error in MagicPromptPhoneHome: {ex.Message}");
             return CreateSuccessResponse(ErrorHandler.FormatErrorMessage(ErrorType.GenericException, ex.Message, "unknown"));
         }
     }

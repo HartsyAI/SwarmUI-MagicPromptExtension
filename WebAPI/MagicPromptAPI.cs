@@ -29,11 +29,11 @@ public class MagicPromptAPI
     /// <summary>Registers the API calls for the extension, enabling methods to be called from JavaScript with appropriate permissions.</summary>
     public static void Register()
     {
-        API.RegisterAPICall(LLMAPICalls.PhoneHomeAsync, true, MagicPromptPermissions.PermPhoneHome);
-        API.RegisterAPICall(SessionSettings.GetSettingsAsync, false, MagicPromptPermissions.PermReadConfig);
-        API.RegisterAPICall(SessionSettings.SaveSettingsAsync, false, MagicPromptPermissions.PermSaveConfig);
-        API.RegisterAPICall(SessionSettings.ResetSettingsAsync, false, MagicPromptPermissions.PermResetConfig);
-        API.RegisterAPICall(LLMAPICalls.GetModelsAsync, true, MagicPromptPermissions.PermGetModels);
+        API.RegisterAPICall(LLMAPICalls.MagicPromptPhoneHome, true, MagicPromptPermissions.PermPhoneHome);
+        API.RegisterAPICall(SessionSettings.GetMagicPromptSettings, false, MagicPromptPermissions.PermReadConfig);
+        API.RegisterAPICall(SessionSettings.SaveMagicPromptSettings, false, MagicPromptPermissions.PermSaveConfig);
+        API.RegisterAPICall(SessionSettings.ResetMagicPromptSettings, false, MagicPromptPermissions.PermResetConfig);
+        API.RegisterAPICall(LLMAPICalls.GetMagicPromptModels, true, MagicPromptPermissions.PermGetModels);
         // All key types must be added to the accepted list first
         string[] keyTypes = ["openai_api", "anthropic_api", "openrouter_api", "openaiapi_local"];
         foreach (string keyType in keyTypes)
@@ -222,12 +222,12 @@ public class MagicPromptAPI
                     OpenAIResponse openAIResponse = JsonConvert.DeserializeObject<OpenAIResponse>(responseContent);
                     if (openAIResponse?.Data != null)
                     {
-                        return openAIResponse.Data.Select(
+                        return [.. openAIResponse.Data.Select(
                             x => new ModelData
                             {
                                 Model = x.Id,
                                 Name = x.Id
-                            }).ToList();
+                            })];
                     }
                     else
                     {
@@ -238,12 +238,12 @@ public class MagicPromptAPI
                     AnthropicResponse anthropicResponse = JsonConvert.DeserializeObject<AnthropicResponse>(responseContent);
                     if (anthropicResponse?.Data != null)
                     {
-                        return anthropicResponse.Data.Select(x => new ModelData
+                        return [.. anthropicResponse.Data.Select(x => new ModelData
                         {
                             Model = x.Id,
                             Name = GetFriendlyNameFromId(x.Id),
                             Version = ExtractVersionFromId(x.Id)
-                        }).ToList();
+                        })];
                     }
                     else
                     {
@@ -254,11 +254,11 @@ public class MagicPromptAPI
                     OpenAIAPIResponse openAIAPIResponse = JsonConvert.DeserializeObject<OpenAIAPIResponse>(responseContent);
                     if (openAIAPIResponse?.Data != null)
                     {
-                        return openAIAPIResponse.Data.Select(x => new ModelData
+                        return [.. openAIAPIResponse.Data.Select(x => new ModelData
                         {
                             Model = x.Id,
                             Name = x.Id
-                        }).ToList();
+                        })];
                     }
                     else
                     {
@@ -277,11 +277,11 @@ public class MagicPromptAPI
                         OpenRouterResponse openRouterResponse = JsonConvert.DeserializeObject<OpenRouterResponse>(responseContent);
                         if (openRouterResponse?.Data != null)
                         {
-                            return openRouterResponse.Data.Select(x => new ModelData
+                            return [.. openRouterResponse.Data.Select(x => new ModelData
                             {
                                 Model = x.Id,
                                 Name = x.Name ?? x.Id
-                            }).ToList();
+                            })];
                         }
                         Logs.Error("OpenRouter response contains no model data");
                         throw new InvalidOperationException("Failed to retrieve models from OpenRouter. The response data was empty or invalid.");
@@ -354,8 +354,7 @@ public class MagicPromptAPI
             ["success"] = true,
             ["response"] = response,
             ["models"] = models != null ? JArray.FromObject(models) : null,
-            ["settings"] = settings,
-            ["error"] = null
+            ["settings"] = settings
         };
     }
 
