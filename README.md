@@ -200,7 +200,7 @@ If you encounter any issues check these common solutions before you open an issu
 * Ensure that the extension is properly installed and configured. Did you add your API URL or keys?
 * If you are using any LLM service other than Ollama, I cannot guarantee that it will work. You may need to modify the code to work with your service. Feel free to enter a feature request to add support for your service.
 * Ask me in the SwarmUI Discord server for help by creating a new post in [#help-fourm](https://discord.com/channels/1243166023859961988/1255990493830057995/1255990493830057995). That is one of the places I live.
-* If you still have issues, open an issue on GitHub or join the [Hartsy Discord Community](https://discord.gg/nWfCupjhbm)
+* If you still have issues, open an issue on GitHub or join the [Hartsy Discord Community](https://discord.gg/CA9kRdE7y8)
 
 ## Changelog
 ------------
