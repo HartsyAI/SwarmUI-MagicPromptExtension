@@ -299,41 +299,62 @@ if (!window.MP) {
  * Handles the enhance prompt button click
  * Takes the current prompt text and enhances it using the LLM
  */
+
 async function handleEnhancePrompt() {
-    const promptTextArea = document.getElementById('alt_prompt_textbox');
-    if (!promptTextArea || !promptTextArea.value.trim()) {
-        showError('Please enter a prompt to enhance');
-        return;
+  // random prompts to use when the prompt is empty
+  const randomPrompts = [
+    'a beautiful landscape',
+    'a mysterious forest at twilight',
+    'a cozy coffee shop on a rainy day',
+    'a futuristic city skyline',
+    'a serene mountain lake',
+    'a vintage bookstore filled with ancient books',
+    'a magical garden with glowing flowers',
+    'a steampunk airship floating in clouds',
+    'a peaceful beach at sunset',
+    'a cyberpunk street scene at night',
+    'a fantasy castle on a floating island',
+    'a rustic cabin in the woods',
+    'a bustling medieval marketplace',
+    'a space station orbiting a distant planet',
+    'a underwater coral reef city',
+  ];
+
+  const promptTextArea = document.getElementById("alt_prompt_textbox");
+
+  if (window.isEnhancing) return;
+  const loadingAnimation = document.getElementById("prompt_loading_animation");
+  try {
+    window.isEnhancing = true;
+    // Show loading animation
+    if (loadingAnimation) loadingAnimation.classList.add("active");
+    let input = promptTextArea.value.trim();
+    // handle the case where the prompt is empty, instead of throwing an error
+    if (!input) {
+      input = randomPrompts[Math.floor(Math.random() * randomPrompts.length)];
     }
-    if (window.isEnhancing) return;
-    const loadingAnimation = document.getElementById('prompt_loading_animation');
-    try {
-        window.isEnhancing = true;
-        // Show loading animation
-        if (loadingAnimation) loadingAnimation.classList.add('active');
-        const input = promptTextArea.value.trim();
-        const payload = MP.RequestBuilder.createRequestPayload(
-            input,
-            null,
-            'enhance-prompt'
-        );
-        const response = await MP.APIClient.makeRequest(payload);
-        if (response.success && response.response) {
-            promptTextArea.value = response.response;
-            triggerChangeFor(promptTextArea);
-            promptTextArea.focus();
-            promptTextArea.setSelectionRange(0, promptTextArea.value.length);
-        } else {
-            throw new Error(response.error || 'Failed to enhance prompt');
-        }
-    } catch (error) {
-        console.error('Prompt enhancement error:', error);
-        showError(error.message);
-    } finally {
-        window.isEnhancing = false;
-        // Hide loading animation
-        if (loadingAnimation) loadingAnimation.classList.remove('active');
+    const payload = MP.RequestBuilder.createRequestPayload(
+      input,
+      null,
+      'enhance-prompt'
+    );
+    const response = await MP.APIClient.makeRequest(payload);
+    if (response.success && response.response) {
+      promptTextArea.value = response.response;
+      triggerChangeFor(promptTextArea);
+      promptTextArea.focus();
+      promptTextArea.setSelectionRange(0, promptTextArea.value.length);
+    } else {
+      throw new Error(response.error || 'Failed to enhance prompt');
     }
+  } catch (error) {
+    console.error('Prompt enhancement error:', error);
+    showError(error.message);
+  } finally {
+    window.isEnhancing = false;
+    // Hide loading animation
+    if (loadingAnimation) loadingAnimation.classList.remove('active');
+  }
 }
 
 /**
