@@ -301,25 +301,7 @@ if (!window.MP) {
  */
 
 async function handleEnhancePrompt() {
-  // random prompts to use when the prompt is empty
-  const randomPrompts = [
-    'a beautiful landscape',
-    'a mysterious forest at twilight',
-    'a cozy coffee shop on a rainy day',
-    'a futuristic city skyline',
-    'a serene mountain lake',
-    'a vintage bookstore filled with ancient books',
-    'a magical garden with glowing flowers',
-    'a steampunk airship floating in clouds',
-    'a peaceful beach at sunset',
-    'a cyberpunk street scene at night',
-    'a fantasy castle on a floating island',
-    'a rustic cabin in the woods',
-    'a bustling medieval marketplace',
-    'a space station orbiting a distant planet',
-    'a underwater coral reef city',
-  ];
-
+  
   const promptTextArea = document.getElementById("alt_prompt_textbox");
 
   if (window.isEnhancing) return;
@@ -330,8 +312,19 @@ async function handleEnhancePrompt() {
     if (loadingAnimation) loadingAnimation.classList.add("active");
     let input = promptTextArea.value.trim();
     // handle the case where the prompt is empty, instead of throwing an error
-    if (!input) {
-      input = randomPrompts[Math.floor(Math.random() * randomPrompts.length)];
+     if(!input) {
+        // let the input be generated if empty
+        const inputPayload = MP.RequestBuilder.createRequestPayload(
+            'Generate a simple random image prompt using only 3-7 words. Examples: a coding scene, sea with lighthouse, magical forest path, cozy coffee shop, futuristic city street. Use simple descriptive words only, no punctuation, no special characters, one short sentence only.',
+            null,
+            'prompt-mode'
+        );
+        const response = await MP.APIClient.makeRequest(inputPayload);
+        if (response.success && response.response) {
+            input = response.response;
+        } else {
+            throw new Error(response.error || 'Failed to generate random prompt');
+        }
     }
     const payload = MP.RequestBuilder.createRequestPayload(
       input,
