@@ -175,6 +175,12 @@ TABLE OF CONTENTS:
         border-radius: 0 0 4px 4px;
     }
 
+    #settingsModal .collapsing {
+        height: 100%;
+        overflow: hidden;
+        padding: 0.75rem;
+     }
+
     /* 5. FORM CONTROLS
    Input fields, selects, radios */
 
