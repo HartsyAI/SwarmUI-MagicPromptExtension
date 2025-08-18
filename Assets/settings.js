@@ -16,7 +16,8 @@ const DEFAULT_FEATURE_MAPPINGS = {
   'chat-mode': 'chat',
   'vision-mode': 'vision',
   'prompt-mode': 'prompt',
-  caption: 'caption',
+  'random-prompt': 'randomprompt',
+   caption: 'caption',
   'generate-instruction': 'instructiongen',
 };
 
@@ -86,6 +87,7 @@ async function loadSettings() {
               vision: '',
               caption: '',
               prompt: '',
+              randomprompt: '',
               custom: {},
               featureMap: { ...DEFAULT_FEATURE_MAPPINGS },
             },
@@ -96,6 +98,7 @@ async function loadSettings() {
             if (typeof serverSettings.instructions.chat === 'string') {
               settings.instructions.chat = serverSettings.instructions.chat;
             }
+            
             if (typeof serverSettings.instructions.vision === 'string') {
               settings.instructions.vision = serverSettings.instructions.vision;
             }
@@ -106,6 +109,9 @@ async function loadSettings() {
             }
             if (typeof serverSettings.instructions.prompt === 'string') {
               settings.instructions.prompt = serverSettings.instructions.prompt;
+            }
+            if (typeof serverSettings.instructions.randomprompt === 'string') {
+              settings.instructions.randomprompt = serverSettings.instructions.randomprompt;
             }
             // Handle any custom instructions
             if (serverSettings.instructions.custom) {
@@ -439,11 +445,12 @@ function getInstructionContent(type) {
     return '';
   }
   // Handle built-in instruction types
-  if (
+   if (
     type === 'chat' ||
     type === 'vision' ||
     type === 'caption' ||
-    type === 'prompt'
+    type === 'prompt' ||
+    type === 'randomprompt'
   ) {
     return MP.settings.instructions[type] || '';
   }

@@ -125,7 +125,8 @@ if (!window.MP) {
              * @returns {Object} Formatted request payload
              */
             createRequestPayload(input, image, action) {
-                if (!input?.trim()) {
+                // only allow input to be empty for 'random-prompt' action
+                if (!input?.trim() && action !== 'random-prompt') {
                     throw new Error('Input is required');
                 }
                 const hasImage = Boolean(image);
@@ -311,13 +312,12 @@ async function handleEnhancePrompt() {
     // Show loading animation
     if (loadingAnimation) loadingAnimation.classList.add("active");
     let input = promptTextArea.value.trim();
-    // handle the case where the prompt is empty, instead of throwing an error
      if(!input) {
-        // let the input be generated if empty
+        // Create a random prompt if the input is empty
         const inputPayload = MP.RequestBuilder.createRequestPayload(
-            'Generate a simple random image prompt using only 3-7 words. Examples: a coding scene, sea with lighthouse, magical forest path, cozy coffee shop, futuristic city street. Use simple descriptive words only, no punctuation, no special characters, one short sentence only.',
+            '',
             null,
-            'prompt-mode'
+            'random-prompt'
         );
         const response = await MP.APIClient.makeRequest(inputPayload);
         if (response.success && response.response) {
