@@ -325,10 +325,14 @@ public class LLMAPICalls : MagicPromptAPI
                     messageType = MessageType.Text;
                 }
             }
-            // Validate required data
-            if (string.IsNullOrEmpty(messageContent.Text) || string.IsNullOrEmpty(modelId))
+            string action = requestData["action"]?.ToString()?.ToLower() ?? "chat";
+            if (string.IsNullOrEmpty(modelId))
             {
-                return CreateErrorResponse("Message content or model ID is missing");
+                return CreateErrorResponse("Model ID is missing");
+            }
+            if (action != "random-prompt" && string.IsNullOrEmpty(messageContent.Text))
+            {
+                return CreateErrorResponse("Message content is missing");
             }
             // Get current settings
             JObject sessionSettings = await SessionSettings.GetMagicPromptSettings();
@@ -355,16 +359,17 @@ public class LLMAPICalls : MagicPromptAPI
             }
             // Get the instructions from the request if provided
             string clientProvidedInstructions = messageContentToken["instructions"]?.ToString();
+
             // Only perform server-side lookup if client didn't provide instructions
             if (string.IsNullOrEmpty(clientProvidedInstructions))
             {
-                string action = requestData["action"]?.ToString()?.ToLower() ?? "chat";
                 clientProvidedInstructions = action switch
                 {
                     "vision" => settings["instructions"]?["vision"]?.ToString() ?? "",
                     "prompt" => settings["instructions"]?["prompt"]?.ToString() ?? "",
                     "caption" => settings["instructions"]?["caption"]?.ToString() ?? "",
                     "generate-instruction" => settings["instructions"]?["instructiongen"]?.ToString() ?? "",
+                    "random-prompt" => settings["instructions"]?["randomprompt"]?.ToString() ?? "",
                     _ => settings["instructions"]?["chat"]?.ToString() ?? ""
                 };
             }
