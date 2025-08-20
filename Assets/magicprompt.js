@@ -125,7 +125,8 @@ if (!window.MP) {
              * @returns {Object} Formatted request payload
              */
             createRequestPayload(input, image, action) {
-                if (!input?.trim()) {
+                // only allow input to be empty for 'random-prompt' action
+                if (!input?.trim() && action !== 'random-prompt') {
                     throw new Error('Input is required');
                 }
                 const hasImage = Boolean(image);
@@ -299,41 +300,54 @@ if (!window.MP) {
  * Handles the enhance prompt button click
  * Takes the current prompt text and enhances it using the LLM
  */
+
 async function handleEnhancePrompt() {
-    const promptTextArea = document.getElementById('alt_prompt_textbox');
-    if (!promptTextArea || !promptTextArea.value.trim()) {
-        showError('Please enter a prompt to enhance');
-        return;
-    }
-    if (window.isEnhancing) return;
-    const loadingAnimation = document.getElementById('prompt_loading_animation');
-    try {
-        window.isEnhancing = true;
-        // Show loading animation
-        if (loadingAnimation) loadingAnimation.classList.add('active');
-        const input = promptTextArea.value.trim();
-        const payload = MP.RequestBuilder.createRequestPayload(
-            input,
+  
+  const promptTextArea = document.getElementById("alt_prompt_textbox");
+
+  if (window.isEnhancing) return;
+  const loadingAnimation = document.getElementById("prompt_loading_animation");
+  try {
+    window.isEnhancing = true;
+    // Show loading animation
+    if (loadingAnimation) loadingAnimation.classList.add("active");
+    let input = promptTextArea.value.trim();
+     if(!input) {
+        // Create a random prompt if the input is empty
+        const inputPayload = MP.RequestBuilder.createRequestPayload(
+            'Generate a creative and interesting random prompt for image generation.',
             null,
-            'enhance-prompt'
+            'random-prompt'
         );
-        const response = await MP.APIClient.makeRequest(payload);
+        const response = await MP.APIClient.makeRequest(inputPayload);
         if (response.success && response.response) {
-            promptTextArea.value = response.response;
-            triggerChangeFor(promptTextArea);
-            promptTextArea.focus();
-            promptTextArea.setSelectionRange(0, promptTextArea.value.length);
+            input = response.response;
         } else {
-            throw new Error(response.error || 'Failed to enhance prompt');
+            throw new Error(response.error || 'Failed to generate random prompt');
         }
-    } catch (error) {
-        console.error('Prompt enhancement error:', error);
-        showError(error.message);
-    } finally {
-        window.isEnhancing = false;
-        // Hide loading animation
-        if (loadingAnimation) loadingAnimation.classList.remove('active');
     }
+    const payload = MP.RequestBuilder.createRequestPayload(
+      input,
+      null,
+      'enhance-prompt'
+    );
+    const response = await MP.APIClient.makeRequest(payload);
+    if (response.success && response.response) {
+      promptTextArea.value = response.response;
+      triggerChangeFor(promptTextArea);
+      promptTextArea.focus();
+      promptTextArea.setSelectionRange(0, promptTextArea.value.length);
+    } else {
+      throw new Error(response.error || 'Failed to enhance prompt');
+    }
+  } catch (error) {
+    console.error('Prompt enhancement error:', error);
+    showError(error.message);
+  } finally {
+    window.isEnhancing = false;
+    // Hide loading animation
+    if (loadingAnimation) loadingAnimation.classList.remove('active');
+  }
 }
 
 /**
