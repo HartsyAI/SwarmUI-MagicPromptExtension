@@ -315,7 +315,7 @@ async function handleEnhancePrompt() {
      if(!input) {
         // Create a random prompt if the input is empty
         const inputPayload = MP.RequestBuilder.createRequestPayload(
-            '',
+            'Generate a creative and interesting random prompt for image generation.',
             null,
             'random-prompt'
         );
