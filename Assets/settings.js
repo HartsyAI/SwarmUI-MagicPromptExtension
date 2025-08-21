@@ -7,7 +7,7 @@
 'use strict';
 
 // Define backends that don't need base URL configuration
-const FIXED_URL_BACKENDS = ['openai', 'anthropic', 'openrouter'];
+const FIXED_URL_BACKENDS = ['openai', 'anthropic', 'openrouter', 'grok'];
 
 // Define default feature to instruction mappings
 const DEFAULT_FEATURE_MAPPINGS = {

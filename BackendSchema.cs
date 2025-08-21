@@ -47,7 +47,8 @@ public static class BackendSchema
         return type switch
         {
             "ollama" => OllamaRequestBody(content, model, messageType),
-            "openai" or "openaiapi" or "openrouter" => OpenAICompatibleRequestBody(content, model, messageType),
+            "grok" => OpenAICompatibleRequestBody(content, model, messageType, preferPngForBase64: true),
+            "openai" or "openaiapi" or "openrouter" => OpenAICompatibleRequestBody(content, model, messageType, preferPngForBase64: false),
             "anthropic" => AnthropicRequestBody(content, model, messageType),
             _ => throw new ArgumentException($"Unsupported backend type: {type}")
         };
@@ -107,7 +108,7 @@ public static class BackendSchema
             {
                 role = "user",
                 content = content.Text,
-                images = content.Media.Select(m => CompressImageForVision(m)).ToArray()
+                images = content.Media.Select(m => CompressImageForVision(m, "JPG")).ToArray()
             });
             return new
             {
@@ -138,7 +139,7 @@ public static class BackendSchema
     }
 
     /// <summary>Generates a request body for OpenAI and compatible backends.</summary>
-    private static object OpenAICompatibleRequestBody(MessageContent content, string model, MessageType messageType)
+    private static object OpenAICompatibleRequestBody(MessageContent content, string model, MessageType messageType, bool preferPngForBase64)
     {
         List<object> messages = [];
         // Add system message if instructions exist
@@ -151,12 +152,12 @@ public static class BackendSchema
             List<object> contentList = [];
             foreach (MediaContent media in content.Media)
             {
-                string imageData = CompressImageForVision(media);
+                string imageData = CompressImageForVision(media, preferPngForBase64 ? "PNG" : "WEBP");
                 contentList.Add(new
                 {
                     type = "image_url",
                     image_url = media.Type == "base64"
-                        ? new { url = $"data:image/webp;base64,{imageData}" }
+                        ? new { url = preferPngForBase64 ? $"data:image/png;base64,{imageData}" : $"data:image/webp;base64,{imageData}" }
                         : new { url = media.Data }
                 });
             }

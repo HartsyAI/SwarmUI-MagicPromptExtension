@@ -58,6 +58,15 @@ public class SessionSettings : MagicPromptAPI
                 ["chat"] = "/api/v1/chat/completions",
                 ["models"] = "/api/v1/models"
             }
+        },
+        ["grok"] = new JObject
+        {
+            ["baseurl"] = "https://api.x.ai",
+            ["endpoints"] = new JObject
+            {
+                ["chat"] = "/v1/chat/completions",
+                ["models"] = "/v1/models"
+            }
         }
     };
 
@@ -248,6 +257,7 @@ public class SessionSettings : MagicPromptAPI
             newSettings["backends"]["openai"]["baseurl"] = "https://api.openai.com";
             newSettings["backends"]["anthropic"]["baseurl"] = "https://api.anthropic.com";
             newSettings["backends"]["openrouter"]["baseurl"] = "https://openrouter.ai";
+            newSettings["backends"]["grok"]["baseurl"] = "https://api.x.ai";
 
             // Don't save API keys in settings as they are now stored in UserUpstreamApiKeys
             JObject backends = newSettings["backends"] as JObject;

@@ -35,7 +35,7 @@ public class MagicPromptAPI
         API.RegisterAPICall(SessionSettings.ResetMagicPromptSettings, false, MagicPromptPermissions.PermResetConfig);
         API.RegisterAPICall(LLMAPICalls.GetMagicPromptModels, true, MagicPromptPermissions.PermGetModels);
         // All key types must be added to the accepted list first
-        string[] keyTypes = ["openai_api", "anthropic_api", "openrouter_api", "openaiapi_local"];
+        string[] keyTypes = ["openai_api", "anthropic_api", "openrouter_api", "openaiapi_local", "grok_api"];
         foreach (string keyType in keyTypes)
         {
             BasicAPIFeatures.AcceptedAPIKeyTypes.Add(keyType);
@@ -49,6 +49,8 @@ public class MagicPromptAPI
             new HtmlString("To use OpenRouter models in SwarmUI (via Hartsy extensions), you must set your OpenRouter API key. OpenRouter gives you access to many different models through a single API."));
         RegisterApiKeyIfNeeded("openaiapi_local", "openaiapi", "OpenAI API (Local)", "#",
             new HtmlString("For connecting to local servers that implement the OpenAI API schema (like LM Studio, text-generation-webui, or LocalAI). You may need to provide API keys or connection details depending on your local setup."));
+        RegisterApiKeyIfNeeded("grok_api", "grok", "Grok (x.ai)", "https://console.x.ai",
+            new HtmlString("To use Grok models from x.ai in SwarmUI (via Hartsy extensions), you must set your Grok API key."));
     }
 
     /// <summary>Safely registers an API key if it's not already registered</summary>
@@ -95,6 +97,18 @@ public class MagicPromptAPI
                     else
                     {
                         throw new InvalidOperationException("The response from OpenAI could not be processed (no choices found)");
+                    }
+                    break;
+                case "grok":
+                    // Grok chat responses follow OpenAI-compatible chat completions structure
+                    OpenAIResponse grokResponse = System.Text.Json.JsonSerializer.Deserialize<OpenAIResponse>(responseContent, jsonSerializerOptions);
+                    if (grokResponse?.Choices != null && grokResponse.Choices.Count > 0)
+                    {
+                        messageContent = grokResponse.Choices[0].Message.Content;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("The response from Grok could not be processed (no choices found)");
                     }
                     break;
                 case "anthropic":
@@ -234,6 +248,23 @@ public class MagicPromptAPI
                         Logs.Error("OpenAI models data array is null or empty.");
                         throw new InvalidOperationException("Failed to retrieve models from OpenAI. The response data was empty or invalid.");
                     }
+                case "grok":
+                    // Grok models endpoint follows OpenAI-style { data: [{id, ...}]} format
+                    OpenAIResponse grokModels = JsonConvert.DeserializeObject<OpenAIResponse>(responseContent);
+                    if (grokModels?.Data != null)
+                    {
+                        return [.. grokModels.Data.Select(
+                            x => new ModelData
+                            {
+                                Model = x.Id,
+                                Name = x.Id
+                            })];
+                    }
+                    else
+                    {
+                        Logs.Error("Grok models data array is null or empty.");
+                        throw new InvalidOperationException("Failed to retrieve models from Grok. The response data was empty or invalid.");
+                    }
                 case "anthropic":
                     AnthropicResponse anthropicResponse = JsonConvert.DeserializeObject<AnthropicResponse>(responseContent);
                     if (anthropicResponse?.Data != null)
@@ -308,7 +339,7 @@ public class MagicPromptAPI
     }
 
     /// <summary>Extracts a version string from a model ID, if present</summary>
-    private static string ExtractVersionFromId(string id)
+    public static string ExtractVersionFromId(string id)
     {
         if (id.Length >= 8 && id[^8..].All(char.IsDigit))
         {
@@ -318,7 +349,7 @@ public class MagicPromptAPI
     }
 
     /// <summary>Creates a user-friendly name from a model ID</summary>
-    private static string GetFriendlyNameFromId(string modelId)
+    public static string GetFriendlyNameFromId(string modelId)
     {
         // Extract the model name from ID patterns like "claude-3-opus-20240229"
         string baseName = modelId.Split('/').Last();

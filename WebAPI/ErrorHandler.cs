@@ -401,6 +401,38 @@ public class ErrorHandlerImplementation : IErrorHandler
                     ]
                 )
             },
+            ["grok"] = new Dictionary<ErrorType, ErrorTemplateObject>
+            {
+                [ErrorType.Authentication] = new ErrorTemplateObject(
+                    "Grok API Key Error",
+                    "Failed to authenticate with the Grok (xAI) API.",
+                    [
+                        "Missing or invalid API key",
+                        "Your Grok API key may have expired",
+                        "Your xAI account may have billing or access issues"
+                    ],
+                    [
+                        "Go to the Users tab in SwarmUI",
+                        "Click on the Settings icon for your user",
+                        "Enter or update your Grok API key",
+                        "Manage keys at https://x.ai/",
+                        "Verify you have access to the selected model"
+                    ]
+                ),
+                [ErrorType.Quota] = new ErrorTemplateObject(
+                    "Grok Usage Limit Reached",
+                    "Your Grok/xAI account has reached its usage limit.",
+                    [
+                        "You've used all included credits",
+                        "You've reached your spending cap or rate limit"
+                    ],
+                    [
+                        "Wait and try again later",
+                        "Review your usage and limits at https://x.ai/",
+                        "Consider adjusting your plan or using a different model"
+                    ]
+                )
+            },
             ["ollama"] = new Dictionary<ErrorType, ErrorTemplateObject>
             {
                 [ErrorType.ServerError] = new ErrorTemplateObject(
@@ -854,6 +886,7 @@ public class ErrorHandlerImplementation : IErrorHandler
         return normalizedProvider switch
         {
             "openai" or "openaiapi" => TryParseOpenAIError(responseContent, statusCode, out errorType, out errorMessage),
+            "grok" => TryParseOpenAIError(responseContent, statusCode, out errorType, out errorMessage),
             "openrouter" => TryParseOpenRouterError(responseContent, statusCode, out errorType, out errorMessage),
             "anthropic" => TryParseAnthropicError(responseContent, statusCode, out errorType, out errorMessage),
             "ollama" => TryParseOllamaError(responseContent, statusCode, out errorType, out errorMessage),

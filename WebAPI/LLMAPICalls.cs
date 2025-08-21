@@ -71,7 +71,7 @@ public class LLMAPICalls : MagicPromptAPI
         }
     }
 
-    private static async Task<List<ModelData>> GetModelsForBackend(string backend, JObject settings, bool isVision = false, Session session = null)
+    public static async Task<List<ModelData>> GetModelsForBackend(string backend, JObject settings, bool isVision = false, Session session = null)
     {
         // Get endpoint based on backend
         string endpoint = GetEndpoint(backend, settings, "models");
@@ -92,7 +92,12 @@ public class LLMAPICalls : MagicPromptAPI
         // Send request and handle response
         try
         {
-            HttpResponseMessage response = await HttpClient.SendAsync(request);
+            // Log the target endpoint and backend for diagnostics
+            Logs.Debug($"[MagicPrompt] Fetching models | backend={backend} | endpoint={endpoint}");
+            // Apply a strict timeout for models listing to avoid UI hangs
+            int timeoutSec = 20;
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSec));
+            HttpResponseMessage response = await HttpClient.SendAsync(request, cts.Token);
             string responseContent = await response.Content.ReadAsStringAsync();
 
             if (response.IsSuccessStatusCode)
@@ -107,6 +112,16 @@ public class LLMAPICalls : MagicPromptAPI
                 Logs.Error($"Error fetching models for {backend}: {errorMessage}");
                 return [];
             }
+        }
+        catch (System.Threading.Tasks.TaskCanceledException)
+        {
+            Logs.Error($"Model listing request timed out for backend {backend} ({endpoint})");
+            return [];
+        }
+        catch (OperationCanceledException)
+        {
+            Logs.Error($"Model listing request was canceled (timeout) for backend {backend} ({endpoint})");
+            return [];
         }
         catch (HttpRequestException ex)
         {
@@ -126,7 +141,7 @@ public class LLMAPICalls : MagicPromptAPI
     /// <param name="settings">The current settings object.</param>
     /// <param name="endpointType">The type of endpoint (chat, vision, etc.)</param>
     /// <returns>The endpoint URL for model listing.</returns>
-    private static string GetEndpoint(string backend, JObject settings, string endpointType)
+    public static string GetEndpoint(string backend, JObject settings, string endpointType)
     {
         JObject backends = settings["backends"] as JObject;
         if (backends == null)
@@ -151,7 +166,7 @@ public class LLMAPICalls : MagicPromptAPI
         {
             endpoint = backend.ToLower() switch
             {
-                "openrouter" or "openai" or "openaiapi" => endpoints["chat"]?.ToString(),// OpenAI and OpenRouter use the chat endpoint for vision
+                "openrouter" or "openai" or "openaiapi" or "grok" => endpoints["chat"]?.ToString(),// OpenAI, Grok, and OpenRouter use the chat endpoint for vision
                 "anthropic" => endpoints["messages"]?.ToString() ?? endpoints["chat"]?.ToString(),// Anthropic uses the messages endpoint for both chat and vision
                 "ollama" => endpoints["vision"]?.ToString() ?? endpoints["chat"]?.ToString(),// Ollama has a dedicated vision endpoint
                 _ => endpoints[endpointType]?.ToString() ?? endpoints["chat"]?.ToString(),
@@ -189,7 +204,7 @@ public class LLMAPICalls : MagicPromptAPI
     /// <param name="session">The current user session.</param>
     /// <param name="error">Output parameter for any error message.</param>
     /// <returns>True if configuration was successful, false otherwise.</returns>
-    private static bool ConfigureRequest(HttpRequestMessage request, string backend, JObject settings, Session session, out string error)
+    public static bool ConfigureRequest(HttpRequestMessage request, string backend, JObject settings, Session session, out string error)
     {
         // Initialize error message as empty
         error = string.Empty;
@@ -224,6 +239,15 @@ public class LLMAPICalls : MagicPromptAPI
                     return false;
                 }
                 request.Headers.Add("Authorization", $"Bearer {apiKey}");
+                break;
+            case "grok":
+                string grokKey = session?.User?.GetGenericData("grok_api", "key") ?? Program.Sessions.GenericSharedUser.GetGenericData("grok_api", "key");
+                if (string.IsNullOrEmpty(grokKey))
+                {
+                    error = ErrorHandler.FormatErrorMessage(ErrorType.Authentication, "Grok API Key not found", "grok");
+                    return false;
+                }
+                request.Headers.Add("Authorization", $"Bearer {grokKey}");
                 break;
             case "openrouter":
                 string openRouterKey = session?.User?.GetGenericData("openrouter_api", "key") ?? Program.Sessions.GenericSharedUser.GetGenericData("openrouter_api", "key");
@@ -383,13 +407,33 @@ public class LLMAPICalls : MagicPromptAPI
                 return CreateErrorResponse(error);
             }
             // Add request body using BackendSchema
-            object requestBody = GetSchemaType(backend, messageContent, modelId, messageType);
+            object requestBody;
+            try
+            {
+                requestBody = GetSchemaType(backend, messageContent, modelId, messageType);
+            }
+            catch (ArgumentException ex)
+            {
+                // Typically thrown for validation issues (e.g., Grok vision requires direct JPG/PNG URLs)
+                Logs.Error($"Request build error for {backend}: {ex.Message}");
+                return CreateSuccessResponse(ErrorHandler.FormatErrorMessage(ErrorType.UnsupportedParameterImage, ex.Message, backend));
+            }
             string jsonContent = JsonSerializer.Serialize(requestBody);
             request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
             try
             {
                 // Send request and handle response
-                HttpResponseMessage response = await HttpClient.SendAsync(request);
+                // Detailed diagnostics to help trace hanging requests
+                Logs.Debug($"[MagicPrompt] Sending request | backend={backend} | type={(messageType == MessageType.Vision ? "vision" : "chat")} | endpoint={endpoint} | model={modelId}");
+                // Use KeepAlive (if provided) as a soft hint for timeout.
+                // Increase defaults and caps, especially for Ollama on slower machines.
+                int cap = backend == "ollama" ? 300 : 180;           // maximum allowed timeout (seconds)
+                int defaultTimeout = backend == "ollama" ? 120 : 60;  // default timeout when KeepAlive is not set
+                int timeoutSec = messageContent.KeepAlive.HasValue && messageContent.KeepAlive.Value > 0
+                    ? Math.Min(messageContent.KeepAlive.Value, cap)
+                    : defaultTimeout;
+                using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(timeoutSec));
+                HttpResponseMessage response = await HttpClient.SendAsync(request, cts.Token);
                 string responseContent = await response.Content.ReadAsStringAsync();
                 // Handle API errors indicated by status code
                 if (!response.IsSuccessStatusCode)
@@ -422,6 +466,16 @@ public class LLMAPICalls : MagicPromptAPI
                     "Response could not be processed properly",
                     backend)
                 );
+            }
+            catch (System.Threading.Tasks.TaskCanceledException)
+            {
+                Logs.Error($"Request timed out for backend {backend} ({endpoint})");
+                return CreateSuccessResponse(ErrorHandler.FormatErrorMessage(ErrorType.RequestTimeout, $"Request exceeded timeout at {endpoint}", backend));
+            }
+            catch (OperationCanceledException)
+            {
+                Logs.Error($"Request canceled (timeout) for backend {backend} ({endpoint})");
+                return CreateSuccessResponse(ErrorHandler.FormatErrorMessage(ErrorType.RequestTimeout, $"Request canceled due to timeout at {endpoint}", backend));
             }
             catch (HttpRequestException ex)
             {
