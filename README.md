@@ -32,7 +32,7 @@ The MagicPrompt Extension provides a simple and intuitive way directly in SwarmU
 ------------
 
 * Generate and rewrite prompts for text-to-image models.
-* Supports various LLM backends including local Ollama, OpenAI compatible APIs, OpenRouter, OpenAI, and Anthropic.
+* Supports various LLM backends including local Ollama, OpenAI-compatible APIs, OpenRouter, OpenAI, Anthropic, Grok (xAI), and Groq.
 * Provides an intuitive interface within SwarmUI, including a button in the Generate tab and a dedicated MagicPrompt tab.
 * Includes vision support, allowing you to upload images, generate captions, and use images as context for prompts.
 * Compatible with other SwarmUI extensions.
@@ -42,12 +42,12 @@ The MagicPrompt Extension provides a simple and intuitive way directly in SwarmU
 The extension now includes comprehensive vision support, allowing you to interact with language models using images. Key features include:
 
 * **Image Upload**: Upload images directly within the MagicPrompt tab using drag and drop or the upload button.
-* **Visual Modes**: Interact with uploaded images in different modes each mode uses seperate system instructions:
+* **Visual Modes**: Interact with uploaded images in different modes each mode uses separate system instructions:
     * **Vision Mode**: Ask questions about the image or request detailed analysis.
     * **Caption Mode**: Generate detailed captions for the uploaded image.
 * **Vision Actions**: A set of actions to perform on the uploaded image, including generating captions, using the image as an init image, sending the image to the prompt, and clearing the image.
 * **Backend Support**: Supports various vision backends, including Ollama, OpenRouter, OpenAI API, OpenAI (ChatGPT), and Anthropic (Claude).
-* **Settings**: Configure vision-specific settings seperate from chat models such as selecting the backend and model, and setting API keys.
+* **Settings**: Configure vision-specific settings separate from chat models such as selecting the backend and model, and setting API keys.
 
 ## Prerequisites
 ----------------
@@ -61,6 +61,7 @@ Before you install the MagicPrompt Extension, ensure that you have the following
 
 ## Installation
 --------------
+
 Automatic Install (recommended):
 
 Follow these steps to start making magic:
@@ -154,8 +155,26 @@ The MagicPrompt Extension now features a flexible instruction system that allows
 
 3. Verify that your settings have been applied correctly and that you have selected both a chat and vision model.
 
+## Known working OpenAI API–compatible backends
+-----------------------------------------------
+
+These backends have been reported to work with the MagicPrompt "OpenAIAPI (LOCAL)" backend. URLs shown are the common defaults; adjust to your environment as needed.
+
+| Name | Base URL | Type | Free tier | Recommended | Notes |
+|---|---|---|---|---|---|
+| Groq | https://api.groq.com/openai | API | Yes | Yes | Very fast; free tier available; supports Llama, Mixtral, Gemma variants. |
+| KoboldCPP | http://localhost:5001 | Local | Yes (local) | Yes | Start with --api to expose OpenAI-compatible /v1 endpoints. |
+| Oobabooga (text-generation-webui) | http://127.0.0.1:5000/v1 | Local | Yes (local) | Yes | Requires the OpenAI API extension enabled (exposes /v1). |
+| LM Studio | http://localhost:1234/v1 | Local | Yes (local) | Yes | Enable the local server to use OpenAI-compatible endpoints. |
+
+Notes:
+- "Local" indicates a self-hosted server on your machine/LAN.
+- If your server uses a non-default port/path, update the Base URL in MagicPrompt settings accordingly.
+- For paid APIs, set your API key in SwarmUI Users → API Keys.
+
 ## Usage
 --------
+
 The MagicPrompt Extension offers two primary ways to enhance your prompts and interact with your LLM: through the "Enhance Prompt" and "Magic Vision" button in the Generate tab and the Chat and Vision sections in the dedicated "MagicPrompt" tab.
 
 **Generate Tab:**
@@ -171,7 +190,7 @@ The MagicPrompt Extension offers two primary ways to enhance your prompts and in
 
 **MagicPrompt Tab:**
 
-1. **Access the tab:** Click on the tab and you will see how it is seperated into two sections. The Vision and Chat sections.
+1. **Access the tab:** Click on the tab and you will see how it is separated into two sections. The Vision and Chat sections.
 2. **Chat:**
 **Select a mode:** Choose between "Prompt", "Chat", and "Vision" modes using the radio buttons at the top. This will switch between your instructions and the vision mode will use the selected vision model.
 ![Chat](Images/Screenshots/chat_mode.PNG)
@@ -199,7 +218,7 @@ If you encounter any issues check these common solutions before you open an issu
 * Check the logs for any error messages or warnings.
 * Ensure that the extension is properly installed and configured. Did you add your API URL or keys?
 * If you are using any LLM service other than Ollama, I cannot guarantee that it will work. You may need to modify the code to work with your service. Feel free to enter a feature request to add support for your service.
-* Ask me in the SwarmUI Discord server for help by creating a new post in [#help-fourm](https://discord.com/channels/1243166023859961988/1255990493830057995/1255990493830057995). That is one of the places I live.
+* Ask me in the SwarmUI Discord server for help by creating a new post in [#help-forum](https://discord.com/channels/1243166023859961988/1255990493830057995/1255990493830057995). That is one of the places I live.
 * If you still have issues, open an issue on GitHub or join the [Hartsy Discord Community](https://discord.gg/CA9kRdE7y8)
 
 ## Changelog
@@ -222,6 +241,7 @@ If you encounter any issues check these common solutions before you open an issu
 * Version 2.0: Vision support and a rewrite of most of the extension
 * Version 2.1: API keys are now handled in Users tab
 * Version 2.2: Added custom instructions feature
+* Version 2.3: Added Grok (xAI) backend support and documented known working OpenAI-compatible backends in README
 
 ## License
 ----------
@@ -241,7 +261,7 @@ Join the Discord server to ask questions or get help with the extension. You can
 ## Acknowledgments
 ------------------
 
-These extensions would not have been made without the existance of SwarmUI. I would like to thank the developer [mcmonkey](https://github.com/mcmonkey4eva) for being the GOAT he is.
+These extensions would not have been made without the existence of SwarmUI. I would like to thank the developer [mcmonkey](https://github.com/mcmonkey4eva) for being the GOAT he is.
 
 Special thanks to the following people:
 

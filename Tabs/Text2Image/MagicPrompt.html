@@ -147,6 +147,8 @@
                         <input class="form-check-input" type="checkbox" role="switch" id="linkModelsToggle" checked>
                         <label class="form-check-label" for="linkModelsToggle">Link Chat & Vision Settings</label>
                     </div>
+                    <button type="button" class="mp-helper-btn" onclick=" event.preventDefault(); closeSettingsModal(); setTimeout(function() { location.hash = '#Image-History-Tab,user_tab,user-info';
+                                if (typeof loadHashHelper === 'function') { loadHashHelper(); } }, 0); " >API Keys</button>
                     <button type="button" class="btn-close translate" aria-label="Close" onclick="closeSettingsModal()"></button>
                 </div>
                 <div class="modal-body">
