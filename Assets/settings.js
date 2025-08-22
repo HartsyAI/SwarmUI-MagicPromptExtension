@@ -21,6 +21,21 @@ const DEFAULT_FEATURE_MAPPINGS = {
   'generate-instruction': 'instructiongen',
 };
 
+// Advanced settings defaults
+const DEFAULT_ADVANCED_SETTINGS = {
+  temperature: 1.0,
+  topP: 0.9,
+  topK: null,
+  maxTokens: 1000,
+  frequencyPenalty: 0.0,
+  presencePenalty: 0.0,
+  repetitionPenalty: 1.0,
+  seed: null,
+  deterministicMode: false,
+  enableSafety: false,
+  safetyLevel: 'default',
+};
+
 // Helper function to check if a backend needs base URL configuration
 function needsBaseUrl(backend) {
   return !FIXED_URL_BACKENDS.includes(backend);
@@ -90,6 +105,11 @@ async function loadSettings() {
               randomprompt: '',
               custom: {},
               featureMap: { ...DEFAULT_FEATURE_MAPPINGS },
+            },
+            // Advanced settings (merged with defaults)
+            advanced: {
+              ...DEFAULT_ADVANCED_SETTINGS,
+              ...(serverSettings.advanced || {}),
             },
           };
           // Handle the instructions specifically to ensure all types are properly loaded
@@ -208,6 +228,8 @@ async function saveSettings(skipFeatureMappings = false) {
         },
       },
       instructions: MP.settings.instructions,
+      // Advanced settings persisted as-is (kept updated by debounced handlers)
+      advanced: MP.settings.advanced || { ...DEFAULT_ADVANCED_SETTINGS },
     };
     // Update MP.settings with the new values
     MP.settings = settings;
@@ -1646,10 +1668,7 @@ function initInstructionsTabInterface() {
     newSaveBtn.addEventListener('click', saveCustomInstructionFromForm);
   }
 }
-
-/**
- * Initializes settings modal with saved values
- */
+/** Initializes settings modal with saved values */
 function initSettingsModal() {
   try {
     // Ensure the instructions object has the correct structure
@@ -2070,6 +2089,161 @@ function initSettingsModal() {
         }
       });
     });
+
+    // ---- Advanced Settings: initialize values and wire debounced persistence ----
+    // Ensure advanced object exists
+    if (!MP.settings.advanced) {
+      MP.settings.advanced = { ...DEFAULT_ADVANCED_SETTINGS };
+    }
+
+    const adv = MP.settings.advanced;
+
+    // Local helpers
+    const getEl = (id) => document.getElementById(id);
+    const setNumber = (id, value) => {
+      const el = getEl(id);
+      if (!el) return;
+      // Allow null to appear as empty
+      el.value = value === null || value === undefined ? '' : value;
+    };
+    const setBool = (id, value) => {
+      const el = getEl(id);
+      if (!el) return;
+      el.checked = !!value;
+    };
+    const setSelect = (id, value) => {
+      const el = getEl(id);
+      if (!el) return;
+      el.value = value ?? 'default';
+    };
+    // Slider helper
+    const setSlider = (id, value) => {
+      const el = getEl(id);
+      if (!el) return;
+      if (value !== null && value !== undefined && !Number.isNaN(Number(value))) {
+        el.value = value;
+      }
+    };
+
+    // Initialize UI from settings
+    setNumber('advTemperature', adv.temperature);
+    setNumber('advTopP', adv.topP);
+    setNumber('advTopK', adv.topK);
+    setNumber('advMaxTokens', adv.maxTokens);
+    setNumber('advFrequencyPenalty', adv.frequencyPenalty);
+    setNumber('advPresencePenalty', adv.presencePenalty);
+    setNumber('advRepetitionPenalty', adv.repetitionPenalty);
+    setNumber('advSeed', adv.seed);
+    setBool('advDeterministicMode', adv.deterministicMode);
+    setBool('advEnableSafety', adv.enableSafety);
+    setSelect('advSafetyLevel', adv.safetyLevel);
+    // Initialize sliders from settings (where present)
+    setSlider('advTemperatureSlider', adv.temperature);
+    setSlider('advTopPSlider', adv.topP);
+    setSlider('advFrequencyPenaltySlider', adv.frequencyPenalty);
+    setSlider('advPresencePenaltySlider', adv.presencePenalty);
+    setSlider('advRepetitionPenaltySlider', adv.repetitionPenalty);
+
+    // Debounced save for advanced settings only
+    const debouncedSaveAdvanced = debounce(() => {
+      try {
+        const payload = { settings: { advanced: MP.settings.advanced } };
+        genericRequest(
+          'SaveMagicPromptSettings',
+          payload,
+          (data) => {
+            if (!data.success) {
+              console.error(`Failed to save advanced settings: ${data.error || 'Unknown error'}`);
+            }
+          },
+          0,
+          (error) => console.error('Error saving advanced settings:', error)
+        );
+      } catch (err) {
+        console.error('Advanced save error:', err);
+      }
+    }, 500);
+
+    // Parser helpers
+    const parseNumber = (v) => {
+      if (v === '' || v === null || v === undefined) return null;
+      const n = Number(v);
+      return Number.isNaN(n) ? null : n;
+    };
+
+    // Wire listeners
+    const bindNumber = (id, key) => {
+      const el = getEl(id);
+      if (!el) return;
+      el.addEventListener('input', (e) => {
+        MP.settings.advanced[key] = parseNumber(e.target.value);
+        // Mirror to slider if exists
+        const slider = getEl(id + 'Slider');
+        if (slider && e.target.value !== '') slider.value = e.target.value;
+        debouncedSaveAdvanced();
+      });
+      el.addEventListener('change', (e) => {
+        MP.settings.advanced[key] = parseNumber(e.target.value);
+        const slider = getEl(id + 'Slider');
+        if (slider && e.target.value !== '') slider.value = e.target.value;
+        debouncedSaveAdvanced();
+      });
+    };
+    const bindCheckbox = (id, key) => {
+      const el = getEl(id);
+      if (!el) return;
+      el.addEventListener('change', (e) => {
+        MP.settings.advanced[key] = !!e.target.checked;
+        debouncedSaveAdvanced();
+      });
+    };
+    const bindSelect = (id, key) => {
+      const el = getEl(id);
+      if (!el) return;
+      el.addEventListener('change', (e) => {
+        MP.settings.advanced[key] = e.target.value || 'default';
+        debouncedSaveAdvanced();
+      });
+    };
+
+    bindNumber('advTemperature', 'temperature');
+    bindNumber('advTopP', 'topP');
+    bindNumber('advTopK', 'topK');
+    bindNumber('advMaxTokens', 'maxTokens');
+    bindNumber('advFrequencyPenalty', 'frequencyPenalty');
+    bindNumber('advPresencePenalty', 'presencePenalty');
+    bindNumber('advRepetitionPenalty', 'repetitionPenalty');
+    bindNumber('advSeed', 'seed');
+    bindCheckbox('advDeterministicMode', 'deterministicMode');
+    bindCheckbox('advEnableSafety', 'enableSafety');
+    bindSelect('advSafetyLevel', 'safetyLevel');
+
+    // Bind sliders to number inputs and settings
+    const bindSlider = (sliderId, inputId, key) => {
+      const slider = getEl(sliderId);
+      const input = getEl(inputId);
+      if (!slider || !input) return;
+      // Ensure initial sync if input has value but slider not set
+      if (input.value !== '') slider.value = input.value;
+      slider.addEventListener('input', (e) => {
+        const val = e.target.value;
+        input.value = val;
+        MP.settings.advanced[key] = parseNumber(val);
+        debouncedSaveAdvanced();
+      });
+      slider.addEventListener('change', (e) => {
+        const val = e.target.value;
+        input.value = val;
+        MP.settings.advanced[key] = parseNumber(val);
+        debouncedSaveAdvanced();
+      });
+    };
+
+    bindSlider('advTemperatureSlider', 'advTemperature', 'temperature');
+    bindSlider('advTopPSlider', 'advTopP', 'topP');
+    bindSlider('advFrequencyPenaltySlider', 'advFrequencyPenalty', 'frequencyPenalty');
+    bindSlider('advPresencePenaltySlider', 'advPresencePenalty', 'presencePenalty');
+    bindSlider('advRepetitionPenaltySlider', 'advRepetitionPenalty', 'repetitionPenalty');
   } catch (error) {
     console.error('Error initializing settings modal:', error);
     // showError('Error initializing settings modal:', error);

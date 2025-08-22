@@ -139,7 +139,7 @@
 
     <!-- Modal Structure -->
     <div class="modal fade magicprompt" id="settingsModal" tabindex="-1" aria-labelledby="settingsModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title translate" id="settingsModalLabel">Settings</h5>
@@ -232,6 +232,85 @@
                                         <select id="visionModel" class="form-select">
                                             <option value="">Loading models...</option>
                                         </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Advanced Settings Card -->
+                        <div class="settings-card">
+                            <div class="settings-header d-flex align-items-center" data-bs-toggle="collapse" data-bs-target="#advancedSettingsCollapse">
+                                <div class="d-flex align-items-center">
+                                    <div class="settings-header-icon">⚙️</div>
+                                    <h6 class="settings-section-title">Advanced Settings</h6>
+                                </div>
+                                <button class="collapse-toggle" aria-expanded="false">▼</button>
+                            </div>
+                            <div class="collapse" id="advancedSettingsCollapse">
+                                <div class="input-group input-group-open w-100">
+                                    <div class="input-group-content w-100">
+                                        <!-- Sampling / Decoding -->
+                                        <div>
+                                            <label class="form-label" for="advTemperature">Temperature</label>
+                                            <input type="number" class="auto-number mb-1" id="advTemperature" step="0.01" min="0" max="2" placeholder="e.g., 0.7">
+                                            <input type="range" class="auto-slider-range" id="advTemperatureSlider" min="0" max="2" step="0.01">
+                                        </div>
+                                        <div>
+                                            <label class="form-label" for="advTopP">Top P</label>
+                                            <input type="number" class="auto-number mb-1" id="advTopP" step="0.01" min="0" max="1" placeholder="e.g., 0.9">
+                                            <input type="range" class="auto-slider-range" id="advTopPSlider" min="0" max="1" step="0.01">
+                                        </div>
+                                        <div>
+                                            <label class="form-label" for="advTopK">Top K</label>
+                                            <input type="number" class="auto-number" id="advTopK" step="1" min="0" placeholder="e.g., 40">
+                                        </div>
+                                        <div>
+                                            <label class="form-label" for="advMaxTokens">Max Tokens</label>
+                                            <input type="number" class="auto-number" id="advMaxTokens" step="1" min="1" placeholder="e.g., 512">
+                                        </div>
+
+                                        <!-- Penalties -->
+                                        <div>
+                                            <label class="form-label" for="advFrequencyPenalty">Frequency Penalty</label>
+                                            <input type="number" class="auto-number mb-1" id="advFrequencyPenalty" step="0.01" min="-2" max="2" placeholder="e.g., 0.0">
+                                            <input type="range" class="auto-slider-range" id="advFrequencyPenaltySlider" min="-2" max="2" step="0.01">
+                                        </div>
+                                        <div>
+                                            <label class="form-label" for="advPresencePenalty">Presence Penalty</label>
+                                            <input type="number" class="auto-number mb-1" id="advPresencePenalty" step="0.01" min="-2" max="2" placeholder="e.g., 0.0">
+                                            <input type="range" class="auto-slider-range" id="advPresencePenaltySlider" min="-2" max="2" step="0.01">
+                                        </div>
+                                        <div>
+                                            <label class="form-label" for="advRepetitionPenalty">Repetition Penalty</label>
+                                            <input type="number" class="auto-number mb-1" id="advRepetitionPenalty" step="0.01" min="0.5" max="2" placeholder="e.g., 1.0">
+                                            <input type="range" class="auto-slider-range" id="advRepetitionPenaltySlider" min="0.5" max="2" step="0.01">
+                                        </div>
+
+                                        <!-- Determinism / Safety -->
+                                        <div>
+                                            <label class="form-label" for="advSeed">Seed</label>
+                                            <input type="number" class="auto-number" id="advSeed" step="1" min="0" placeholder="e.g., 0">
+                                        </div>
+                                        <div>
+                                            <label class="form-label" for="advDeterministicMode">Deterministic Mode</label>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="advDeterministicMode">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="form-label" for="advEnableSafety">Enable Safety Filters</label>
+                                            <div class="form-check form-switch mb-0">
+                                                <input class="form-check-input" type="checkbox" role="switch" id="advEnableSafety">
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label class="form-label" for="advSafetyLevel">Safety Level</label>
+                                            <select id="advSafetyLevel" class="auto-dropdown">
+                                                <option value="default">Default</option>
+                                                <option value="low">Low</option>
+                                                <option value="medium">Medium</option>
+                                                <option value="high">High</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
