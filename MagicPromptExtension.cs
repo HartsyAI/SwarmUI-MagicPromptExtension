@@ -65,7 +65,7 @@ public class MagicPromptExtension : Extension
         ));
         T2IParamTypes.Register<bool>(new T2IParamType(
             Name: "Generate Wildcard Seed",
-            Description: "Every time you press Generate, a new Wildcard Seed is injected into the prompt. Requires having an existing param tag like `<param[wildcardseed]:1234>` in your prompt.",
+            Description: "Every time you press Generate, a new Wildcard Seed is generated. This is extremely useful for batching images, so they can reuse cached LLM responses.",
             Default: "false",
             Group: paramGroup,
             OrderPriority: 4

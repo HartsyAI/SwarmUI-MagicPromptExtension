@@ -566,23 +566,10 @@ function wildcardSeedGenerator() {
       if (!generateBtn) return;
       const checkbox = document.getElementById('input_generatewildcardseed');
       if (!checkbox || !checkbox.checked) return;
-      const promptBox = document.getElementById('alt_prompt_textbox');
-      if (!promptBox) return;
-      const text = promptBox.value || '';
-      const regex = /(<param\[\s*wildcardseed\s*\]\s*:\s*)(-?\d+)(\s*>)/i;
-      if (!regex.test(text)) return;
-      const MAX_WC_SEED = 2147483647; // c# int.MaxValue
-      const newSeed = Math.floor(Math.random() * (MAX_WC_SEED + 1));
-      const newText = text.replace(regex, (m, pre, num, post) => `${pre}${newSeed}${post}`);
-      if (newText !== text) {
-        promptBox.value = newText;
-        if (typeof triggerChangeFor === 'function') {
-          triggerChangeFor(promptBox);
-        } else {
-          promptBox.dispatchEvent(new Event('input', { bubbles: true }));
-          promptBox.dispatchEvent(new Event('change', { bubbles: true }));
-        }
-      }
+      const MAX_WC_SEED = 4294967295;
+      let elem = getRequiredElementById('input_wildcardseed');
+      elem.value = Math.floor(Math.random() * (MAX_WC_SEED + 1));
+      triggerChangeFor(elem);
     }, true);
 }
 
