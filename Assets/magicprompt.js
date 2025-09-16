@@ -559,6 +559,33 @@ function addPromptButtons() {
     altPromptRegion.insertBefore(container, altPromptRegion.firstChild);
 }
 
+function wildcardSeedGenerator() {
+    document.addEventListener('click', function (e) {
+      const target = e.target;
+      const generateBtn = target && (target.id === 'alt_generate_button' ? target : (target.closest ? target.closest('#alt_generate_button') : null));
+      if (!generateBtn) return;
+      const checkbox = document.getElementById('input_generatewildcardseed');
+      if (!checkbox || !checkbox.checked) return;
+      const promptBox = document.getElementById('alt_prompt_textbox');
+      if (!promptBox) return;
+      const text = promptBox.value || '';
+      const regex = /(<param\[\s*wildcardseed\s*\]\s*:\s*)(-?\d+)(\s*>)/i;
+      if (!regex.test(text)) return;
+      const MAX_WC_SEED = 2147483647; // c# int.MaxValue
+      const newSeed = Math.floor(Math.random() * (MAX_WC_SEED + 1));
+      const newText = text.replace(regex, (m, pre, num, post) => `${pre}${newSeed}${post}`);
+      if (newText !== text) {
+        promptBox.value = newText;
+        if (typeof triggerChangeFor === 'function') {
+          triggerChangeFor(promptBox);
+        } else {
+          promptBox.dispatchEvent(new Event('input', { bubbles: true }));
+          promptBox.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    }, true);
+}
+
 /**
  * Initializes on DOM load
  */
@@ -570,6 +597,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         await loadSettings();
         // Add prompt buttons
         addPromptButtons();
+        // Setup auto wildcard seed generation on Generate click (capture phase, before onclick)
+        wildcardSeedGenerator();
         // Initialize modal
         $('#settingsModal').modal({
             backdrop: 'static', keyboard: false, show: false

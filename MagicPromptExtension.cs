@@ -63,6 +63,13 @@ public class MagicPromptExtension : Extension
             Group: paramGroup,
             OrderPriority: 3
         ));
+        T2IParamTypes.Register<bool>(new T2IParamType(
+            Name: "Generate Wildcard Seed",
+            Description: "Every time you press Generate, a new Wildcard Seed is injected into the prompt. Requires having an existing param tag like `<param[wildcardseed]:1234>` in your prompt.",
+            Default: "false",
+            Group: paramGroup,
+            OrderPriority: 4
+        ));
 
         T2IParamInput.LateSpecialParameterHandlers.Add(userInput =>
         {
