@@ -19,6 +19,11 @@ public class MagicPromptExtension : Extension
     // Single lock to coordinate LLM requests and cache updates atomically
     private static readonly object _cacheLock = new();
 
+    // UI parameters
+    private static T2IRegisteredParam<bool> _paramAutoEnable;
+    private static T2IRegisteredParam<bool> _paramAppendOriginal;
+    private static T2IRegisteredParam<bool> _paramUseCache;
+
     public override void OnPreInit()
     {
         Logs.Info("MagicPromptExtension Version 2.2 Now with Vision! has started.");
@@ -39,8 +44,31 @@ public class MagicPromptExtension : Extension
         AddT2IParameters();
     }
 
-    private static void AddT2IParameters()
+    private void AddT2IParameters()
     {
+        var paramGroup = new T2IParamGroup("Magic Prompt", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: 9);
+        _paramAutoEnable = T2IParamTypes.Register<bool>(new T2IParamType(
+            Name: "Auto Enable",
+            Description: "Automatically use Magic Prompt to rewrite your prompt before generation.",
+            Default: "false",
+            Group: paramGroup,
+            OrderPriority: 1
+        ));
+        _paramAppendOriginal = T2IParamTypes.Register<bool>(new T2IParamType(
+            Name: "Append Original Prompt",
+            Description: "Append the original prompt after the generated LLM prompt.",
+            Default: "false",
+            Group: paramGroup,
+            OrderPriority: 2
+        ));
+        _paramUseCache = T2IParamTypes.Register<bool>(new T2IParamType(
+            Name: "Use Cache",
+            Description: "Cache LLM results for static prompts to avoid repeated requests to LLM.",
+            Default: "false",
+            Group: paramGroup,
+            OrderPriority: 3
+        ));
+
         T2IParamInput.LateSpecialParameterHandlers.Add(userInput =>
         {
             // Get the current positive prompt early; if missing, nothing to do
@@ -50,22 +78,42 @@ public class MagicPromptExtension : Extension
                 return;
             }
 
-            // Check for static tag safely without relying on exceptions
-            if (userInput.ExtraMeta != null && userInput.ExtraMeta.TryGetValue("original_prompt", out var originalObj))
+            // If Auto Enable is not checked, do nothing
+            if (!userInput.InternalSet.Get(_paramAutoEnable))
             {
-                var originalPrompt = originalObj?.ToString() ?? string.Empty;
-                
-                if (originalPrompt.Contains("<comment:magicpromptstatic=1>", StringComparison.OrdinalIgnoreCase))
-                {
-                    HandleCacheableRequest(posPrompt, userInput);
-                    return;
-                }
+                return;
             }
 
-            // No static tag: proceed with normal behavior (no cache coordination needed)
+            if (userInput.InternalSet.Get(_paramUseCache))
+            {
+                var llmResponse = HandleCacheableRequest(posPrompt, userInput);
+
+                if (!string.IsNullOrEmpty(llmResponse))
+                {
+                    if (userInput.InternalSet.Get(_paramAppendOriginal))
+                    {
+                        llmResponse = $"{llmResponse}\n{posPrompt}";
+                    }
+                
+                    userInput.InternalSet.Set(T2IParamTypes.Prompt, llmResponse);
+                    return;
+                }
+                
+            }
+
+            // Use Cache is disabled: proceed with normal behavior (no cache coordination needed)
             try
             {
-                MakeLlmRequest(posPrompt, userInput);
+                var llmResponse = MakeLlmRequest(posPrompt, userInput);
+                if (!string.IsNullOrEmpty(llmResponse))
+                {
+                    if (userInput.InternalSet.Get(_paramAppendOriginal))
+                    {
+                        llmResponse = $"{llmResponse}\n{posPrompt}";
+                    }
+                
+                    userInput.InternalSet.Set(T2IParamTypes.Prompt, llmResponse);
+                }
             }
             catch (Exception ex)
             {
@@ -74,7 +122,7 @@ public class MagicPromptExtension : Extension
         });
     }
 
-    private static void HandleCacheableRequest(string posPrompt,  T2IParamInput userInput)
+    private string HandleCacheableRequest(string posPrompt,  T2IParamInput userInput)
     {
         var normalizedPrompt = string.IsNullOrWhiteSpace(posPrompt) 
             ? string.Empty 
@@ -84,20 +132,22 @@ public class MagicPromptExtension : Extension
         // 1) Check outside the lock to avoid serializing the common case (cache hits).
         // 2) Acquire the lock and check again to avoid a race if another thread populated the cache meanwhile.
         // Note: Checking only once inside the lock would be correct but increases contention and latency under concurrency.
-        if (CheckCache(normalizedPrompt, userInput))
+        var cachedPrompt = CheckCache(normalizedPrompt);
+        if (!string.IsNullOrEmpty(cachedPrompt))
         {
             Logs.Debug("MagicPrompt: cache hit (pre-lock) for static-tag prompt.");
-            return;
+            return cachedPrompt;
         }
 
         // Single-lock synchronization to avoid duplicate LLM calls for the same prompt in parallel
         lock (_cacheLock)
         {
+            cachedPrompt = CheckCache(normalizedPrompt);
             // Double-check cache under the lock in case another thread populated it meanwhile
-            if (CheckCache(normalizedPrompt, userInput))
+            if (!string.IsNullOrEmpty(cachedPrompt))
             {
                 Logs.Debug("MagicPrompt: cache hit (post-lock) for static-tag prompt.");
-                return;
+                return cachedPrompt;
             }
 
             try
@@ -107,6 +157,8 @@ public class MagicPromptExtension : Extension
                 {
                     // Atomically swap the cache snapshot so readers observe a consistent pair
                     _cacheSnapshot = new CacheSnapshot(normalizedPrompt, llmResponse);
+
+                    return llmResponse;
                 }
             }
             catch (Exception ex)
@@ -114,18 +166,17 @@ public class MagicPromptExtension : Extension
                 Logs.Debug($"MagicPrompt phone home call failed: {ex.Message}");
             }
         }
+
+        return null;
     }
 
-    private static bool CheckCache(string normalizedPrompt, T2IParamInput userInput)
+    private static string CheckCache(string normalizedPrompt)
     {
         // Atomic snapshot read of the last cache entry
         var snapshot = _cacheSnapshot;
-        if (snapshot is null) return false;
-        if (!string.Equals(snapshot.NormalizedPrompt, normalizedPrompt, StringComparison.Ordinal)) return false;
-        if (string.IsNullOrEmpty(snapshot.LlmPrompt)) return false;
-
-        userInput.InternalSet.Set(T2IParamTypes.Prompt, snapshot.LlmPrompt);
-        return true;
+        if (snapshot is null) return null;
+        if (!string.Equals(snapshot.NormalizedPrompt, normalizedPrompt, StringComparison.Ordinal)) return null;
+        return string.IsNullOrEmpty(snapshot.LlmPrompt) ? null : snapshot.LlmPrompt;
     }
 
     private static string MakeLlmRequest(string posPrompt,  T2IParamInput userInput)
@@ -160,13 +211,7 @@ public class MagicPromptExtension : Extension
         var resp = LLMAPICalls.MagicPromptPhoneHome(request, userInput.SourceSession).GetAwaiter().GetResult();
         var llmResponse = resp?["response"]?.ToString();
 
-        if (string.IsNullOrWhiteSpace(llmResponse))
-        {
-            return null;
-        }
-
-        userInput.InternalSet.Set(T2IParamTypes.Prompt, llmResponse);
-        return llmResponse;
+        return string.IsNullOrWhiteSpace(llmResponse) ? null : llmResponse;
     }
 }
 
