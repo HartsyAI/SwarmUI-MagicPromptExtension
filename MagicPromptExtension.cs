@@ -9,17 +9,12 @@ namespace Hartsy.Extensions.MagicPromptExtension;
 public class MagicPromptExtension : Extension
 {
     /// <summary>
-    /// Immutable snapshot of the last static-tag prompt rewrite result.
+    /// Immutable snapshot of the last cached prompt rewrite result.
     /// Storing as a single volatile reference ensures readers see a consistent pair.
     /// </summary>
     private sealed record CacheSnapshot(string NormalizedPrompt, string LlmPrompt);
-
     private static volatile CacheSnapshot _cacheSnapshot;
-
-    // Single lock to coordinate LLM requests and cache updates atomically
-    private static readonly object _cacheLock = new();
-
-    // UI parameters
+    private static readonly object CacheLock = new();
     private static T2IRegisteredParam<bool> _paramAutoEnable;
     private static T2IRegisteredParam<bool> _paramAppendOriginal;
     private static T2IRegisteredParam<bool> _paramUseCache;
@@ -44,7 +39,7 @@ public class MagicPromptExtension : Extension
         AddT2IParameters();
     }
 
-    private void AddT2IParameters()
+    private static void AddT2IParameters()
     {
         var paramGroup = new T2IParamGroup("Magic Prompt", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: 9);
         _paramAutoEnable = T2IParamTypes.Register<bool>(new T2IParamType(
@@ -72,8 +67,8 @@ public class MagicPromptExtension : Extension
         T2IParamInput.LateSpecialParameterHandlers.Add(userInput =>
         {
             // Get the current positive prompt early; if missing, nothing to do
-            var posPrompt = userInput.InternalSet.Get(T2IParamTypes.Prompt);
-            if (string.IsNullOrWhiteSpace(posPrompt))
+            var prompt = userInput.InternalSet.Get(T2IParamTypes.Prompt);
+            if (string.IsNullOrWhiteSpace(prompt))
             {
                 return;
             }
@@ -84,36 +79,21 @@ public class MagicPromptExtension : Extension
                 return;
             }
 
-            if (userInput.InternalSet.Get(_paramUseCache))
-            {
-                var llmResponse = HandleCacheableRequest(posPrompt, userInput);
-
-                if (!string.IsNullOrEmpty(llmResponse))
-                {
-                    if (userInput.InternalSet.Get(_paramAppendOriginal))
-                    {
-                        llmResponse = $"{llmResponse}\n{posPrompt}";
-                    }
-                
-                    userInput.InternalSet.Set(T2IParamTypes.Prompt, llmResponse);
-                    return;
-                }
-                
-            }
-
-            // Use Cache is disabled: proceed with normal behavior (no cache coordination needed)
             try
             {
-                var llmResponse = MakeLlmRequest(posPrompt, userInput);
-                if (!string.IsNullOrEmpty(llmResponse))
+                var llmResponse = userInput.InternalSet.Get(_paramUseCache) 
+                    ? HandleCacheableRequest(prompt, userInput)
+                    // Use Cache is disabled: proceed with normal behavior (no cache coordination needed)
+                    : MakeLlmRequest(prompt, userInput);
+
+                // No response from LLM, fallback to original prompt
+                if (string.IsNullOrEmpty(llmResponse)) return;
+                if (userInput.InternalSet.Get(_paramAppendOriginal))
                 {
-                    if (userInput.InternalSet.Get(_paramAppendOriginal))
-                    {
-                        llmResponse = $"{llmResponse}\n{posPrompt}";
-                    }
-                
-                    userInput.InternalSet.Set(T2IParamTypes.Prompt, llmResponse);
+                    llmResponse = $"{llmResponse}\n{prompt}";
                 }
+
+                userInput.InternalSet.Set(T2IParamTypes.Prompt, llmResponse);
             }
             catch (Exception ex)
             {
@@ -122,11 +102,11 @@ public class MagicPromptExtension : Extension
         });
     }
 
-    private string HandleCacheableRequest(string posPrompt,  T2IParamInput userInput)
+    private static string HandleCacheableRequest(string prompt,  T2IParamInput userInput)
     {
-        var normalizedPrompt = string.IsNullOrWhiteSpace(posPrompt) 
+        var normalizedPrompt = string.IsNullOrWhiteSpace(prompt) 
             ? string.Empty 
-            : new string(posPrompt.Trim().ToLowerInvariant().Where(c => !char.IsWhiteSpace(c)).ToArray());
+            : new string(prompt.Trim().ToLowerInvariant().Where(c => !char.IsWhiteSpace(c)).ToArray());
 
         // Fast path: double-checked locking
         // 1) Check outside the lock to avoid serializing the common case (cache hits).
@@ -140,7 +120,7 @@ public class MagicPromptExtension : Extension
         }
 
         // Single-lock synchronization to avoid duplicate LLM calls for the same prompt in parallel
-        lock (_cacheLock)
+        lock (CacheLock)
         {
             cachedPrompt = CheckCache(normalizedPrompt);
             // Double-check cache under the lock in case another thread populated it meanwhile
@@ -152,7 +132,7 @@ public class MagicPromptExtension : Extension
 
             try
             {
-                var llmResponse = MakeLlmRequest(posPrompt, userInput);
+                var llmResponse = MakeLlmRequest(prompt, userInput);
                 if (!string.IsNullOrEmpty(llmResponse))
                 {
                     // Atomically swap the cache snapshot so readers observe a consistent pair
@@ -179,7 +159,7 @@ public class MagicPromptExtension : Extension
         return string.IsNullOrEmpty(snapshot.LlmPrompt) ? null : snapshot.LlmPrompt;
     }
 
-    private static string MakeLlmRequest(string posPrompt,  T2IParamInput userInput)
+    private static string MakeLlmRequest(string prompt,  T2IParamInput userInput)
     {
         // Build request for MagicPromptPhoneHome including required fields
         string modelId = null;
@@ -198,7 +178,7 @@ public class MagicPromptExtension : Extension
         {
             ["messageContent"] = new JObject
             {
-                ["text"] = posPrompt,
+                ["text"] = prompt,
                 // Leave instructions empty to let server-side default logic choose based on action
                 ["instructions"] = ""
             },
