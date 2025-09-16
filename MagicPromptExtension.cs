@@ -73,15 +73,23 @@ public class MagicPromptExtension : Extension
                 return;
             }
 
-            // If Auto Enable is not checked, do nothing
+            // If Auto Enable is not checked, clear cache and return early
             if (!userInput.InternalSet.Get(_paramAutoEnable))
             {
+                // Clear cache whenever Auto Enable is off
+                ClearCache();
                 return;
             }
 
             try
             {
-                var llmResponse = userInput.InternalSet.Get(_paramUseCache) 
+                var useCache = userInput.InternalSet.Get(_paramUseCache);
+                if (!useCache)
+                {
+                    // Clear cache whenever Use Cache is off
+                    ClearCache();
+                }
+                var llmResponse = useCache 
                     ? HandleCacheableRequest(prompt, userInput)
                     // Use Cache is disabled: proceed with normal behavior (no cache coordination needed)
                     : MakeLlmRequest(prompt, userInput);
@@ -157,6 +165,14 @@ public class MagicPromptExtension : Extension
         if (snapshot is null) return null;
         if (!string.Equals(snapshot.NormalizedPrompt, normalizedPrompt, StringComparison.Ordinal)) return null;
         return string.IsNullOrEmpty(snapshot.LlmPrompt) ? null : snapshot.LlmPrompt;
+    }
+
+    private static void ClearCache()
+    {
+        lock (CacheLock)
+        {
+            _cacheSnapshot = null;
+        }
     }
 
     private static string MakeLlmRequest(string prompt,  T2IParamInput userInput)
