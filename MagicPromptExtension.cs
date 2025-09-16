@@ -41,7 +41,7 @@ public class MagicPromptExtension : Extension
 
     private static void AddT2IParameters()
     {
-        var paramGroup = new T2IParamGroup("Magic Prompt", Toggles: true, Open: false, IsAdvanced: false, OrderPriority: 9);
+        var paramGroup = new T2IParamGroup("Magic Prompt", Toggles: false, Open: false, IsAdvanced: false, OrderPriority: 9);
         _paramAutoEnable = T2IParamTypes.Register<bool>(new T2IParamType(
             Name: "Auto Enable",
             Description: "Automatically use Magic Prompt to rewrite your prompt before generation.",
