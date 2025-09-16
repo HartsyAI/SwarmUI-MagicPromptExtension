@@ -102,7 +102,14 @@ public class MagicPromptExtension : Extension
 
                 // No response from LLM, fallback to original prompt
                 if (string.IsNullOrEmpty(llmResponse)) return;
-                if (userInput.InternalSet.Get(_paramAppendOriginal))
+
+                // Remove the core text that was sent to the LLM from the original prompt, leaving only regional tags/parts
+                if (!userInput.InternalSet.Get(_paramAppendOriginal) && !string.IsNullOrWhiteSpace(promptRegions.GlobalPrompt))
+                {
+                    prompt = prompt?.Replace(promptRegions.GlobalPrompt, string.Empty);
+                }
+
+                if (!string.IsNullOrEmpty(prompt))
                 {
                     llmResponse = $"{llmResponse}\n{prompt}";
                 }
