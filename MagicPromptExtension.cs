@@ -81,6 +81,12 @@ public class MagicPromptExtension : Extension
                 return;
             }
 
+            // Parse the prompt to handle regional tags, segments, etc, and only send the core text to the LLM
+            var promptRegions = new PromptRegion(prompt);
+            var llmInputPrompt = string.IsNullOrWhiteSpace(promptRegions.GlobalPrompt)
+                ? prompt
+                : promptRegions.GlobalPrompt;
+
             try
             {
                 var useCache = userInput.InternalSet.Get(_paramUseCache);
@@ -90,9 +96,9 @@ public class MagicPromptExtension : Extension
                     ClearCache();
                 }
                 var llmResponse = useCache 
-                    ? HandleCacheableRequest(prompt, userInput)
+                    ? HandleCacheableRequest(llmInputPrompt, userInput)
                     // Use Cache is disabled: proceed with normal behavior (no cache coordination needed)
-                    : MakeLlmRequest(prompt, userInput);
+                    : MakeLlmRequest(llmInputPrompt, userInput);
 
                 // No response from LLM, fallback to original prompt
                 if (string.IsNullOrEmpty(llmResponse)) return;
