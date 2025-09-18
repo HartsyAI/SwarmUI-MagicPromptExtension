@@ -41,31 +41,31 @@ public class MagicPromptExtension : Extension
 
     private static void AddT2IParameters()
     {
-        var paramGroup = new T2IParamGroup("Magic Prompt", Toggles: false, Open: false, IsAdvanced: false, OrderPriority: 9);
+        var paramGroup = new T2IParamGroup("Magic Prompt", Toggles: true, Open: false, OrderPriority: 9);
         _paramAutoEnable = T2IParamTypes.Register<bool>(new T2IParamType(
-            Name: "Auto Enable",
+            Name: "MP Auto Enable",
             Description: "Automatically use Magic Prompt to rewrite your prompt before generation.",
             Default: "false",
             Group: paramGroup,
             OrderPriority: 1
         ));
-        _paramAppendOriginal = T2IParamTypes.Register<bool>(new T2IParamType(
-            Name: "Append Original Prompt",
-            Description: "Append the original prompt after the generated LLM prompt.",
-            Default: "false",
+        _paramUseCache = T2IParamTypes.Register<bool>(new T2IParamType(
+            Name: "MP Use Cache",
+            Description: "Cache LLM results for static prompts to avoid repeated requests to LLM.",
+            Default: "true",
             Group: paramGroup,
             OrderPriority: 2
         ));
-        _paramUseCache = T2IParamTypes.Register<bool>(new T2IParamType(
-            Name: "Use Cache",
-            Description: "Cache LLM results for static prompts to avoid repeated requests to LLM.",
+        T2IParamTypes.Register<bool>(new T2IParamType(
+            Name: "MP Generate Wildcard Seed",
+            Description: "Every time you press Generate, a new Wildcard Seed is generated. This is extremely useful for batching images, so they can reuse cached LLM responses.",
             Default: "false",
             Group: paramGroup,
             OrderPriority: 3
         ));
-        T2IParamTypes.Register<bool>(new T2IParamType(
-            Name: "Generate Wildcard Seed",
-            Description: "Every time you press Generate, a new Wildcard Seed is generated. This is extremely useful for batching images, so they can reuse cached LLM responses.",
+        _paramAppendOriginal = T2IParamTypes.Register<bool>(new T2IParamType(
+            Name: "MP Append Original Prompt",
+            Description: "Append the original prompt after the generated LLM prompt.",
             Default: "false",
             Group: paramGroup,
             OrderPriority: 4
@@ -73,6 +73,12 @@ public class MagicPromptExtension : Extension
 
         T2IParamInput.LateSpecialParameterHandlers.Add(userInput =>
         {
+            if (userInput.GetNullable(_paramAutoEnable) is null)
+            {
+                ClearCache();
+                return;
+            }
+
             // Get the current positive prompt early; if missing, nothing to do
             var prompt = userInput.InternalSet.Get(T2IParamTypes.Prompt);
             if (string.IsNullOrWhiteSpace(prompt))
@@ -102,7 +108,8 @@ public class MagicPromptExtension : Extension
                     // Clear cache whenever Use Cache is off
                     ClearCache();
                 }
-                var llmResponse = useCache 
+
+                var llmResponse = useCache
                     ? HandleCacheableRequest(llmInputPrompt, userInput)
                     // Use Cache is disabled: proceed with normal behavior (no cache coordination needed)
                     : MakeLlmRequest(llmInputPrompt, userInput);

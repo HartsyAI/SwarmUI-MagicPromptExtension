@@ -561,15 +561,24 @@ function addPromptButtons() {
 
 function wildcardSeedGenerator() {
     document.addEventListener('click', function (e) {
-      const target = e.target;
-      const generateBtn = target && (target.id === 'alt_generate_button' ? target : (target.closest ? target.closest('#alt_generate_button') : null));
-      if (!generateBtn) return;
-      const checkbox = document.getElementById('input_generatewildcardseed');
-      if (!checkbox || !checkbox.checked) return;
-      const MAX_WC_SEED = 4294967295;
-      let elem = getRequiredElementById('input_wildcardseed');
-      elem.value = Math.floor(Math.random() * (MAX_WC_SEED + 1));
-      triggerChangeFor(elem);
+        const MAX_WC_SEED = 4294967295;
+        const extensionEnabled = document.getElementById('input_group_content_magicprompt_toggle');
+        const generateEnabled = document.getElementById('input_mpgeneratewildcardseed');
+
+        if (
+            !e.target
+            || e.target.id !== 'alt_generate_button'
+            || !extensionEnabled
+            || !extensionEnabled.checked
+            || !generateEnabled
+            || !generateEnabled.checked
+        ) {
+            return;
+        }
+
+        let wildcardSeedElem = getRequiredElementById('input_wildcardseed');
+        wildcardSeedElem.value = Math.floor(Math.random() * MAX_WC_SEED);
+        triggerChangeFor(wildcardSeedElem);
     }, true);
 }
 
