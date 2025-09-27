@@ -559,6 +559,29 @@ function addPromptButtons() {
     altPromptRegion.insertBefore(container, altPromptRegion.firstChild);
 }
 
+function wildcardSeedGenerator() {
+    document.addEventListener('click', function (e) {
+        const MAX_WC_SEED = 4294967295;
+        const extensionEnabled = document.getElementById('input_group_content_magicprompt_toggle');
+        const generateEnabled = document.getElementById('input_mpgeneratewildcardseed');
+
+        if (
+            !e.target
+            || e.target.id !== 'alt_generate_button'
+            || !extensionEnabled
+            || !extensionEnabled.checked
+            || !generateEnabled
+            || !generateEnabled.checked
+        ) {
+            return;
+        }
+
+        let wildcardSeedElem = getRequiredElementById('input_wildcardseed');
+        wildcardSeedElem.value = Math.floor(Math.random() * MAX_WC_SEED);
+        triggerChangeFor(wildcardSeedElem);
+    }, true);
+}
+
 /**
  * Initializes on DOM load
  */
@@ -570,6 +593,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         await loadSettings();
         // Add prompt buttons
         addPromptButtons();
+        // Setup auto wildcard seed generation on Generate click (capture phase, before onclick)
+        wildcardSeedGenerator();
         // Initialize modal
         $('#settingsModal').modal({
             backdrop: 'static', keyboard: false, show: false
