@@ -630,3 +630,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         MP.ResponseHandler.showError('Failed to initialize MagicPrompt: ' + error.message);
     }
 });
+
+promptTabComplete.registerPrefix('mporiginal', 'Placeholder for the original prompt', (prefix) => {
+    return [];
+}, true);
