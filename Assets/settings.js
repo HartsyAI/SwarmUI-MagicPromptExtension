@@ -219,6 +219,7 @@ async function saveSettings(skipFeatureMappings = false) {
     genericRequest('SaveMagicPromptSettings', payload, (data) => {
         if (data.success) {
           console.log('Settings saved successfully');
+          updateModelListOnLeft();
         } else {
           console.error(
             `Failed to save settings: ${data.error || 'Unknown error'}`
@@ -417,6 +418,39 @@ async function fetchModels() {
     // Clear semaphore
     MP.fetchingModels = false;
     MP.fetchingModelsPromise = null;
+  }
+}
+
+function updateModelListOnLeft() {
+  try {
+    const modelSelect = document.getElementById('modelSelect');
+    const enhanceInstructions = getInstructionsForCategory('prompt');
+    const listOfModels = document.getElementById('input_mpmodelid');
+    const listOfInstructions = document.getElementById('input_mpinstructions');
+
+    if (!modelSelect || !listOfModels || !listOfInstructions) {
+      console.warn('Could not sync MP List of Models: source or destination select not found');
+      return;
+    }
+
+    listOfModels.innerHTML = '';
+    Array.from(modelSelect.options).forEach(opt => {
+      const option = new Option(opt.text, opt.value);
+      listOfModels.add(option);
+    });
+
+    listOfInstructions.innerHTML = '';
+    enhanceInstructions.forEach(instruction => {
+      const option = new Option(instruction.title, instruction.id);
+      listOfInstructions.add(option);
+    });
+
+    // Mirror current selection
+    listOfModels.value = modelSelect.value || '';
+    triggerChangeFor(listOfModels);
+    triggerChangeFor(listOfInstructions);
+  } catch (error) {
+    console.error(error.message);
   }
 }
 
