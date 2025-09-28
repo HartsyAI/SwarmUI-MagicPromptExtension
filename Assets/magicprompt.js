@@ -635,7 +635,6 @@ promptTabComplete.registerPrefix('mpprompt', 'Prompt to be sent to LLM', (prefix
     return [];
 }, false);
 
-
 promptTabComplete.registerPrefix('mporiginal', 'Placeholder for the original prompt', (prefix) => {
     return [];
 }, true);
