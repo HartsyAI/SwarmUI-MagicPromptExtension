@@ -104,7 +104,7 @@ public class MagicPromptExtension : Extension
 
             if (string.IsNullOrWhiteSpace(modelId))
             {
-                Logs.Info("MagicPrompt: disabled");
+                Logs.Debug("MagicPrompt: disabled");
                 userInput.InternalSet.Set(T2IParamTypes.Prompt, withoutMpOriginal);
                 return;
             }
@@ -112,7 +112,7 @@ public class MagicPromptExtension : Extension
             // Get the current positive prompt early; if missing, nothing to do
             if (string.IsNullOrWhiteSpace(prompt))
             {
-                Logs.Info("MagicPrompt: empty prompt");
+                Logs.Debug("MagicPrompt: empty prompt");
                 userInput.InternalSet.Set(T2IParamTypes.Prompt, withoutMpOriginal);
                 return;
             }
@@ -129,12 +129,12 @@ public class MagicPromptExtension : Extension
                 var useCache = userInput.InternalSet.Get(_paramUseCache);
                 if (!useCache)
                 {
-                    Logs.Info("MagicPrompt: not using cache");
+                    Logs.Debug("MagicPrompt: not using cache");
 
                     // Clear cache whenever Use Cache is off
                     ClearCache();
                 } else {
-                    Logs.Info("MagicPrompt: using cache");
+                    Logs.Debug("MagicPrompt: using cache");
                 }
 
                 var llmResponse = useCache
@@ -145,7 +145,7 @@ public class MagicPromptExtension : Extension
 
                 // No response from LLM, fallback to original prompt
                 if (string.IsNullOrEmpty(llmResponse)) {
-                    Logs.Info("MagicPrompt: empty response from LLM");
+                    Logs.Error("MagicPrompt: empty response from LLM");
                     userInput.InternalSet.Set(T2IParamTypes.Prompt, withoutMpOriginal);
                     return;
                 }
@@ -157,7 +157,7 @@ public class MagicPromptExtension : Extension
             }
             catch (Exception ex)
             {
-                Logs.Debug($"MagicPrompt phone home call failed: {ex.Message}");
+                Logs.Error($"MagicPrompt phone home call failed: {ex.Message}");
                 userInput.InternalSet.Set(T2IParamTypes.Prompt, withoutMpOriginal);
             }
         });
@@ -301,18 +301,18 @@ public class MagicPromptExtension : Extension
         if (!string.IsNullOrWhiteSpace(customPrompt))
         {
             var title = instructionsObj["custom"][instructions]?["title"].ToString();
-            Logs.Info($"MagicPrompt: using custom instructions \"{title}\"");
+            Logs.Debug($"MagicPrompt: using custom instructions \"{title}\"");
             return customPrompt;
         }
 
         var basePrompt = instructionsObj[instructions]?.ToString();
         if (!string.IsNullOrWhiteSpace(basePrompt))
         {
-            Logs.Info($"MagicPrompt: using base instructions \"{instructions}\"");
+            Logs.Debug($"MagicPrompt: using base instructions \"{instructions}\"");
             return basePrompt;
         }
 
-        Logs.Info("MagicPrompt: using base instructions \"prompt\"");
+        Logs.Debug("MagicPrompt: using base instructions \"prompt\"");
         return instructionsObj["prompt"]?.ToString();
     }
 
