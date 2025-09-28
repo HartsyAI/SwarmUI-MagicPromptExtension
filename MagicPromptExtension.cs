@@ -96,71 +96,76 @@ public class MagicPromptExtension : Extension
             GetValues: GetInstructionList
         ));
 
+        PromptRegion.RegisterCustomPrefix("mpprompt");
+
         T2IParamInput.LateSpecialParameterHandlers.Add(userInput =>
         {
             var prompt = userInput.InternalSet.Get(T2IParamTypes.Prompt);
+            var promptRegion = new PromptRegion(prompt);
+            var mpprompt = "";
             var modelId = userInput.InternalSet.Get(_paramModelId);
-            var withoutMpOriginal = prompt.Replace("<mporiginal>", "");
+            var useCache = userInput.InternalSet.Get(_paramUseCache);
+
+            foreach (var part in promptRegion.Parts.Where(part => part.Prefix == "mpprompt"))
+            {
+                mpprompt = part.DataText;
+                break;
+            }
 
             if (string.IsNullOrWhiteSpace(modelId))
             {
                 Logs.Debug("MagicPrompt: disabled");
-                userInput.InternalSet.Set(T2IParamTypes.Prompt, withoutMpOriginal);
+                prompt = prompt.Replace($"<mpprompt:{mpprompt}>", mpprompt);
+                ReplaceMpOriginal(prompt, "", userInput);
                 return;
             }
 
-            // Get the current positive prompt early; if missing, nothing to do
-            if (string.IsNullOrWhiteSpace(prompt))
+            if (string.IsNullOrWhiteSpace(mpprompt))
             {
-                Logs.Debug("MagicPrompt: empty prompt");
-                userInput.InternalSet.Set(T2IParamTypes.Prompt, withoutMpOriginal);
+                Logs.Debug("MagicPrompt: <mpprompt> not found or empty");
+                ReplaceMpOriginal(prompt, "", userInput);
                 return;
             }
-
-            // Parse the prompt to handle regional tags, segments, etc, and only
-            // send the core text to the LLM
-            var promptRegions = new PromptRegion(prompt);
-            var sendToLlm = string.IsNullOrWhiteSpace(promptRegions.GlobalPrompt)
-                ? prompt
-                : promptRegions.GlobalPrompt;
 
             try
             {
-                var useCache = userInput.InternalSet.Get(_paramUseCache);
                 if (!useCache)
                 {
                     Logs.Debug("MagicPrompt: not using cache");
-
-                    // Clear cache whenever Use Cache is off
                     ClearCache();
                 } else {
                     Logs.Debug("MagicPrompt: using cache");
                 }
 
                 var llmResponse = useCache
-                    ? HandleCacheableRequest(sendToLlm, userInput)
+                    ? HandleCacheableRequest(mpprompt, userInput)
                     // Use Cache is disabled: proceed with normal behavior
                     // (no cache coordination needed)
-                    : MakeLlmRequest(sendToLlm, userInput);
+                    : MakeLlmRequest(mpprompt, userInput);
 
                 // No response from LLM, fallback to original prompt
                 if (string.IsNullOrEmpty(llmResponse)) {
                     Logs.Error("MagicPrompt: empty response from LLM");
-                    userInput.InternalSet.Set(T2IParamTypes.Prompt, withoutMpOriginal);
+                    prompt = prompt.Replace($"<mpprompt:{mpprompt}>", mpprompt);
+                    ReplaceMpOriginal(prompt, "", userInput);
                     return;
                 }
 
-                prompt = prompt.Replace(promptRegions.GlobalPrompt, llmResponse);
-                prompt = prompt.Replace("<mporiginal>", promptRegions.GlobalPrompt);
-
-                userInput.InternalSet.Set(T2IParamTypes.Prompt, prompt);
+                prompt = prompt.Replace($"<mpprompt:{mpprompt}>", llmResponse);
+                ReplaceMpOriginal(prompt, mpprompt, userInput);
             }
             catch (Exception ex)
             {
                 Logs.Error($"MagicPrompt phone home call failed: {ex.Message}");
-                userInput.InternalSet.Set(T2IParamTypes.Prompt, withoutMpOriginal);
+                prompt = prompt.Replace($"<mpprompt:{mpprompt}>", mpprompt);
+                ReplaceMpOriginal(prompt, "", userInput);
             }
         });
+    }
+
+    private static void ReplaceMpOriginal(string prompt, string mpprompt, T2IParamInput userInput)
+    {
+        userInput.InternalSet.Set(T2IParamTypes.Prompt, prompt.Replace("<mporiginal>", mpprompt));
     }
 
     private static string HandleCacheableRequest(string prompt, T2IParamInput userInput)
@@ -223,12 +228,12 @@ public class MagicPromptExtension : Extension
         if (snapshot is null)
         {
             return null;
-        };
+        }
 
         if (!string.Equals(snapshot.NormalizedPrompt, normalizedPrompt, StringComparison.Ordinal))
         {
             return null;
-        };
+        }
 
         return string.IsNullOrEmpty(snapshot.LlmPrompt) ? null : snapshot.LlmPrompt;
     }
@@ -297,10 +302,10 @@ public class MagicPromptExtension : Extension
         }
 
         // instructions currently holds the selected key
-        var customPrompt = instructionsObj["custom"][instructions]?["content"].ToString();
+        var customPrompt = instructionsObj["custom"]?[instructions]?["content"]?.ToString();
         if (!string.IsNullOrWhiteSpace(customPrompt))
         {
-            var title = instructionsObj["custom"][instructions]?["title"].ToString();
+            var title = instructionsObj["custom"][instructions]?["title"]?.ToString();
             Logs.Debug($"MagicPrompt: using custom instructions \"{title}\"");
             return customPrompt;
         }
@@ -354,7 +359,6 @@ public class MagicPromptExtension : Extension
 
     private static List<string> GetInstructionList(Session session)
     {
-
         var defaultResponse = new List<string>{"loading///loading"};
 
         try
@@ -396,7 +400,7 @@ public class MagicPromptExtension : Extension
         // Serve from cache if fresh
         lock (ModelsCacheLock)
         {
-            if (_modelsCacheResponse != null && (DateTime.UtcNow - _modelsCacheTimeUtc) < ModelsCacheTtl)
+            if (_modelsCacheResponse != null && DateTime.UtcNow - _modelsCacheTimeUtc < ModelsCacheTtl)
             {
                 return _modelsCacheResponse;
             }
