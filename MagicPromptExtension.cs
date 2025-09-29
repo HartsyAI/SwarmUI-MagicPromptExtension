@@ -98,6 +98,11 @@ public class MagicPromptExtension : Extension
 
         PromptRegion.RegisterCustomPrefix("mpprompt");
 
+        T2IPromptHandling.PromptTagPostProcessors["mpprompt"] = (data, context) =>
+        {
+            return $"<mpprompt:{context.Parse(data)}>";
+        };
+
         T2IParamInput.LateSpecialParameterHandlers.Add(userInput =>
         {
             var prompt = userInput.InternalSet.Get(T2IParamTypes.Prompt);
