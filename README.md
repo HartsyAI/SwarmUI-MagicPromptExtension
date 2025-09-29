@@ -37,6 +37,7 @@ The MagicPrompt Extension provides a simple and intuitive way directly in SwarmU
 * Includes vision support, allowing you to upload images, generate captions, and use images as context for prompts.
 * Compatible with other SwarmUI extensions.
 * Add Custom AI Instructions and map them to specific features, see [configuration](#configuration) for more details
+* Can automatically pass your prompt to an LLM, see [generate tab integration](#generate-tab-integration) for more details
 
 ### Vision Support
 The extension now includes comprehensive vision support, allowing you to interact with language models using images. Key features include:
@@ -48,6 +49,17 @@ The extension now includes comprehensive vision support, allowing you to interac
 * **Vision Actions**: A set of actions to perform on the uploaded image, including generating captions, using the image as an init image, sending the image to the prompt, and clearing the image.
 * **Backend Support**: Supports various vision backends, including Ollama, OpenRouter, OpenAI API, OpenAI (ChatGPT), and Anthropic (Claude).
 * **Settings**: Configure vision-specific settings separate from chat models such as selecting the backend and model, and setting API keys.
+
+### Generate Tab Integration
+The MagicPrompt Extension now integrates directly with SwarmUI's prompt parsing system, providing seamless batch processing capabilities:
+
+* **Automatic Parameter Group**: A new "Magic Prompt Auto Enable" parameter group appears in the sidebar interface when the extension is installed.
+* **Prompt Tag Processing**: Use `<mpprompt:your prompt here>` tags directly in your prompts for automatic LLM processing during generation. Only what is in this tag will be sent to your LLM. The response will replace the tag.
+* **Attaching the Original Prompt**: Use `<mporiginal>` to add your original, unmodified tags back to your prompt. This can useful if your model works better with the original tag-based prompt.
+* **Smart Caching**: The "MP Use Cache" parameter allows you to cache LLM responses for identical prompts, significantly improving performance and reducing API costs during batch generation. Use alongside the Wildcard Seed Generation feature below for more powerful caching!
+* **Wildcard Seed Generation**: The "MP Generate Wildcard Seed" parameter generates new wildcard seeds for each batch, perfect for creating varied results while reusing cached LLM responses. If your prompts contain `<wildcard>` or `<wc>` tags, and you run a batch of multiple images, the same wildcard selections will be chosen, ensuring your prompts are the same and the LLM is called only once per batch.
+* **Model Selection**: Choose different LLM models for each batch using the "MP Model ID" parameter.
+* **Instruction Selection**: Select custom instructions for each batch using the "MP Instructions" parameter.
 
 ## Prerequisites
 ----------------
@@ -175,7 +187,11 @@ Notes:
 ## Usage
 --------
 
-The MagicPrompt Extension offers two primary ways to enhance your prompts and interact with your LLM: through the "Enhance Prompt" and "Magic Vision" button in the Generate tab and the Chat and Vision sections in the dedicated "MagicPrompt" tab.
+The MagicPrompt Extension offers multiple ways to enhance your prompts and interact with your LLM:
+
+1. **Generate Tab Buttons**: Use the "Enhance Prompt" and "Magic Vision" buttons for quick prompt enhancement
+2. **Dedicated MagicPrompt Tab**: Access full chat and vision capabilities
+3. **Prompt Tag Processing**: Use `<mpprompt>` tags directly in your prompts to send to LLM, use `<mporiginal>` to re-add the original, unmodified tags to your processed prompt.
 
 **Generate Tab:**
 ![Buttons](Images/Screenshots/buttons.PNG)
@@ -242,6 +258,7 @@ If you encounter any issues check these common solutions before you open an issu
 * Version 2.1: API keys are now handled in Users tab
 * Version 2.2: Added custom instructions feature
 * Version 2.3: Added Grok (xAI) backend support and documented known working OpenAI-compatible backends in README
+* Version 2.4: Added T2I parameter integration with smart caching system, prompt tag processing (`<mpprompt>`), and wildcard seed generation for enhanced batch processing capabilities
 
 ## License
 ----------

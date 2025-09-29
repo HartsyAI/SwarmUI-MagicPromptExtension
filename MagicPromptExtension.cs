@@ -30,7 +30,7 @@ public class MagicPromptExtension : Extension
 
     public override void OnPreInit()
     {
-        Logs.Info("MagicPromptExtension Version 2.2 Now with Vision! has started.");
+        Logs.Info("MagicPromptExtension Version 2.4 Now with Vision and automatic processing! has started.");
         ScriptFiles.Add("Assets/magicprompt.js");
         ScriptFiles.Add("Assets/vision.js");
         ScriptFiles.Add("Assets/chat.js");
