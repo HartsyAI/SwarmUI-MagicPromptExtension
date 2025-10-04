@@ -416,7 +416,7 @@ public class LLMAPICalls : MagicPromptAPI
             {
                 // Typically thrown for validation issues (e.g., Grok vision requires direct JPG/PNG URLs)
                 Logs.Error($"Request build error for {backend}: {ex.Message}");
-                return CreateSuccessResponse(ErrorHandler.FormatErrorMessage(ErrorType.UnsupportedParameterImage, ex.Message, backend));
+                return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.UnsupportedParameterImage, ex.Message, backend));
             }
             string jsonContent = JsonSerializer.Serialize(requestBody);
             request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
@@ -441,7 +441,7 @@ public class LLMAPICalls : MagicPromptAPI
                     // Use the improved error handler to process response
                     string formattedError = ErrorHandler.ProcessErrorResponse(responseContent, response.StatusCode, backend);
                     Logs.Error($"HTTP {(int)response.StatusCode} error from {backend}: {responseContent}");
-                    return CreateSuccessResponse(formattedError);
+                    return CreateErrorResponse(formattedError);
                 }
                 // Process successful response
                 try
@@ -458,10 +458,10 @@ public class LLMAPICalls : MagicPromptAPI
                     string errorType = ErrorHandler.DetectErrorType(ex.Message, response.StatusCode, backend);
                     string formattedError = ErrorHandler.FormatErrorMessage(errorType, ex.Message, backend);
                     Logs.Error($"Error deserializing response: {ex.Message}");
-                    return CreateSuccessResponse(formattedError);
+                    return CreateErrorResponse(formattedError);
                 }
                 // If we reach here, something went wrong with a seemingly successful response
-                return CreateSuccessResponse(
+                return CreateErrorResponse(
                     ErrorHandler.FormatErrorMessage(ErrorType.Generic,
                     "Response could not be processed properly",
                     backend)
@@ -470,28 +470,28 @@ public class LLMAPICalls : MagicPromptAPI
             catch (System.Threading.Tasks.TaskCanceledException)
             {
                 Logs.Error($"Request timed out for backend {backend} ({endpoint})");
-                return CreateSuccessResponse(ErrorHandler.FormatErrorMessage(ErrorType.RequestTimeout, $"Request exceeded timeout at {endpoint}", backend));
+                return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.RequestTimeout, $"Request exceeded timeout at {endpoint}", backend));
             }
             catch (OperationCanceledException)
             {
                 Logs.Error($"Request canceled (timeout) for backend {backend} ({endpoint})");
-                return CreateSuccessResponse(ErrorHandler.FormatErrorMessage(ErrorType.RequestTimeout, $"Request canceled due to timeout at {endpoint}", backend));
+                return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.RequestTimeout, $"Request canceled due to timeout at {endpoint}", backend));
             }
             catch (HttpRequestException ex)
             {
                 Logs.Error($"HTTP request error: {ex.Message}");
-                return CreateSuccessResponse(ErrorHandler.FormatErrorMessage(ErrorType.HttpRequestError, ex.Message, backend));
+                return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.HttpRequestError, ex.Message, backend));
             }
             catch (Exception ex)
             {
                 Logs.Error($"Error in MagicPromptPhoneHome: {ex.Message}");
-                return CreateSuccessResponse(ErrorHandler.FormatErrorMessage(ErrorType.GenericException, ex.Message, backend));
+                return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.GenericException, ex.Message, backend));
             }
         }
         catch (Exception ex)
         {
             Logs.Error($"Error in MagicPromptPhoneHome: {ex.Message}");
-            return CreateSuccessResponse(ErrorHandler.FormatErrorMessage(ErrorType.GenericException, ex.Message, "unknown"));
+            return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.GenericException, ex.Message, "unknown"));
         }
     }
 }
