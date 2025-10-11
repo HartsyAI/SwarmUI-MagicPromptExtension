@@ -307,6 +307,8 @@ public class LLMAPICalls : MagicPromptAPI
     {
         try
         {
+            long seed = requestData["seed"]?.Value<long>() ?? -1;
+            
             if (requestData == null)
             {
                 return CreateErrorResponse("Request data is null");
@@ -410,7 +412,7 @@ public class LLMAPICalls : MagicPromptAPI
             object requestBody;
             try
             {
-                requestBody = GetSchemaType(backend, messageContent, modelId, messageType);
+                requestBody = GetSchemaType(backend, messageContent, modelId, messageType, seed);
             }
             catch (ArgumentException ex)
             {

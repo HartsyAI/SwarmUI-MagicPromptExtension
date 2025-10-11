@@ -36,7 +36,7 @@ public static class BackendSchema
     /// <param name="model">Model name to use</param>
     /// <param name="messageType">Type of message (Text or Vision)</param>
     /// <returns>Returns an object with the schema type for the backend.</returns>
-    public static object GetSchemaType(string type, MessageContent content, string model, MessageType messageType = MessageType.Text)
+    public static object GetSchemaType(string type, MessageContent content, string model, MessageType messageType = MessageType.Text, long seed = -1)
     {
         if (content == null || string.IsNullOrEmpty(model))
         {
@@ -46,9 +46,9 @@ public static class BackendSchema
         _ = content.KeepAlive;
         return type switch
         {
-            "ollama" => OllamaRequestBody(content, model, messageType),
-            "grok" => OpenAICompatibleRequestBody(content, model, messageType, preferPngForBase64: true),
-            "openai" or "openaiapi" or "openrouter" => OpenAICompatibleRequestBody(content, model, messageType, preferPngForBase64: false),
+            "ollama" => OllamaRequestBody(content, model, messageType, seed),
+            "grok" => OpenAICompatibleRequestBody(content, model, messageType, preferPngForBase64: true, seed),
+            "openai" or "openaiapi" or "openrouter" => OpenAICompatibleRequestBody(content, model, messageType, preferPngForBase64: false, seed),
             "anthropic" => AnthropicRequestBody(content, model, messageType),
             _ => throw new ArgumentException($"Unsupported backend type: {type}")
         };
@@ -95,13 +95,18 @@ public static class BackendSchema
     }
 
     /// <summary>Generates a request body for Ollama backend.</summary>
-    private static object OllamaRequestBody(MessageContent content, string model, MessageType messageType)
+    private static object OllamaRequestBody(MessageContent content, string model, MessageType messageType, long seed = -1)
     {
         List<object> messages = [];
         if (!string.IsNullOrEmpty(content.Instructions))
         {
             messages.Add(new { role = "system", content = content.Instructions });
         }
+
+        object options = seed == -1
+            ? new { temperature = 1.0, top_p = 0.9 }
+            : new { temperature = 1.0, top_p = 0.9, seed };
+
         if (messageType == MessageType.Vision && content.Media?.Any() == true)
         {
             messages.Add(new
@@ -110,17 +115,14 @@ public static class BackendSchema
                 content = content.Text,
                 images = content.Media.Select(m => CompressImageForVision(m, "JPG")).ToArray()
             });
+
             return new
             {
                 model,
                 messages = messages.ToArray(),
                 stream = false,
                 keep_alive = content.KeepAlive,
-                options = new
-                {
-                    temperature = 1.0,
-                    top_p = 0.9
-                }
+                options
             };
         }
         messages.Add(new { role = "user", content = content.Text });
@@ -130,16 +132,12 @@ public static class BackendSchema
             messages = messages.ToArray(),
             stream = false,
             keep_alive = content.KeepAlive,
-            options = new
-            {
-                temperature = 1.0,
-                top_p = 0.9
-            }
+            options
         };
     }
 
     /// <summary>Generates a request body for OpenAI and compatible backends.</summary>
-    private static object OpenAICompatibleRequestBody(MessageContent content, string model, MessageType messageType, bool preferPngForBase64)
+    private static object OpenAICompatibleRequestBody(MessageContent content, string model, MessageType messageType, bool preferPngForBase64, long seed = -1)
     {
         List<object> messages = [];
         // Add system message if instructions exist
@@ -171,6 +169,20 @@ public static class BackendSchema
                 role = "user",
                 content = contentList
             });
+
+            if (seed != -1)
+            {
+                return new
+                {
+                    model,
+                    messages = messages.ToArray(),
+                    max_tokens = 1000,
+                    temperature = 1.0,
+                    stream = false,
+                    seed
+                };
+            }
+
             return new
             {
                 model,
@@ -181,6 +193,20 @@ public static class BackendSchema
             };
         }
         messages.Add(new { role = "user", content = content.Text });
+
+        if (seed != -1)
+        {
+            return new
+            {
+                model,
+                messages = messages.ToArray(),
+                max_tokens = 1000,
+                temperature = 1.0,
+                stream = false,
+                seed
+            };
+        }
+
         return new
         {
             model,

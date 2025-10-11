@@ -263,7 +263,8 @@ public class MagicPromptExtension : Extension
             ["modelId"] = userInput.InternalSet.Get(_paramModelId, defVal: string.Empty),
             ["messageType"] = "Text",
             ["action"] = "prompt",
-            ["session_id"] = userInput.SourceSession?.ID ?? string.Empty
+            ["session_id"] = userInput.SourceSession?.ID ?? string.Empty,
+            ["seed"] = userInput.InternalSet.Get(T2IParamTypes.Seed, -1).ToString()
         };
 
         var resp = LLMAPICalls.MagicPromptPhoneHome(request, userInput.SourceSession)
