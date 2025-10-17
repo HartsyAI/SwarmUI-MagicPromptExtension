@@ -10,12 +10,13 @@ namespace Hartsy.Extensions.MagicPromptExtension;
 public class MagicPromptExtension : Extension
 {
     /// <summary>
-    /// Immutable snapshot of the last cached prompt rewrite result.
-    /// Storing as a single volatile reference ensures readers see a consistent pair.
+    /// Cache for prompt rewrite results. Key is the normalized prompt, value is the LLM response.
+    /// Limited to 1,000 entries with LRU (Least Recently Used) eviction.
     /// </summary>
-    private sealed record CacheSnapshot(string NormalizedPrompt, string LlmPrompt);
-
-    private static volatile CacheSnapshot _cacheSnapshot;
+    private static readonly Dictionary<string, string> _promptCache = new();
+    private static readonly LinkedList<string> _cacheAccessOrder = new();
+    private static readonly Dictionary<string, LinkedListNode<string>> _cacheNodes = new();
+    private const int MaxCacheSize = 1000;
     private static readonly object CacheLock = new();
 
     // Cache for models/settings response to avoid duplicate API calls between GetValues lambdas
@@ -179,75 +180,122 @@ public class MagicPromptExtension : Extension
             ? string.Empty
             : new string(prompt.Trim().ToLowerInvariant().Where(c => !char.IsWhiteSpace(c)).ToArray());
 
-        // Fast path: double-checked locking
-        // 1) Check outside the lock to avoid serializing the common case (cache hits).
-        // 2) Acquire the lock and check again to avoid a race if another thread
-        //    populated the cache meanwhile.
-        // Note: Checking only once inside the lock would be correct but increases
-        // contention and latency under concurrency.
+        // Fast path: check cache with lock
         var cachedPrompt = CheckCache(normalizedPrompt);
         if (!string.IsNullOrEmpty(cachedPrompt))
         {
-            Logs.Debug("MagicPrompt: cache hit (pre-lock) for static-tag prompt.");
+            Logs.Debug("MagicPrompt: cache hit for static-tag prompt.");
             return cachedPrompt;
         }
 
-        // Single-lock synchronization to avoid duplicate LLM calls for the same
-        // prompt in parallel
+        // Double-check cache under lock to avoid race conditions
         lock (CacheLock)
         {
-            cachedPrompt = CheckCache(normalizedPrompt);
-            // Double-check cache under the lock in case another thread populated
-            // it meanwhile
-            if (!string.IsNullOrEmpty(cachedPrompt))
+            if (_promptCache.TryGetValue(normalizedPrompt, out cachedPrompt))
             {
                 Logs.Debug("MagicPrompt: cache hit (post-lock) for static-tag prompt.");
-                return cachedPrompt;
-            }
-
-            try
-            {
-                var llmPrompt = MakeLlmRequest(prompt, userInput);
-                if (!string.IsNullOrEmpty(llmPrompt))
+                // Update LRU order
+                if (_cacheNodes.TryGetValue(normalizedPrompt, out var node))
                 {
-                    // Atomically swap the cache snapshot so readers observe a
-                    // consistent pair
-                    _cacheSnapshot = new CacheSnapshot(normalizedPrompt, llmPrompt);
-
-                    return llmPrompt;
+                    _cacheAccessOrder.Remove(node);
+                    _cacheAccessOrder.AddLast(node);
                 }
-            }
-            catch (Exception ex)
-            {
-                Logs.Debug($"MagicPrompt phone home call failed: {ex.Message}");
+                return cachedPrompt;
             }
         }
 
-        return null;
+        // Make LLM request OUTSIDE the lock to avoid blocking other threads
+        // and to prevent async-over-sync deadlocks
+        string llmPrompt;
+        try
+        {
+            llmPrompt = MakeLlmRequest(prompt, userInput);
+        }
+        catch (Exception ex)
+        {
+            Logs.Debug($"MagicPrompt phone home call failed: {ex.Message}");
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(llmPrompt))
+        {
+            return null;
+        }
+
+        // Add to cache under lock
+        lock (CacheLock)
+        {
+            // Check again in case another thread added it while we were making the request
+            if (_promptCache.TryGetValue(normalizedPrompt, out cachedPrompt))
+            {
+                Logs.Debug("MagicPrompt: another thread already cached this prompt.");
+                return cachedPrompt;
+            }
+
+            AddToCache(normalizedPrompt, llmPrompt);
+        }
+
+        return llmPrompt;
     }
 
     private static string CheckCache(string normalizedPrompt)
     {
-        // Atomic snapshot read of the last cache entry
-        var snapshot = _cacheSnapshot;
-        if (snapshot is null)
+        lock (CacheLock)
         {
+            if (_promptCache.TryGetValue(normalizedPrompt, out var cachedResponse))
+            {
+                // Update LRU order: move this key to the end (most recently used)
+                if (_cacheNodes.TryGetValue(normalizedPrompt, out var node))
+                {
+                    _cacheAccessOrder.Remove(node);
+                    _cacheAccessOrder.AddLast(node);
+                }
+                return cachedResponse;
+            }
             return null;
         }
+    }
 
-        if (!string.Equals(snapshot.NormalizedPrompt, normalizedPrompt, StringComparison.Ordinal))
+    private static void AddToCache(string normalizedPrompt, string llmPrompt)
+    {
+        // Prune oldest entries if we've reached the max cache size
+        while (_promptCache.Count >= MaxCacheSize)
         {
-            return null;
+            var oldestNode = _cacheAccessOrder.First;
+            if (oldestNode != null)
+            {
+                var oldestKey = oldestNode.Value;
+                _promptCache.Remove(oldestKey);
+                _cacheNodes.Remove(oldestKey);
+                _cacheAccessOrder.RemoveFirst();
+            }
+            else
+            {
+                break;
+            }
         }
 
-        return string.IsNullOrEmpty(snapshot.LlmPrompt) ? null : snapshot.LlmPrompt;
+        // Add or update the cache entry
+        _promptCache[normalizedPrompt] = llmPrompt;
+        
+        // Remove from access order if already exists (for update case)
+        if (_cacheNodes.TryGetValue(normalizedPrompt, out var existingNode))
+        {
+            _cacheAccessOrder.Remove(existingNode);
+        }
+        
+        // Add to the end (most recently used)
+        var newNode = _cacheAccessOrder.AddLast(normalizedPrompt);
+        _cacheNodes[normalizedPrompt] = newNode;
     }
 
     private static void ClearCache()
     {
         lock (CacheLock)
         {
-            _cacheSnapshot = null;
+            _promptCache.Clear();
+            _cacheAccessOrder.Clear();
+            _cacheNodes.Clear();
         }
     }
 
@@ -263,7 +311,8 @@ public class MagicPromptExtension : Extension
             ["modelId"] = userInput.InternalSet.Get(_paramModelId, defVal: string.Empty),
             ["messageType"] = "Text",
             ["action"] = "prompt",
-            ["session_id"] = userInput.SourceSession?.ID ?? string.Empty
+            ["session_id"] = userInput.SourceSession?.ID ?? string.Empty,
+            ["seed"] = userInput.InternalSet.Get(T2IParamTypes.Seed, -1).ToString()
         };
 
         var resp = LLMAPICalls.MagicPromptPhoneHome(request, userInput.SourceSession)
