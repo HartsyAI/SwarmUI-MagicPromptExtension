@@ -15,6 +15,7 @@ public class MagicPromptExtension : Extension
     /// </summary>
     private static readonly Dictionary<string, string> _promptCache = new();
     private static readonly LinkedList<string> _cacheAccessOrder = new();
+    private static readonly Dictionary<string, LinkedListNode<string>> _cacheNodes = new();
     private const int MaxCacheSize = 1000;
     private static readonly object CacheLock = new();
 
@@ -187,38 +188,54 @@ public class MagicPromptExtension : Extension
             return cachedPrompt;
         }
 
-        // Cache miss: acquire lock to make LLM request and avoid duplicate calls
-        // for the same prompt in parallel
+        // Double-check cache under lock to avoid race conditions
         lock (CacheLock)
         {
-            // Double-check cache in case another thread populated it while we
-            // were waiting for the lock
             if (_promptCache.TryGetValue(normalizedPrompt, out cachedPrompt))
             {
                 Logs.Debug("MagicPrompt: cache hit (post-lock) for static-tag prompt.");
                 // Update LRU order
-                _cacheAccessOrder.Remove(normalizedPrompt);
-                _cacheAccessOrder.AddLast(normalizedPrompt);
-                return cachedPrompt;
-            }
-
-            try
-            {
-                var llmPrompt = MakeLlmRequest(prompt, userInput);
-                if (!string.IsNullOrEmpty(llmPrompt))
+                if (_cacheNodes.TryGetValue(normalizedPrompt, out var node))
                 {
-                    // Add to cache with LRU pruning
-                    AddToCache(normalizedPrompt, llmPrompt);
-                    return llmPrompt;
+                    _cacheAccessOrder.Remove(node);
+                    _cacheAccessOrder.AddLast(node);
                 }
-            }
-            catch (Exception ex)
-            {
-                Logs.Debug($"MagicPrompt phone home call failed: {ex.Message}");
+                return cachedPrompt;
             }
         }
 
-        return null;
+        // Make LLM request OUTSIDE the lock to avoid blocking other threads
+        // and to prevent async-over-sync deadlocks
+        string llmPrompt;
+        try
+        {
+            llmPrompt = MakeLlmRequest(prompt, userInput);
+        }
+        catch (Exception ex)
+        {
+            Logs.Debug($"MagicPrompt phone home call failed: {ex.Message}");
+            return null;
+        }
+
+        if (string.IsNullOrEmpty(llmPrompt))
+        {
+            return null;
+        }
+
+        // Add to cache under lock
+        lock (CacheLock)
+        {
+            // Check again in case another thread added it while we were making the request
+            if (_promptCache.TryGetValue(normalizedPrompt, out cachedPrompt))
+            {
+                Logs.Debug("MagicPrompt: another thread already cached this prompt.");
+                return cachedPrompt;
+            }
+
+            AddToCache(normalizedPrompt, llmPrompt);
+        }
+
+        return llmPrompt;
     }
 
     private static string CheckCache(string normalizedPrompt)
@@ -228,8 +245,11 @@ public class MagicPromptExtension : Extension
             if (_promptCache.TryGetValue(normalizedPrompt, out var cachedResponse))
             {
                 // Update LRU order: move this key to the end (most recently used)
-                _cacheAccessOrder.Remove(normalizedPrompt);
-                _cacheAccessOrder.AddLast(normalizedPrompt);
+                if (_cacheNodes.TryGetValue(normalizedPrompt, out var node))
+                {
+                    _cacheAccessOrder.Remove(node);
+                    _cacheAccessOrder.AddLast(node);
+                }
                 return cachedResponse;
             }
             return null;
@@ -241,10 +261,12 @@ public class MagicPromptExtension : Extension
         // Prune oldest entries if we've reached the max cache size
         while (_promptCache.Count >= MaxCacheSize)
         {
-            var oldestKey = _cacheAccessOrder.First?.Value;
-            if (oldestKey != null)
+            var oldestNode = _cacheAccessOrder.First;
+            if (oldestNode != null)
             {
+                var oldestKey = oldestNode.Value;
                 _promptCache.Remove(oldestKey);
+                _cacheNodes.Remove(oldestKey);
                 _cacheAccessOrder.RemoveFirst();
             }
             else
@@ -257,10 +279,14 @@ public class MagicPromptExtension : Extension
         _promptCache[normalizedPrompt] = llmPrompt;
         
         // Remove from access order if already exists (for update case)
-        _cacheAccessOrder.Remove(normalizedPrompt);
+        if (_cacheNodes.TryGetValue(normalizedPrompt, out var existingNode))
+        {
+            _cacheAccessOrder.Remove(existingNode);
+        }
         
         // Add to the end (most recently used)
-        _cacheAccessOrder.AddLast(normalizedPrompt);
+        var newNode = _cacheAccessOrder.AddLast(normalizedPrompt);
+        _cacheNodes[normalizedPrompt] = newNode;
     }
 
     private static void ClearCache()
@@ -269,6 +295,7 @@ public class MagicPromptExtension : Extension
         {
             _promptCache.Clear();
             _cacheAccessOrder.Clear();
+            _cacheNodes.Clear();
         }
     }
 
