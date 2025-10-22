@@ -239,6 +239,8 @@ public class MagicPromptExtension : Extension
     {
         var normalizedPrompt = NormalizePrompt(prompt);
 
+        TaskCompletionSource<string> pendingTcs = null;
+
         // Fast path: check if already cached
         lock (CacheLock)
         {
@@ -251,12 +253,21 @@ public class MagicPromptExtension : Extension
             if (_pendingRequests.TryGetValue(normalizedPrompt, out var existingTcs))
             {
                 Logs.Debug("MagicPrompt: another thread is already fetching this prompt, waiting for result...");
-                return WaitForPendingRequest(normalizedPrompt, existingTcs);
+                pendingTcs = existingTcs;
+                // Don't return yet - we need to exit the lock first!
             }
+            else
+            {
+                // We are the OWNER - create a TaskCompletionSource for other threads to wait on
+                var tcs = new TaskCompletionSource<string>();
+                _pendingRequests[normalizedPrompt] = tcs;
+            }
+        }
 
-            // We are the OWNER - create a TaskCompletionSource for other threads to wait on
-            var tcs = new TaskCompletionSource<string>();
-            _pendingRequests[normalizedPrompt] = tcs;
+        // If another thread was already fetching, wait for it OUTSIDE the lock
+        if (pendingTcs != null)
+        {
+            return WaitForPendingRequest(normalizedPrompt, pendingTcs);
         }
 
         // Make LLM request OUTSIDE the lock to avoid blocking other threads
