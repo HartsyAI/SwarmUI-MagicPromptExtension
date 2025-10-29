@@ -10,13 +10,21 @@ namespace Hartsy.Extensions.MagicPromptExtension;
 public class MagicPromptExtension : Extension
 {
     /// <summary>
-    /// Immutable snapshot of the last cached prompt rewrite result.
-    /// Storing as a single volatile reference ensures readers see a consistent pair.
+    /// Cache for prompt rewrite results. Key is the normalized prompt, value is the LLM response.
+    /// Limited to 1,000 entries with LRU (Least Recently Used) eviction.
     /// </summary>
-    private sealed record CacheSnapshot(string NormalizedPrompt, string LlmPrompt);
-
-    private static volatile CacheSnapshot _cacheSnapshot;
+    private static readonly Dictionary<string, string> _promptCache = new();
+    private static readonly LinkedList<string> _cacheAccessOrder = new();
+    private static readonly Dictionary<string, LinkedListNode<string>> _cacheNodes = new();
+    private const int MaxCacheSize = 1000;
     private static readonly object CacheLock = new();
+
+    /// <summary>
+    /// Tracks pending LLM requests to prevent duplicate calls for the same normalized prompt.
+    /// Key is the normalized prompt, value is a TaskCompletionSource that completes when the LLM response is ready.
+    /// </summary>
+    private static readonly Dictionary<string, TaskCompletionSource<string>> _pendingRequests = new();
+    private const int MaxWaitTimeMs = 30000; // 30-second timeout for waiting threads
 
     // Cache for models/settings response to avoid duplicate API calls between GetValues lambdas
     private static readonly object ModelsCacheLock = new();
@@ -173,81 +181,218 @@ public class MagicPromptExtension : Extension
         userInput.InternalSet.Set(T2IParamTypes.Prompt, prompt.Replace("<mporiginal>", mpprompt));
     }
 
-    private static string HandleCacheableRequest(string prompt, T2IParamInput userInput)
+    /// <summary>
+    /// Normalizes a prompt by trimming, converting to lowercase, and removing all whitespace.
+    /// Used for cache key generation to ensure consistent matching.
+    /// </summary>
+    private static string NormalizePrompt(string prompt)
     {
-        var normalizedPrompt = string.IsNullOrWhiteSpace(prompt)
+        return string.IsNullOrWhiteSpace(prompt)
             ? string.Empty
             : new string(prompt.Trim().ToLowerInvariant().Where(c => !char.IsWhiteSpace(c)).ToArray());
-
-        // Fast path: double-checked locking
-        // 1) Check outside the lock to avoid serializing the common case (cache hits).
-        // 2) Acquire the lock and check again to avoid a race if another thread
-        //    populated the cache meanwhile.
-        // Note: Checking only once inside the lock would be correct but increases
-        // contention and latency under concurrency.
-        var cachedPrompt = CheckCache(normalizedPrompt);
-        if (!string.IsNullOrEmpty(cachedPrompt))
-        {
-            Logs.Debug("MagicPrompt: cache hit (pre-lock) for static-tag prompt.");
-            return cachedPrompt;
-        }
-
-        // Single-lock synchronization to avoid duplicate LLM calls for the same
-        // prompt in parallel
-        lock (CacheLock)
-        {
-            cachedPrompt = CheckCache(normalizedPrompt);
-            // Double-check cache under the lock in case another thread populated
-            // it meanwhile
-            if (!string.IsNullOrEmpty(cachedPrompt))
-            {
-                Logs.Debug("MagicPrompt: cache hit (post-lock) for static-tag prompt.");
-                return cachedPrompt;
-            }
-
-            try
-            {
-                var llmPrompt = MakeLlmRequest(prompt, userInput);
-                if (!string.IsNullOrEmpty(llmPrompt))
-                {
-                    // Atomically swap the cache snapshot so readers observe a
-                    // consistent pair
-                    _cacheSnapshot = new CacheSnapshot(normalizedPrompt, llmPrompt);
-
-                    return llmPrompt;
-                }
-            }
-            catch (Exception ex)
-            {
-                Logs.Debug($"MagicPrompt phone home call failed: {ex.Message}");
-            }
-        }
-
-        return null;
     }
 
-    private static string CheckCache(string normalizedPrompt)
+    /// <summary>
+    /// Attempts to retrieve a cached result for the given normalized prompt.
+    /// Updates LRU order if found.
+    /// </summary>
+    /// <remarks>Must be called within a lock(CacheLock) block.</remarks>
+    private static bool TryGetFromCache(string normalizedPrompt, out string cachedResult)
     {
-        // Atomic snapshot read of the last cache entry
-        var snapshot = _cacheSnapshot;
-        if (snapshot is null)
+        if (_promptCache.TryGetValue(normalizedPrompt, out cachedResult))
         {
+            Logs.Debug("MagicPrompt: cache hit for static-tag prompt.");
+            // Update LRU order: move to end (most recently used)
+            if (_cacheNodes.TryGetValue(normalizedPrompt, out var node))
+            {
+                _cacheAccessOrder.Remove(node);
+                _cacheAccessOrder.AddLast(node);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Signals all waiting threads that the LLM request has completed.
+    /// </summary>
+    /// <remarks>Must be called within a lock(CacheLock) block.</remarks>
+    private static void SignalPendingRequest(string normalizedPrompt, string result)
+    {
+        if (_pendingRequests.TryGetValue(normalizedPrompt, out var tcs))
+        {
+            // Always set a result (even if empty), never leave TCS pending
+            tcs.SetResult(result ?? string.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Removes a pending request from tracking, typically after completion or failure.
+    /// </summary>
+    /// <remarks>Must be called within a lock(CacheLock) block.</remarks>
+    private static void CleanupPendingRequest(string normalizedPrompt)
+    {
+        _pendingRequests.Remove(normalizedPrompt);
+    }
+
+    private static string HandleCacheableRequest(string prompt, T2IParamInput userInput)
+    {
+        var normalizedPrompt = NormalizePrompt(prompt);
+
+        TaskCompletionSource<string> pendingTcs = null;
+
+        // Fast path: check if already cached
+        lock (CacheLock)
+        {
+            if (TryGetFromCache(normalizedPrompt, out var cachedResult))
+            {
+                return cachedResult;
+            }
+
+            // Check if another thread is already fetching this prompt
+            if (_pendingRequests.TryGetValue(normalizedPrompt, out var existingTcs))
+            {
+                Logs.Debug("MagicPrompt: another thread is already fetching this prompt, waiting for result...");
+                pendingTcs = existingTcs;
+                // Don't return yet - we need to exit the lock first!
+            }
+            else
+            {
+                // We are the OWNER - create a TaskCompletionSource for other threads to wait on
+                var tcs = new TaskCompletionSource<string>();
+                _pendingRequests[normalizedPrompt] = tcs;
+            }
+        }
+
+        // If another thread was already fetching, wait for it OUTSIDE the lock
+        if (pendingTcs != null)
+        {
+            return WaitForPendingRequest(normalizedPrompt, pendingTcs);
+        }
+
+        // Make LLM request OUTSIDE the lock to avoid blocking other threads
+        string llmResult;
+        try
+        {
+            llmResult = MakeLlmRequest(prompt, userInput);
+        }
+        catch (Exception ex)
+        {
+            Logs.Error($"MagicPrompt LLM request failed: {ex.Message}");
+            
+            // Clean up the pending request so other threads can retry
+            lock (CacheLock)
+            {
+                CleanupPendingRequest(normalizedPrompt);
+            }
+
             return null;
         }
 
-        if (!string.Equals(snapshot.NormalizedPrompt, normalizedPrompt, StringComparison.Ordinal))
+        // Add successful result to cache and signal waiting threads
+        lock (CacheLock)
         {
-            return null;
+            // Store in cache even if null to avoid retrying failed requests
+            AddToCache(normalizedPrompt, llmResult ?? string.Empty);
+            
+            // Signal all waiting threads with the result
+            SignalPendingRequest(normalizedPrompt, llmResult);
+            
+            // Clean up the pending request entry
+            CleanupPendingRequest(normalizedPrompt);
         }
 
-        return string.IsNullOrEmpty(snapshot.LlmPrompt) ? null : snapshot.LlmPrompt;
+        return llmResult;
+    }
+
+    /// <summary>
+    /// Waits for a pending LLM request to complete with a timeout.
+    /// This is called by non-owner threads that detected another thread is already fetching the result.
+    /// </summary>
+    private static string WaitForPendingRequest(string normalizedPrompt, TaskCompletionSource<string> tcs)
+    {
+        try
+        {
+            // Wait for the owner thread to complete the request
+            if (tcs.Task.Wait(MaxWaitTimeMs))
+            {
+                var result = tcs.Task.Result;
+                
+                // If result is empty, it means LLM request failed or returned empty
+                if (string.IsNullOrEmpty(result))
+                {
+                    Logs.Debug("MagicPrompt: waited for owner request, but got empty result");
+                    return null;
+                }
+
+                Logs.Debug($"MagicPrompt: waited {MaxWaitTimeMs}ms for owner request, got result");
+                return result;
+            }
+            else
+            {
+                Logs.Warning($"MagicPrompt: timeout after {MaxWaitTimeMs}ms waiting for owner request to complete");
+                return null;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            Logs.Error("MagicPrompt: pending request was cancelled");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Logs.Error($"MagicPrompt: error waiting for pending request: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static void AddToCache(string normalizedPrompt, string llmPrompt)
+    {
+        // Prune oldest entries if we've reached the max cache size
+        while (_promptCache.Count >= MaxCacheSize)
+        {
+            var oldestNode = _cacheAccessOrder.First;
+            if (oldestNode != null)
+            {
+                var oldestKey = oldestNode.Value;
+                _promptCache.Remove(oldestKey);
+                _cacheNodes.Remove(oldestKey);
+                _cacheAccessOrder.RemoveFirst();
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        // Add or update the cache entry
+        _promptCache[normalizedPrompt] = llmPrompt;
+        
+        // Remove from access order if already exists (for update case)
+        if (_cacheNodes.TryGetValue(normalizedPrompt, out var existingNode))
+        {
+            _cacheAccessOrder.Remove(existingNode);
+        }
+        
+        // Add to the end (most recently used)
+        var newNode = _cacheAccessOrder.AddLast(normalizedPrompt);
+        _cacheNodes[normalizedPrompt] = newNode;
     }
 
     private static void ClearCache()
     {
         lock (CacheLock)
         {
-            _cacheSnapshot = null;
+            _promptCache.Clear();
+            _cacheAccessOrder.Clear();
+            _cacheNodes.Clear();
+
+            // Cancel any pending requests so waiting threads don't hang indefinitely
+            foreach (var tcs in _pendingRequests.Values)
+            {
+                tcs.TrySetCanceled();
+            }
+            _pendingRequests.Clear();
         }
     }
 
@@ -263,7 +408,8 @@ public class MagicPromptExtension : Extension
             ["modelId"] = userInput.InternalSet.Get(_paramModelId, defVal: string.Empty),
             ["messageType"] = "Text",
             ["action"] = "prompt",
-            ["session_id"] = userInput.SourceSession?.ID ?? string.Empty
+            ["session_id"] = userInput.SourceSession?.ID ?? string.Empty,
+            ["seed"] = userInput.InternalSet.Get(T2IParamTypes.Seed, -1).ToString()
         };
 
         var resp = LLMAPICalls.MagicPromptPhoneHome(request, userInput.SourceSession)
