@@ -1,5 +1,6 @@
 using SixLabors.ImageSharp.Processing;
 using SwarmUI.Utils;
+using SwarmUI.Media;
 using Image = SwarmUI.Utils.Image;
 using ISImage = SixLabors.ImageSharp.Image;
 using ISImage32 = SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>;
@@ -66,9 +67,9 @@ public static class BackendSchema
         }
         try
         {
-            Image image = Image.FromDataString($"data:{media.MediaType};base64,{media.Data}");
+            ImageFile image = ImageFile.FromDataString($"data:{media.MediaType};base64,{media.Data}");
             // Skip compression for videos etc..
-            if (image.Type != Image.ImageType.IMAGE)
+            if (image.Type.MetaType != MediaMetaType.Image)
             {
                 return media.Data;
             }
@@ -83,7 +84,8 @@ public static class BackendSchema
             }
             // Set compression quality based on format TODO: This needs to be tested and adjusted
             int quality = targetFormat == "PNG" ? 60 : 40;
-            Image compressedImage = new Image(img).ConvertTo(targetFormat, quality: quality);
+            ImageFile tempImage = new Image(ImageFile.ISImgToPngBytes(img), image.Type);
+            ImageFile compressedImage = tempImage.ConvertTo(targetFormat, quality: quality);
             // Return just the base64 data (without the data:image/webp;base64, prefix)
             return compressedImage.AsBase64;
         }
