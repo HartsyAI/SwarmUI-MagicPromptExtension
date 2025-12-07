@@ -190,7 +190,9 @@ public static class BackendSchema
                 model,
                 messages = messages.ToArray(),
                 max_tokens = 1000,
-                temperature = 1.0,
+                temperature = 1.1,
+                min_p=0.05,
+                top_p=0.95,
                 stream = false
             };
         }
@@ -213,9 +215,10 @@ public static class BackendSchema
         {
             model,
             messages = messages.ToArray(),
-            temperature = 1.0,
+            temperature = 1.1,
             max_tokens = 1000,
             top_p = 0.9,
+            min_p = 0.05,
             stream = false
         };
     }
