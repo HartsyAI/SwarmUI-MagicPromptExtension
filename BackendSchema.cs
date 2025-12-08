@@ -1,4 +1,5 @@
 using SixLabors.ImageSharp.Processing;
+using SwarmUI.Media;
 using SwarmUI.Utils;
 using SwarmUI.Media;
 using Image = SwarmUI.Utils.Image;
@@ -67,10 +68,15 @@ public static class BackendSchema
         }
         try
         {
-            ImageFile image = ImageFile.FromDataString($"data:{media.MediaType};base64,{media.Data}");
-            // Skip compression for videos etc..
-            if (image.Type.MetaType != MediaMetaType.Image)
+            Image image = Image.FromDataString($"data:{media.MediaType};base64,{media.Data}") as SwarmUI.Utils.Image;
+            if (image == null)
             {
+                Logs.Error("Failed to parse image data.");
+                return media.Data;
+            }
+            if (image.Type.MetaType != MediaMetaType.Image && image.Type.MetaType != MediaMetaType.Animation)
+            {
+                Logs.Error("Media type is not supported for compression.");
                 return media.Data;
             }
             ISImage img = image.ToIS;
@@ -82,13 +88,18 @@ public static class BackendSchema
                 int newHeight = (int)(img.Height * scaleFactor);
                 img.Mutate(i => i.Resize(newWidth, newHeight));
             }
-            // Set compression quality based on format TODO: This needs to be tested and adjusted
             int quality = targetFormat == "PNG" ? 60 : 40;
-            ImageFile tempImage = new Image(ImageFile.ISImgToPngBytes(img), image.Type);
-            ImageFile compressedImage = tempImage.ConvertTo(targetFormat, quality: quality);
-            // Return just the base64 data (without the data:image/webp;base64, prefix)
+            var imageFile = new Image(img) as SwarmUI.Media.ImageFile;
+            if (imageFile == null)
+            {
+                Logs.Error("Failed to convert image to ImageFile.");
+                return media.Data;
+            }
+            var compressedImage = imageFile.ConvertTo(targetFormat, quality: quality);
             return compressedImage.AsBase64;
+
         }
+
         catch (Exception ex)
         {
             Logs.Error($"Failed to compress image: {ex.Message}");
@@ -124,7 +135,11 @@ public static class BackendSchema
                 messages = messages.ToArray(),
                 stream = false,
                 keep_alive = content.KeepAlive,
-                options
+                options = new
+                {
+                    temperature = 1.0,
+                    top_p = 0.9,
+                }
             };
         }
         messages.Add(new { role = "user", content = content.Text });
@@ -134,7 +149,11 @@ public static class BackendSchema
             messages = messages.ToArray(),
             stream = false,
             keep_alive = content.KeepAlive,
-            options
+            options = new
+            {
+                temperature = 1.0,
+                top_p = 0.9,
+            }
         };
     }
 
@@ -219,7 +238,7 @@ public static class BackendSchema
             max_tokens = 1000,
             top_p = 0.9,
             min_p = 0.05,
-            stream = false
+            stream = false,
         };
     }
 
