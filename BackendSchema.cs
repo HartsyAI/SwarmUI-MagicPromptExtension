@@ -210,8 +210,8 @@ public static class BackendSchema
                 messages = messages.ToArray(),
                 max_tokens = 1000,
                 temperature = 1.1,
-                min_p=0.05,
-                top_p=0.95,
+                min_p = 0.05,
+                top_p = 0.95,
                 stream = false
             };
         }
