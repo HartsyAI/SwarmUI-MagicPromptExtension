@@ -14,7 +14,15 @@ namespace Hartsy.Extensions.MagicPromptExtension.WebAPI;
 
 public class LLMAPICalls : MagicPromptAPI
 {
-    protected static readonly HttpClient HttpClient = NetworkBackendUtils.MakeHttpClient();
+    // Set HttpClient timeout to 120 seconds
+    protected static readonly HttpClient HttpClient = CreateHttpClientWithTimeout();
+
+    private static HttpClient CreateHttpClientWithTimeout()
+    {
+        var client = NetworkBackendUtils.MakeHttpClient();
+        client.Timeout = TimeSpan.FromSeconds(120);
+        return client;
+    }
 
     /// <summary>Fetches available models from the LLM API endpoint.</summary>
     /// <returns>A JSON object containing the models or an error message.</returns>
@@ -418,19 +426,19 @@ public class LLMAPICalls : MagicPromptAPI
             {
                 // Typically thrown for validation issues (e.g., Grok vision requires direct JPG/PNG URLs)
                 Logs.Error($"Request build error for {backend}: {ex.Message}");
-                return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.UnsupportedParameterImage, ex.Message, backend));
+                return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.ValidationError, ex.Message, backend));
             }
-            string jsonContent = JsonSerializer.Serialize(requestBody);
-            request.Content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
             try
             {
                 // Send request and handle response
                 // Detailed diagnostics to help trace hanging requests
                 Logs.Debug($"[MagicPrompt] Sending request | backend={backend} | type={(messageType == MessageType.Vision ? "vision" : "chat")} | endpoint={endpoint} | model={modelId}");
                 // Use KeepAlive (if provided) as a soft hint for timeout.
-                // Increase defaults and caps, especially for Ollama on slower machines.
-                int cap = backend == "ollama" ? 300 : 180;           // maximum allowed timeout (seconds)
-                int defaultTimeout = backend == "ollama" ? 120 : 60;  // default timeout when KeepAlive is not set
+                // Increase defaults and caps, especially for Ollama on slower machines and vision requests.
+                // Vision/image captioning requests get significantly longer timeouts due to image processing overhead.
+                bool isVisionRequest = messageType == MessageType.Vision;
+                int cap = backend == "ollama" ? 300 : (isVisionRequest ? 240 : 180);           // maximum allowed timeout (seconds)
+                int defaultTimeout = backend == "ollama" ? 120 : (isVisionRequest ? 120 : 60);  // default timeout when KeepAlive is not set
                 int timeoutSec = messageContent.KeepAlive.HasValue && messageContent.KeepAlive.Value > 0
                     ? Math.Min(messageContent.KeepAlive.Value, cap)
                     : defaultTimeout;
