@@ -215,7 +215,7 @@ TABLE OF CONTENTS:
         /* Unselected state */
         border: 1px solid var(--shadow);
         background: var(--shadow);
-        color: var(--emphasis-text);
+        color: var(--text-soft);
     }
 
     #settingsModal .btn-check:checked + .btn-outline-primary {
