@@ -259,6 +259,7 @@ TABLE OF CONTENTS:
     margin-bottom: 1rem;
     display: flex;
     flex-wrap: wrap;
+    gap: 0.35rem;
     width: 100%;
 }
 
