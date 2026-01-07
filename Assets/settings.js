@@ -1278,8 +1278,11 @@ function exportInstruction(id) {
     return;
   }
   const instruction = MP.settings.instructions.custom[id];
+  const exportData = {
+    [id]: instruction
+  };
   // Create JSON blob and trigger download
-  const json = JSON.stringify(instruction, null, 2);
+  const json = JSON.stringify(exportData, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1292,7 +1295,69 @@ function exportInstruction(id) {
 }
 
 /**
+ * Deletes all custom instructions after confirmation
+ */
+function deleteAllInstructions() {
+  const customInstructions = MP.settings.instructions?.custom || {};
+  const instructionEntries = Object.entries(customInstructions).filter(
+    ([_, instruction]) => !instruction?.deleted
+  );
+
+  if (instructionEntries.length === 0) {
+    alert('No custom instructions to delete.');
+    return;
+  }
+
+  const count = instructionEntries.length;
+  if (!confirm(`Are you sure you want to delete all ${count} custom instruction${count !== 1 ? 's' : ''}?\n\nThis action cannot be undone.`)) {
+    return;
+  }
+
+  // Delete each instruction
+  instructionEntries.forEach(([id]) => {
+    deleteCustomInstruction(id);
+  });
+
+  alert(`Successfully deleted ${count} custom instruction${count !== 1 ? 's' : ''}.`);
+}
+
+/**
+ * Exports all custom instructions as a JSON file
+ */
+function exportAllInstructions() {
+  const customInstructions = MP.settings.instructions?.custom || {};
+  const instructionEntries = Object.entries(customInstructions).filter(
+    ([_, instruction]) => !instruction?.deleted
+  );
+
+  if (instructionEntries.length === 0) {
+    alert('No custom instructions to export.');
+    return;
+  }
+
+  // Create export object keyed by instruction ID
+  const exportData = {};
+  instructionEntries.forEach(([id, instruction]) => {
+    exportData[id] = instruction;
+  });
+
+  // Create JSON blob and trigger download
+  const json = JSON.stringify(exportData, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const timestamp = new Date().toISOString().slice(0, 10);
+  a.download = `magicprompt-instructions-${timestamp}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
  * Imports custom instructions from a JSON file
+ * Expected format: { "id": { id, title, content, tooltip, categories, ... } }
  * @param {File} file - JSON file to import
  */
 function importCustomInstructions(file) {
@@ -1585,6 +1650,7 @@ function initInstructionsUI() {
       showCustomInstructionModal()
     );
   }
+  // Import button - use cloneNode to prevent duplicate event listeners
   const importInstructionsBtn = document.getElementById(
     'importInstructionsBtn'
   );
@@ -1592,15 +1658,31 @@ function initInstructionsUI() {
     'importInstructionsInput'
   );
   if (importInstructionsBtn && importInstructionsInput) {
-    importInstructionsBtn.addEventListener('click', () => {
-      importInstructionsInput.click();
-    });
-    importInstructionsInput.addEventListener('change', (e) => {
+    const newImportInput = importInstructionsInput.cloneNode(true);
+    importInstructionsInput.parentNode.replaceChild(newImportInput, importInstructionsInput);
+    newImportInput.addEventListener('change', (e) => {
       if (e.target.files.length > 0) {
         importCustomInstructions(e.target.files[0]);
         e.target.value = ''; // Reset input
       }
     });
+    const newImportBtn = importInstructionsBtn.cloneNode(true);
+    importInstructionsBtn.parentNode.replaceChild(newImportBtn, importInstructionsBtn);
+    newImportBtn.addEventListener('click', () => {
+      newImportInput.click();
+    });
+  }
+  const exportAllBtn = document.getElementById('exportAllInstructionsBtn');
+  if (exportAllBtn) {
+    const newExportAllBtn = exportAllBtn.cloneNode(true);
+    exportAllBtn.parentNode.replaceChild(newExportAllBtn, exportAllBtn);
+    newExportAllBtn.addEventListener('click', () => exportAllInstructions());
+  }
+  const deleteAllBtn = document.getElementById('deleteAllInstructionsBtn');
+  if (deleteAllBtn) {
+    const newDeleteAllBtn = deleteAllBtn.cloneNode(true);
+    deleteAllBtn.parentNode.replaceChild(newDeleteAllBtn, deleteAllBtn);
+    newDeleteAllBtn.addEventListener('click', () => deleteAllInstructions());
   }
   return {
     updateInstructionUI,
@@ -2291,6 +2373,9 @@ if (typeof MP !== 'undefined') {
     updateCustomInstruction,
     deleteCustomInstruction,
     importCustomInstructions,
+    exportInstruction,
+    exportAllInstructions,
+    deleteAllInstructions,
     toggleInstructionCreationMode,
     generateInstructionWithAI,
     regenerateInstruction,
