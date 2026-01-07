@@ -325,7 +325,17 @@
 
                                 <!-- Custom Instructions Management Section -->
                                 <div class="instruction-section">
-                                    <h6 class="section-subtitle">Custom Instructions</h6>
+                                    <h6 class="section-subtitle">
+                                        Custom Instructions
+                                        <span class="section-subtitle-buttons">
+                                            <button type="button" class="btn btn-sm mp-export-all-btn" id="exportAllInstructionsBtn" title="Export All Custom Instructions">
+                                                <i class="fas fa-download"></i> Export All
+                                            </button>
+                                            <button type="button" class="btn btn-sm mp-delete-all-btn" id="deleteAllInstructionsBtn" title="Delete All Custom Instructions">
+                                                <i class="fas fa-trash"></i> Delete All
+                                            </button>
+                                        </span>
+                                    </h6>
                                     <div id="customInstructionsList" class="custom-instructions-list">
                                         <!-- Custom instructions listed here -->
                                         <div class="text-center text-muted py-3" id="noCustomInstructionsMsg">

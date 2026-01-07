@@ -252,7 +252,63 @@ TABLE OF CONTENTS:
     font-weight: 600;
     padding-bottom: 0.5rem;
     border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
+
+.section-subtitle-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+#settingsModal .mp-export-all-btn {
+    border: 1px solid var(--border-color);
+    background-color: var(--background);
+    color: var(--text);
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: normal;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+    #settingsModal .mp-export-all-btn:hover {
+        background-color: var(--shadow);
+    }
+
+    #settingsModal .mp-export-all-btn i {
+        font-size: 0.85em;
+    }
+
+#settingsModal .mp-delete-all-btn {
+    border: 1px solid var(--danger-color, #dc3545);
+    background-color: transparent;
+    color: var(--danger-color, #dc3545);
+    padding: 0.2rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: normal;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+    #settingsModal .mp-delete-all-btn:hover {
+        background-color: var(--danger-color, #dc3545);
+        color: white;
+    }
+
+    #settingsModal .mp-delete-all-btn i {
+        font-size: 0.85em;
+    }
 
 /* Instruction type buttons */
 #settingsModal #instructionTypeGroup {
