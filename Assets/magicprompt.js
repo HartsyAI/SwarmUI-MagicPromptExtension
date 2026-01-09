@@ -562,7 +562,7 @@ function addPromptButtons() {
 function wildcardSeedGenerator() {
     document.addEventListener('click', function (e) {
         const MAX_WC_SEED = 4294967295;
-        const extensionEnabled = document.getElementById('input_group_content_magicprompt_toggle');
+        const extensionEnabled = document.getElementById('input_group_content_magicpromptautoenable_toggle');
         const generateEnabled = document.getElementById('input_mpgeneratewildcardseed');
 
         if (
