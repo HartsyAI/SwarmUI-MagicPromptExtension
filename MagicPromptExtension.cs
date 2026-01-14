@@ -4,6 +4,7 @@ using SwarmUI.Utils;
 using SwarmUI.Text2Image;
 using Newtonsoft.Json.Linq;
 using SwarmUI.Accounts;
+using FreneticUtilities.FreneticExtensions;
 
 namespace Hartsy.Extensions.MagicPromptExtension;
 
@@ -108,6 +109,10 @@ public class MagicPromptExtension : Extension
 
         T2IPromptHandling.PromptTagPostProcessors["mpprompt"] = (data, context) =>
         {
+            if (context.Variables.Count > 0 && context.Input != null)
+            {
+                context.Input.ExtraMeta["mp_variables"] = new Dictionary<string, string>(context.Variables);
+            }
             return $"<mpprompt:{context.Parse(data)}>";
         };
 
@@ -403,7 +408,7 @@ public class MagicPromptExtension : Extension
             ["messageContent"] = new JObject
             {
                 ["text"] = prompt,
-                ["instructions"] = ResolveInstructions(userInput.InternalSet.Get(_paramInstructions))
+                ["instructions"] = ResolveInstructions(userInput)
             },
             ["modelId"] = userInput.InternalSet.Get(_paramModelId, defVal: string.Empty),
             ["messageType"] = "Text",
@@ -425,8 +430,10 @@ public class MagicPromptExtension : Extension
         return string.IsNullOrWhiteSpace(llmResponse) ? null : llmResponse;
     }
 
-    private static string ResolveInstructions(string instructions)
+    private static string ResolveInstructions(T2IParamInput userInput)
     {
+        var instructions = userInput.InternalSet.Get(_paramInstructions);
+
         var sessionSettings = SessionSettings.GetMagicPromptSettings()
             .GetAwaiter()
             .GetResult();
@@ -458,7 +465,7 @@ public class MagicPromptExtension : Extension
         {
             var title = instructionsObj["custom"][instructions]?["title"]?.ToString();
             Logs.Debug($"MagicPrompt: using custom instructions \"{title}\"");
-            return customPrompt;
+            return SubstituteVariablesInInstructions(customPrompt, userInput);
         }
 
         var basePrompt = instructionsObj[instructions]?.ToString();
@@ -470,6 +477,46 @@ public class MagicPromptExtension : Extension
 
         Logs.Debug("MagicPrompt: using base instructions \"prompt\"");
         return instructionsObj["prompt"]?.ToString();
+    }
+
+    /// <summary>
+    /// Substitutes &lt;var:name&gt; tags in instructions with variable values from the prompt.
+    /// Variables are set in the prompt using &lt;setvar[name]:value&gt; syntax.
+    /// </summary>
+    private static string SubstituteVariablesInInstructions(string instructions, T2IParamInput userInput)
+    {
+        if (string.IsNullOrWhiteSpace(instructions) || !instructions.Contains("<var:"))
+        {
+            return instructions;
+        }
+
+        if (!userInput.ExtraMeta.TryGetValue("mp_variables", out object variablesObj) ||
+            variablesObj is not Dictionary<string, string> variables ||
+            variables.Count == 0)
+        {
+            return instructions;
+        }
+
+        var parsedInstructions = FreneticUtilities.FreneticToolkit.StringConversionHelper.QuickSimpleTagFiller(
+            instructions, "<", ">", tag =>
+            {
+                string prefix = tag.BeforeAndAfter(':', out string varName);
+                if (prefix.ToLowerInvariant() != "var")
+                {
+                    return $"<{tag}>";
+                }
+
+                if (variables.TryGetValue(varName, out string value))
+                {
+                    Logs.Debug($"MagicPrompt: substituted <var:{varName}> with \"{value}\" in instructions");
+                    return value;
+                }
+
+                Logs.Warning($"MagicPrompt: variable '{varName}' not found in prompt for instruction substitution");
+                return $"<var:{varName}>";
+            }, false, 0);
+
+        return parsedInstructions;
     }
 
     private static List<string> GetModelList(Session session)
