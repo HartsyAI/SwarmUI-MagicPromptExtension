@@ -16,6 +16,7 @@ public class SessionSettings : MagicPromptAPI
         {
             ["baseurl"] = "http://localhost:11434",
             ["unloadModel"] = false,
+            ["timeout"] = 120,
             ["endpoints"] = new JObject
             {
                 ["chat"] = "/api/chat",
@@ -26,6 +27,7 @@ public class SessionSettings : MagicPromptAPI
         {
             ["baseurl"] = "http://localhost:11434",
             ["unloadModel"] = false,
+            ["timeout"] = 120,
             ["endpoints"] = new JObject
             {
                 ["chat"] = "v1/chat/completions",
@@ -35,6 +37,7 @@ public class SessionSettings : MagicPromptAPI
         ["openai"] = new JObject
         {
             ["baseurl"] = "https://api.openai.com",
+            ["timeout"] = 20,
             ["endpoints"] = new JObject
             {
                 ["chat"] = "v1/chat/completions",
@@ -44,6 +47,7 @@ public class SessionSettings : MagicPromptAPI
         ["anthropic"] = new JObject
         {
             ["baseurl"] = "https://api.anthropic.com",
+            ["timeout"] = 20,
             ["endpoints"] = new JObject
             {
                 ["chat"] = "v1/messages",
@@ -53,6 +57,7 @@ public class SessionSettings : MagicPromptAPI
         ["openrouter"] = new JObject
         {
             ["baseurl"] = "https://openrouter.ai",
+            ["timeout"] = 20,
             ["endpoints"] = new JObject
             {
                 ["chat"] = "/api/v1/chat/completions",
@@ -62,6 +67,7 @@ public class SessionSettings : MagicPromptAPI
         ["grok"] = new JObject
         {
             ["baseurl"] = "https://api.x.ai",
+            ["timeout"] = 20,
             ["endpoints"] = new JObject
             {
                 ["chat"] = "/v1/chat/completions",

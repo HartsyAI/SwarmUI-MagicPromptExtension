@@ -186,6 +186,10 @@ async function saveSettings(skipFeatureMappings = false) {
     if (!skipFeatureMappings) {
       saveFeatureMappingsFromUI();
     }
+    const chatTimeout = parseInt(document.getElementById('chatTimeout')?.value, 10);
+    const visionTimeout = isLinked
+      ? chatTimeout
+      : parseInt(document.getElementById('visionTimeout')?.value, 10);
     // Create settings object matching exact structure expected by C# DefaultSettings
     const settings = {
       // Core settings
@@ -200,11 +204,13 @@ async function saveSettings(skipFeatureMappings = false) {
           ...MP.settings.backends[chatBackendId],
           baseurl: chatBaseUrl,
           unloadmodel: document.getElementById('unload_models_toggle')?.checked,
+          timeout: !isNaN(chatTimeout) && chatTimeout >= 0 ? chatTimeout : MP.settings.backends[chatBackendId]?.timeout,
         },
         [visionBackendId]: {
           ...MP.settings.backends[visionBackendId],
           baseurl: visionBaseUrl,
           unloadmodel: document.getElementById('unload_models_toggle')?.checked,
+          timeout: !isNaN(visionTimeout) && visionTimeout >= 0 ? visionTimeout : MP.settings.backends[visionBackendId]?.timeout,
         },
       },
       instructions: MP.settings.instructions,
@@ -1807,6 +1813,11 @@ function initSettingsModal() {
     if (backendUrl) {
       backendUrl.value = MP.settings.backends[currentBackend]?.baseurl || '';
     }
+    const chatTimeoutInput = document.getElementById('chatTimeout');
+    if (chatTimeoutInput) {
+      const defaultChatTimeout = currentBackend === 'ollama' || currentBackend === 'openaiapi' ? 120 : 60;
+      chatTimeoutInput.value = MP.settings.backends[currentBackend]?.timeout ?? defaultChatTimeout;
+    }
     const currentVisionBackend = MP.settings.visionbackend || 'ollama';
     const currentVisionBackendRadio = document.getElementById(
       `${currentVisionBackend}VisionBtn`
@@ -1819,6 +1830,11 @@ function initSettingsModal() {
     if (visionBackendUrl) {
       visionBackendUrl.value =
         MP.settings.backends[currentVisionBackend]?.baseurl || '';
+    }
+    const visionTimeoutInput = document.getElementById('visionTimeout');
+    if (visionTimeoutInput) {
+      const defaultVisionTimeout = currentVisionBackend === 'ollama' || currentVisionBackend === 'openaiapi' ? 120 : 60;
+      visionTimeoutInput.value = MP.settings.backends[currentVisionBackend]?.timeout ?? defaultVisionTimeout;
     }
     initInstructionsUI();
     initInstructionsTabInterface();
@@ -1871,6 +1887,11 @@ function initSettingsModal() {
       radio.addEventListener('change', async (e) => {
         const backend = e.target.id.replace('LLMBtn', '').toLowerCase();
         updateBaseUrlVisibility(backend, false);
+        const chatTimeoutInput = document.getElementById('chatTimeout');
+        if (chatTimeoutInput) {
+          const defaultTimeout = backend === 'ollama' || backend === 'openaiapi' ? 120 : 60;
+          chatTimeoutInput.value = MP.settings.backends[backend]?.timeout ?? defaultTimeout;
+        }
         const modelSelect = document.getElementById('modelSelect');
         if (modelSelect) {
           modelSelect.innerHTML = '';
@@ -1933,6 +1954,11 @@ function initSettingsModal() {
       radio.addEventListener('change', async (e) => {
         const backend = e.target.id.replace('VisionBtn', '').toLowerCase();
         updateBaseUrlVisibility(backend, true);
+        const visionTimeoutInput = document.getElementById('visionTimeout');
+        if (visionTimeoutInput) {
+          const defaultTimeout = backend === 'ollama' || backend === 'openaiapi' ? 120 : 60;
+          visionTimeoutInput.value = MP.settings.backends[backend]?.timeout ?? defaultTimeout;
+        }
         const modelSelect = document.getElementById('visionModel');
         if (modelSelect) {
           modelSelect.innerHTML = '';
@@ -2070,6 +2096,63 @@ function initSettingsModal() {
         debouncedSaveUrl(e.target.value);
       });
     }
+    const chatTimeoutInputEl = document.getElementById('chatTimeout');
+    if (chatTimeoutInputEl) {
+      const debouncedSaveChatTimeout = debounce(async function (value) {
+        try {
+          const currentBackend =
+            document
+              .querySelector('input[name="llmBackend"]:checked')
+              ?.id.replace('LLMBtn', '')
+              .toLowerCase() || MP.settings.backend;
+          const timeoutValue = parseInt(value, 10);
+          if (!isNaN(timeoutValue) && timeoutValue >= 0) {
+            if (!MP.settings.backends[currentBackend]) {
+              MP.settings.backends[currentBackend] = {};
+            }
+            MP.settings.backends[currentBackend].timeout = timeoutValue;
+            const payload = {
+              settings: {
+                backends: {
+                  [currentBackend]: {
+                    timeout: timeoutValue,
+                  },
+                },
+              },
+            };
+            await new Promise((resolve, reject) => {
+              genericRequest('SaveMagicPromptSettings', payload, (data) => {
+                  if (data.success) {
+                    console.log(`Saved timeout for ${currentBackend}: ${timeoutValue}s`);
+                    resolve();
+                  } else {
+                    console.error(`Failed to save timeout: ${data.error || 'Unknown error'}`);
+                    reject(new Error(data.error || 'Failed to save timeout'));
+                  }
+                },
+                0,
+                (error) => {
+                  console.error('Error saving timeout:', error);
+                  reject(error);
+                }
+              );
+            });
+          }
+        } catch (error) {
+          console.error('Error saving chat timeout:', error);
+        }
+      }, 1000);
+      chatTimeoutInputEl.addEventListener('input', function (e) {
+        if (document.getElementById('linkModelsToggle')?.checked) {
+          const visionTimeoutSync = document.getElementById('visionTimeout');
+          if (visionTimeoutSync) {
+            visionTimeoutSync.value = e.target.value;
+          }
+        }
+        debouncedSaveChatTimeout(e.target.value);
+      });
+    }
+
     // Add event listeners for vision base URL changes with debounce
     const visionBackendUrlInput = document.getElementById('visionBackendUrl');
     if (visionBackendUrlInput) {
@@ -2145,6 +2228,56 @@ function initSettingsModal() {
         }
         // Trigger the debounced save
         debouncedSaveVisionUrl(e.target.value);
+      });
+    }
+    const visionTimeoutInputModal = document.getElementById('visionTimeout');
+    if (visionTimeoutInputModal) {
+      const debouncedSaveVisionTimeout = debounce(async function (value) {
+        try {
+          const currentVisionBackend =
+            document
+              .querySelector('input[name="visionBackendSelect"]:checked')
+              ?.id.replace('VisionBtn', '')
+              .toLowerCase() || MP.settings.visionbackend;
+          const timeoutValue = parseInt(value, 10);
+          if (!isNaN(timeoutValue) && timeoutValue >= 0) {
+            if (!MP.settings.backends[currentVisionBackend]) {
+              MP.settings.backends[currentVisionBackend] = {};
+            }
+            MP.settings.backends[currentVisionBackend].timeout = timeoutValue;
+            const payload = {
+              settings: {
+                backends: {
+                  [currentVisionBackend]: {
+                    timeout: timeoutValue,
+                  },
+                },
+              },
+            };
+            await new Promise((resolve, reject) => {
+              genericRequest('SaveMagicPromptSettings', payload, (data) => {
+                  if (data.success) {
+                    console.log(`Saved vision timeout for ${currentVisionBackend}: ${timeoutValue}s`);
+                    resolve();
+                  } else {
+                    console.error(`Failed to save vision timeout: ${data.error || 'Unknown error'}`);
+                    reject(new Error(data.error || 'Failed to save vision timeout'));
+                  }
+                },
+                0,
+                (error) => {
+                  console.error('Error saving vision timeout:', error);
+                  reject(error);
+                }
+              );
+            });
+          }
+        } catch (error) {
+          console.error('Error saving vision timeout:', error);
+        }
+      }, 1000);
+      visionTimeoutInputModal.addEventListener('input', function (e) {
+        debouncedSaveVisionTimeout(e.target.value);
       });
     }
     // Add event listener for link models toggle

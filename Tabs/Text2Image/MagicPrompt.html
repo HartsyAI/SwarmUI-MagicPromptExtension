@@ -181,9 +181,15 @@
                                             <label class="btn btn-outline-primary" for="grokLLMBtn">Grok (xAI)</label>
                                         </div>
                                     </div>
-                                    <div class="form-group" id="baseUrlContainer">
-                                        <label class="form-label">Base URL</label>
-                                        <input type="text" class="form-control" id="backendUrl" placeholder="Enter base URL">
+                                    <div class="d-flex gap-3">
+                                        <div class="form-group flex-grow-1" id="baseUrlContainer">
+                                            <label class="form-label">Base URL</label>
+                                            <input type="text" class="form-control" id="backendUrl" placeholder="Enter base URL">
+                                        </div>
+                                        <div class="form-group" id="chatTimeoutContainer" style="min-width: 120px;">
+                                            <label class="form-label">Timeout (s)</label>
+                                            <input type="number" class="form-control" id="chatTimeout" min="0" step="1" placeholder="seconds">
+                                        </div>
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label" for="modelSelect">Model</label>
@@ -223,9 +229,15 @@
                                             <label class="btn btn-outline-primary" for="grokVisionBtn">Grok (xAI)</label>
                                         </div>
                                     </div>
-                                    <div class="form-group" id="visionBaseUrlContainer">
-                                        <label class="form-label">Base URL</label>
-                                        <input type="text" class="form-control" id="visionBackendUrl" placeholder="Enter base URL">
+                                    <div class="d-flex gap-3">
+                                        <div class="form-group flex-grow-1" id="visionBaseUrlContainer">
+                                            <label class="form-label">Base URL</label>
+                                            <input type="text" class="form-control" id="visionBackendUrl" placeholder="Enter base URL">
+                                        </div>
+                                        <div class="form-group" id="visionTimeoutContainer" style="min-width: 120px;">
+                                            <label class="form-label">Timeout (s)</label>
+                                            <input type="number" class="form-control" id="visionTimeout" min="0" step="1" placeholder="seconds">
+                                        </div>
                                     </div>
                                     <div class="form-group">
                                         <label class="form-label" for="visionModel">Vision Model</label>
