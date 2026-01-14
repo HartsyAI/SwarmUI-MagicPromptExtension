@@ -23,6 +23,7 @@ if (!window.MP) {
                 ollama: {
                     baseurl: 'http://localhost:11434',
                     unloadModel: false,
+                    timeout: 120,
                     endpoints: {
                         chat: '/api/chat',
                         models: '/api/tags'
@@ -31,6 +32,7 @@ if (!window.MP) {
                 openaiapi: {
                     baseurl: 'http://localhost:11434',
                     unloadModel: false,
+                    timeout: 120,
                     endpoints: {
                         chat: 'v1/chat/completions',
                         models: '/v1/models'
@@ -39,6 +41,7 @@ if (!window.MP) {
                 },
                 openai: {
                     baseurl: 'https://api.openai.com',
+                    timeout: 20,
                     endpoints: {
                         chat: 'v1/chat/completions',
                         models: 'v1/models'
@@ -47,6 +50,7 @@ if (!window.MP) {
                 },
                 anthropic: {
                     baseurl: 'https://api.anthropic.com',
+                    timeout: 20,
                     endpoints: {
                         chat: 'v1/messages',
                         models: 'v1/models'
@@ -55,6 +59,7 @@ if (!window.MP) {
                 },
                 openrouter: {
                     baseurl: 'https://openrouter.ai',
+                    timeout: 20,
                     endpoints: {
                         chat: '/api/v1/chat/completions',
                         models: '/api/v1/models'
