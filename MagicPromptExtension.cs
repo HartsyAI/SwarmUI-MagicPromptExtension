@@ -133,9 +133,9 @@ public class MagicPromptExtension : Extension
 
         T2IParamInput.LateSpecialParameterHandlers.Add(userInput =>
         {
-            var prompt = userInput.InternalSet.Get(T2IParamTypes.Prompt);
-            var modelId = userInput.InternalSet.Get(_paramModelId);
-            var useCache = userInput.InternalSet.Get(_paramUseCache);
+            var prompt = userInput.Get(T2IParamTypes.Prompt);
+            var modelId = userInput.Get(_paramModelId);
+            var useCache = userInput.Get(_paramUseCache);
 
             var matches = MppromptRegex.Matches(prompt);
 
@@ -225,7 +225,7 @@ public class MagicPromptExtension : Extension
 
     private static void ReplaceMpOriginal(string prompt, string mpprompt, T2IParamInput userInput)
     {
-        userInput.InternalSet.Set(T2IParamTypes.Prompt, prompt.Replace("<mporiginal>", mpprompt));
+        userInput.Set(T2IParamTypes.Prompt, prompt.Replace("<mporiginal>", mpprompt));
     }
 
     /// <summary>
@@ -455,11 +455,11 @@ public class MagicPromptExtension : Extension
                 ["text"] = prompt,
                 ["instructions"] = ResolveInstructions(userInput, instructionId)
             },
-            ["modelId"] = userInput.InternalSet.Get(_paramModelId, defVal: string.Empty),
+            ["modelId"] = userInput.Get(_paramModelId, defVal: string.Empty),
             ["messageType"] = "Text",
             ["action"] = "prompt",
             ["session_id"] = userInput.SourceSession?.ID ?? string.Empty,
-            ["seed"] = userInput.InternalSet.Get(T2IParamTypes.Seed, -1).ToString()
+            ["seed"] = userInput.Get(T2IParamTypes.Seed, -1).ToString()
         };
 
         var resp = LLMAPICalls.MagicPromptPhoneHome(request, userInput.SourceSession)
@@ -483,7 +483,7 @@ public class MagicPromptExtension : Extension
     private static string ResolveInstructions(T2IParamInput userInput, string instructionId = null)
     {
         // If instructionId is provided from the tag, use it; otherwise fall back to UI parameter
-        var uiInstruction = userInput.InternalSet.Get(_paramInstructions);
+        var uiInstruction = userInput.Get(_paramInstructions);
         var instructions = !string.IsNullOrWhiteSpace(instructionId)
             ? instructionId
             : uiInstruction;
