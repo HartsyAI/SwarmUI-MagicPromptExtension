@@ -11,6 +11,7 @@
 if (!window.MP) {
     window.MP = {
         initialized: false,
+        allInstructionNames: [],
         settings: {
             // Core settings
             backend: 'ollama',
@@ -596,6 +597,8 @@ document.addEventListener("DOMContentLoaded", async function () {
         MP.initialized = true;
         // Initialize settings
         await loadSettings();
+        // Populate instruction prefixes for autocomplete
+        mpRefreshInstructionPrefixes();
         // Add prompt buttons
         addPromptButtons();
         // Setup auto wildcard seed generation on Generate click (capture phase, before onclick)
@@ -636,6 +639,35 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 });
 
+function mpRefreshInstructionPrefixes() {
+    const instructions = ['prompt', 'chat', 'vision', 'caption'];
+    if (MP.settings?.instructions?.custom) {
+        for (const [, instruction] of Object.entries(MP.settings.instructions.custom)) {
+            if (instruction && !instruction.deleted && instruction.title) {
+                instructions.push(instruction.title);
+            }
+        }
+    }
+    MP.allInstructionNames = instructions;
+
+    for (const name of instructions) {
+        const prefixName = `mpprompt[${name}]`;
+        promptTabComplete.prefixes[prefixName] = {
+            name: prefixName,
+            description: `Send prompt to LLM using "${name}" instruction`,
+            completer: () => [
+                `\nUsing instruction: ${name}`,
+                '\nEnter your prompt text after the colon.',
+                `\nExample: "<mpprompt[${name}]:your prompt here>"`
+            ],
+            selfStanding: false,
+            isAlt: false
+        };
+    }
+}
+
+window.mpRefreshInstructionPrefixes = mpRefreshInstructionPrefixes;
+
 promptTabComplete.registerPrefix('mpprompt', 'Prompt to be sent to LLM', (prefix) => {
     return [];
 }, false);
@@ -643,3 +675,15 @@ promptTabComplete.registerPrefix('mpprompt', 'Prompt to be sent to LLM', (prefix
 promptTabComplete.registerPrefix('mporiginal', 'Placeholder for the original prompt', (prefix) => {
     return [];
 }, true);
+
+promptTabComplete.registerPrefix('mpresponse', 'Reference the LLM response from a previous mpprompt tag (0-indexed)', (prefix) => {
+    return [
+        '\nUse <mpresponse:N> to reference the LLM response from the Nth mpprompt tag (0-indexed).',
+        '\nExample: <mpresponse:0> returns the response from the first mpprompt tag.',
+        '\nThis allows chaining: use one LLM response as input to another mpprompt.',
+        '\nNote: You can only reference responses from mpprompt tags that appear BEFORE this reference.',
+        '\nExample usage:',
+        '\n  <mpprompt[Style A]:a sunset>',
+        '\n  <mpprompt[Enhance]:Enhance this scene: <mpresponse:0>>'
+    ];
+}, false);
