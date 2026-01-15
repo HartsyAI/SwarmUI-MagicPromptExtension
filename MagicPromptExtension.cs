@@ -5,6 +5,7 @@ using SwarmUI.Text2Image;
 using Newtonsoft.Json.Linq;
 using SwarmUI.Accounts;
 using FreneticUtilities.FreneticExtensions;
+using System.Text.RegularExpressions;
 
 namespace Hartsy.Extensions.MagicPromptExtension;
 
@@ -25,6 +26,11 @@ public class MagicPromptExtension : Extension
     /// Key is the normalized prompt, value is a TaskCompletionSource that completes when the LLM response is ready.
     /// </summary>
     private static readonly Dictionary<string, TaskCompletionSource<string>> _pendingRequests = new();
+
+    // Matches <mpprompt:...> and <mpprompt[InstructionName]:...>
+    // Group 1 = instruction identifier (optional), Group 2 = prompt content (handles nested tags)
+    private static readonly Regex MppromptRegex = new(@"<mpprompt(?:\[([^\]]+)\])?:((?:[^<>]|<[^>]*>)+)>", RegexOptions.Compiled);
+    private static readonly Regex MpresponseRegex = new(@"<mpresponse:(\d+)>", RegexOptions.Compiled);
     private const int MaxWaitTimeMs = 30000; // 30-second timeout for waiting threads
 
     // Cache for models/settings response to avoid duplicate API calls between GetValues lambdas
@@ -106,6 +112,7 @@ public class MagicPromptExtension : Extension
         ));
 
         PromptRegion.RegisterCustomPrefix("mpprompt");
+        PromptRegion.RegisterCustomPrefix("mpresponse");
 
         T2IPromptHandling.PromptTagPostProcessors["mpprompt"] = (data, context) =>
         {
@@ -113,77 +120,112 @@ public class MagicPromptExtension : Extension
             {
                 context.Input.ExtraMeta["mp_variables"] = new Dictionary<string, string>(context.Variables);
             }
-            return $"<mpprompt:{context.Parse(data)}>";
+
+            var instructionPart = !string.IsNullOrEmpty(context.PreData) ? $"[{context.PreData}]" : "";
+            var parsedData = context.Parse(data);
+            return $"<mpprompt{instructionPart}:{parsedData}>";
+        };
+
+        T2IPromptHandling.PromptTagPostProcessors["mpresponse"] = (data, context) =>
+        {
+            return $"<mpresponse:{data}>";
         };
 
         T2IParamInput.LateSpecialParameterHandlers.Add(userInput =>
         {
-            var prompt = userInput.InternalSet.Get(T2IParamTypes.Prompt);
-            var promptRegion = new PromptRegion(prompt);
-            var mpprompt = "";
-            var modelId = userInput.InternalSet.Get(_paramModelId);
-            var useCache = userInput.InternalSet.Get(_paramUseCache);
+            var prompt = userInput.Get(T2IParamTypes.Prompt);
+            var modelId = userInput.Get(_paramModelId);
+            var useCache = userInput.Get(_paramUseCache);
 
-            foreach (var part in promptRegion.Parts.Where(part => part.Prefix == "mpprompt"))
+            var matches = MppromptRegex.Matches(prompt);
+
+            if (matches.Count == 0)
             {
-                mpprompt = part.DataText;
-                break;
+                if (MpresponseRegex.IsMatch(prompt))
+                {
+                    Logs.Warning("MagicPrompt: <mpresponse> found but no mpprompt tags exist");
+                    prompt = MpresponseRegex.Replace(prompt, "");
+                }
+                ReplaceMpOriginal(prompt, "", userInput);
+                return;
             }
 
             if (string.IsNullOrWhiteSpace(modelId))
             {
-                Logs.Debug("MagicPrompt: disabled");
-                prompt = prompt.Replace($"<mpprompt:{mpprompt}>", mpprompt);
+                prompt = MppromptRegex.Replace(prompt, m => m.Groups[2].Value);
+                prompt = MpresponseRegex.Replace(prompt, "");
                 ReplaceMpOriginal(prompt, "", userInput);
                 return;
             }
 
-            if (string.IsNullOrWhiteSpace(mpprompt))
+            if (!useCache)
             {
-                Logs.Debug("MagicPrompt: <mpprompt> not found or empty");
-                ReplaceMpOriginal(prompt, "", userInput);
-                return;
+                ClearCache();
             }
 
-            try
+            var firstMppromptContent = matches[0].Groups[2].Value;
+            var llmResponses = new List<string>();
+
+            for (int i = 0; i < matches.Count; i++)
             {
-                if (!useCache)
+                var match = matches[i];
+                var fullTag = match.Value;
+                var instructionId = match.Groups[1].Success ? match.Groups[1].Value : null;
+                var mppromptContent = ResolveMpresponseReferences(match.Groups[2].Value, llmResponses);
+
+                string llmResponse;
+                try
                 {
-                    Logs.Debug("MagicPrompt: not using cache");
-                    ClearCache();
-                } else {
-                    Logs.Debug("MagicPrompt: using cache");
+                    llmResponse = useCache
+                        ? HandleCacheableRequest(mppromptContent, userInput, instructionId)
+                        : MakeLlmRequest(mppromptContent, userInput, instructionId);
+
+                    if (string.IsNullOrEmpty(llmResponse))
+                    {
+                        Logs.Error($"MagicPrompt: empty response from LLM for tag #{i}: {fullTag}");
+                        llmResponse = mppromptContent;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logs.Error($"MagicPrompt: LLM call failed for tag #{i} '{fullTag}': {ex.Message}");
+                    llmResponse = mppromptContent;
                 }
 
-                var llmResponse = useCache
-                    ? HandleCacheableRequest(mpprompt, userInput)
-                    // Use Cache is disabled: proceed with normal behavior
-                    // (no cache coordination needed)
-                    : MakeLlmRequest(mpprompt, userInput);
-
-                // No response from LLM, fallback to original prompt
-                if (string.IsNullOrEmpty(llmResponse)) {
-                    Logs.Error("MagicPrompt: empty response from LLM");
-                    prompt = prompt.Replace($"<mpprompt:{mpprompt}>", mpprompt);
-                    ReplaceMpOriginal(prompt, "", userInput);
-                    return;
-                }
-
-                prompt = prompt.Replace($"<mpprompt:{mpprompt}>", llmResponse);
-                ReplaceMpOriginal(prompt, mpprompt, userInput);
+                llmResponses.Add(llmResponse);
+                prompt = prompt.Replace(fullTag, llmResponse);
             }
-            catch (Exception ex)
+
+            prompt = ResolveMpresponseReferences(prompt, llmResponses, logStandalone: true);
+            ReplaceMpOriginal(prompt, firstMppromptContent, userInput);
+        });
+    }
+
+    private static string ResolveMpresponseReferences(string text, List<string> llmResponses, bool logStandalone = false)
+    {
+        return MpresponseRegex.Replace(text, m =>
+        {
+            if (!int.TryParse(m.Groups[1].Value, out int refIndex))
             {
-                Logs.Error($"MagicPrompt phone home call failed: {ex.Message}");
-                prompt = prompt.Replace($"<mpprompt:{mpprompt}>", mpprompt);
-                ReplaceMpOriginal(prompt, "", userInput);
+                return m.Value;
             }
+            if (refIndex >= 0 && refIndex < llmResponses.Count)
+            {
+                return llmResponses[refIndex];
+            }
+            if (logStandalone)
+            {
+                Logs.Warning($"MagicPrompt: <mpresponse:{refIndex}> references invalid index (only {llmResponses.Count} responses available)");
+                return "";
+            }
+            Logs.Error($"MagicPrompt: <mpresponse:{refIndex}> references future mpprompt (only {llmResponses.Count} responses available)");
+            return $"[ERROR: mpresponse:{refIndex} not yet available]";
         });
     }
 
     private static void ReplaceMpOriginal(string prompt, string mpprompt, T2IParamInput userInput)
     {
-        userInput.InternalSet.Set(T2IParamTypes.Prompt, prompt.Replace("<mporiginal>", mpprompt));
+        userInput.Set(T2IParamTypes.Prompt, prompt.Replace("<mporiginal>", mpprompt));
     }
 
     /// <summary>
@@ -240,22 +282,25 @@ public class MagicPromptExtension : Extension
         _pendingRequests.Remove(normalizedPrompt);
     }
 
-    private static string HandleCacheableRequest(string prompt, T2IParamInput userInput)
+    private static string HandleCacheableRequest(string prompt, T2IParamInput userInput, string instructionId = null)
     {
-        var normalizedPrompt = NormalizePrompt(prompt);
+        // Include instruction ID in cache key to differentiate requests with same prompt but different instructions
+        var cacheKey = string.IsNullOrEmpty(instructionId)
+            ? NormalizePrompt(prompt)
+            : $"{NormalizePrompt(prompt)}||{instructionId.ToLowerInvariant()}";
 
         TaskCompletionSource<string> pendingTcs = null;
 
         // Fast path: check if already cached
         lock (CacheLock)
         {
-            if (TryGetFromCache(normalizedPrompt, out var cachedResult))
+            if (TryGetFromCache(cacheKey, out var cachedResult))
             {
                 return cachedResult;
             }
 
             // Check if another thread is already fetching this prompt
-            if (_pendingRequests.TryGetValue(normalizedPrompt, out var existingTcs))
+            if (_pendingRequests.TryGetValue(cacheKey, out var existingTcs))
             {
                 Logs.Debug("MagicPrompt: another thread is already fetching this prompt, waiting for result...");
                 pendingTcs = existingTcs;
@@ -265,21 +310,21 @@ public class MagicPromptExtension : Extension
             {
                 // We are the OWNER - create a TaskCompletionSource for other threads to wait on
                 var tcs = new TaskCompletionSource<string>();
-                _pendingRequests[normalizedPrompt] = tcs;
+                _pendingRequests[cacheKey] = tcs;
             }
         }
 
         // If another thread was already fetching, wait for it OUTSIDE the lock
         if (pendingTcs != null)
         {
-            return WaitForPendingRequest(normalizedPrompt, pendingTcs);
+            return WaitForPendingRequest(cacheKey, pendingTcs);
         }
 
         // Make LLM request OUTSIDE the lock to avoid blocking other threads
         string llmResult;
         try
         {
-            llmResult = MakeLlmRequest(prompt, userInput);
+            llmResult = MakeLlmRequest(prompt, userInput, instructionId);
         }
         catch (Exception ex)
         {
@@ -288,7 +333,7 @@ public class MagicPromptExtension : Extension
             // Clean up the pending request so other threads can retry
             lock (CacheLock)
             {
-                CleanupPendingRequest(normalizedPrompt);
+                CleanupPendingRequest(cacheKey);
             }
 
             return null;
@@ -298,13 +343,13 @@ public class MagicPromptExtension : Extension
         lock (CacheLock)
         {
             // Store in cache even if null to avoid retrying failed requests
-            AddToCache(normalizedPrompt, llmResult ?? string.Empty);
+            AddToCache(cacheKey, llmResult ?? string.Empty);
             
             // Signal all waiting threads with the result
-            SignalPendingRequest(normalizedPrompt, llmResult);
+            SignalPendingRequest(cacheKey, llmResult);
             
             // Clean up the pending request entry
-            CleanupPendingRequest(normalizedPrompt);
+            CleanupPendingRequest(cacheKey);
         }
 
         return llmResult;
@@ -401,20 +446,20 @@ public class MagicPromptExtension : Extension
         }
     }
 
-    private static string MakeLlmRequest(string prompt, T2IParamInput userInput)
+    private static string MakeLlmRequest(string prompt, T2IParamInput userInput, string instructionId = null)
     {
         var request = new JObject
         {
             ["messageContent"] = new JObject
             {
                 ["text"] = prompt,
-                ["instructions"] = ResolveInstructions(userInput)
+                ["instructions"] = ResolveInstructions(userInput, instructionId)
             },
-            ["modelId"] = userInput.InternalSet.Get(_paramModelId, defVal: string.Empty),
+            ["modelId"] = userInput.Get(_paramModelId, defVal: string.Empty),
             ["messageType"] = "Text",
             ["action"] = "prompt",
             ["session_id"] = userInput.SourceSession?.ID ?? string.Empty,
-            ["seed"] = userInput.InternalSet.Get(T2IParamTypes.Seed, -1).ToString()
+            ["seed"] = userInput.Get(T2IParamTypes.Seed, -1).ToString()
         };
 
         var resp = LLMAPICalls.MagicPromptPhoneHome(request, userInput.SourceSession)
@@ -430,9 +475,20 @@ public class MagicPromptExtension : Extension
         return string.IsNullOrWhiteSpace(llmResponse) ? null : llmResponse;
     }
 
-    private static string ResolveInstructions(T2IParamInput userInput)
+    /// <summary>
+    /// Resolves the instruction content to use for an LLM request.
+    /// Priority: 1) instructionId from tag, 2) instructions parameter from UI, 3) default "prompt" instruction
+    /// </summary>
+    /// <param name="instructionId">Optional instruction identifier from the mpprompt tag (e.g., from &lt;mpprompt[Video Request]:...&gt;)</param>
+    private static string ResolveInstructions(T2IParamInput userInput, string instructionId = null)
     {
-        var instructions = userInput.InternalSet.Get(_paramInstructions);
+        // If instructionId is provided from the tag, use it; otherwise fall back to UI parameter
+        var uiInstruction = userInput.Get(_paramInstructions);
+        var instructions = !string.IsNullOrWhiteSpace(instructionId)
+            ? instructionId
+            : uiInstruction;
+
+        Logs.Debug($"MagicPrompt ResolveInstructions: instructionId='{instructionId ?? "(null)"}', uiInstruction='{uiInstruction}', using='{instructions}'");
 
         var sessionSettings = SessionSettings.GetMagicPromptSettings()
             .GetAwaiter()
@@ -459,13 +515,33 @@ public class MagicPromptExtension : Extension
             return instructionsObj["prompt"]?.ToString();
         }
 
-        // instructions currently holds the selected key
+        // instructions currently holds the selected key (either from tag or UI)
+        // First check custom instructions by key
         var customPrompt = instructionsObj["custom"]?[instructions]?["content"]?.ToString();
         if (!string.IsNullOrWhiteSpace(customPrompt))
         {
             var title = instructionsObj["custom"][instructions]?["title"]?.ToString();
             Logs.Debug($"MagicPrompt: using custom instructions \"{title}\"");
             return SubstituteVariablesInInstructions(customPrompt, userInput);
+        }
+
+        // Check custom instructions by title (case-insensitive match for user convenience)
+        if (instructionsObj["custom"] is JObject customObj)
+        {
+            foreach (var prop in customObj.Properties())
+            {
+                var title = prop.Value?["title"]?.ToString();
+                if (!string.IsNullOrEmpty(title) &&
+                    string.Equals(title, instructions, StringComparison.OrdinalIgnoreCase))
+                {
+                    var content = prop.Value?["content"]?.ToString();
+                    if (!string.IsNullOrWhiteSpace(content))
+                    {
+                        Logs.Debug($"MagicPrompt: using custom instructions \"{title}\" (matched by title)");
+                        return SubstituteVariablesInInstructions(content, userInput);
+                    }
+                }
+            }
         }
 
         var basePrompt = instructionsObj[instructions]?.ToString();

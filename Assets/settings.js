@@ -689,6 +689,7 @@ function addCustomInstruction(data) {
   MP.settings.instructions.custom[id] = instruction;
   saveSettings();
   addCustomInstructionToUI(id, instruction);
+  window.mpRefreshInstructionPrefixes?.();
   return id;
 }
 
@@ -718,6 +719,7 @@ function updateCustomInstruction(id, data) {
   updateCustomInstructionInUI(id);
   populateFeatureSelects();
   saveSettings();
+  window.mpRefreshInstructionPrefixes?.();
   return true;
 }
 
@@ -750,6 +752,7 @@ function deleteCustomInstruction(id) {
   removeCustomInstructionFromUI(id);
   populateFeatureSelects();
   saveSettings();
+  window.mpRefreshInstructionPrefixes?.();
   return true;
 }
 
