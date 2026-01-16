@@ -8,13 +8,20 @@ using System.Net.Http;
 using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
 
 using static Hartsy.Extensions.MagicPromptExtension.BackendSchema;
-using SwarmUI.Backends;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI;
 
 public class LLMAPICalls : MagicPromptAPI
 {
-    protected static readonly HttpClient HttpClient = NetworkBackendUtils.MakeHttpClient();
+    protected static readonly HttpClient HttpClient = CreateHttpClient();
+
+    // Disable global timeout; per-request CancellationTokenSource controls timeout instead
+    private static HttpClient CreateHttpClient()
+    {
+        var client = NetworkBackendUtils.MakeHttpClient();
+        client.Timeout = Timeout.InfiniteTimeSpan;
+        return client;
+    }
 
     /// <summary>Fetches available models from the LLM API endpoint.</summary>
     /// <returns>A JSON object containing the models or an error message.</returns>
@@ -58,7 +65,7 @@ public class LLMAPICalls : MagicPromptAPI
         }
         catch (Exception ex)
         {
-            Logs.Error($"Exception occurred: {ex.Message}");
+            Logs.Error($"MagicPromptExtension.LLMAPICalls: Exception occurred: {ex.Message}");
             return CreateErrorResponse(
                 "Unexpected error while fetching models:\n" +
                 $"{ex.Message}\n\n" +
@@ -78,14 +85,14 @@ public class LLMAPICalls : MagicPromptAPI
         if (string.IsNullOrEmpty(endpoint))
         {
             string errorMessage = $"Failed to get endpoint for backend: {backend}";
-            Logs.Error(errorMessage);
+            Logs.Error($"MagicPromptExtension.LLMAPICalls: {errorMessage}");
             return [];
         }
         // Create and configure request
         HttpRequestMessage request = new(HttpMethod.Get, endpoint);
         if (!ConfigureRequest(request, backend, settings, session, out string error))
         {
-            Logs.Error(error);
+            Logs.Error($"MagicPromptExtension.LLMAPICalls: {error}");
             return [];
         }
 
@@ -109,29 +116,29 @@ public class LLMAPICalls : MagicPromptAPI
             {
                 // Process error using the ErrorHandler
                 string errorMessage = ErrorHandler.ProcessErrorResponse(responseContent, response.StatusCode, backend);
-                Logs.Error($"Error fetching models for {backend}: {errorMessage}");
+                Logs.Error($"MagicPromptExtension.LLMAPICalls: Error fetching models for {backend}: {errorMessage}");
                 return [];
             }
         }
         catch (System.Threading.Tasks.TaskCanceledException)
         {
-            Logs.Error($"Model listing request timed out for backend {backend} ({endpoint})");
+            Logs.Error($"MagicPromptExtension.LLMAPICalls: Model listing request timed out for backend {backend} ({endpoint})");
             return [];
         }
         catch (OperationCanceledException)
         {
-            Logs.Error($"Model listing request was canceled (timeout) for backend {backend} ({endpoint})");
+            Logs.Error($"MagicPromptExtension.LLMAPICalls: Model listing request was canceled (timeout) for backend {backend} ({endpoint})");
             return [];
         }
         catch (HttpRequestException ex)
         {
             // Handle network connectivity issues
-            Logs.Error($"HTTP request error fetching models for {backend}: {ex.Message}");
+            Logs.Error($"MagicPromptExtension.LLMAPICalls: HTTP request error fetching models for {backend}: {ex.Message}");
             return [];
         }
         catch (Exception ex)
         {
-            Logs.Error($"Exception fetching models for {backend}: {ex.Message}");
+            Logs.Error($"MagicPromptExtension.LLMAPICalls: Exception fetching models for {backend}: {ex.Message}");
             return [];
         }
     }
@@ -157,7 +164,7 @@ public class LLMAPICalls : MagicPromptAPI
         JObject endpoints = backendConfig["endpoints"] as JObject;
         if (string.IsNullOrEmpty(baseUrl) || endpoints == null)
         {
-            Logs.Error($"Invalid configuration for backend {backend}: BaseUrl={baseUrl}, Endpoints={endpoints}");
+            Logs.Error($"MagicPromptExtension.LLMAPICalls: Invalid configuration for backend {backend}: BaseUrl={baseUrl}, Endpoints={endpoints}");
             return string.Empty;
         }
         string endpoint;
@@ -293,6 +300,30 @@ public class LLMAPICalls : MagicPromptAPI
         return true;
     }
 
+    public static int GetChatBackendTimeoutMs()
+    {
+        try
+        {
+            var sessionSettings = SessionSettings.GetMagicPromptSettings().GetAwaiter().GetResult();
+            if (sessionSettings?["success"]?.Value<bool>() != true)
+            {
+                return 90_000;
+            }
+
+            var settings = sessionSettings["settings"] as JObject;
+            var backend = settings?["backend"]?.ToString()?.ToLower();
+            int defaultTimeout = backend == "ollama" || backend == "openaiapi" ? 120 : 60;
+            int timeoutSec = GetBackendTimeout(settings, backend, defaultTimeout);
+
+            // Add 30 second buffer for cache waiting (to exceed the actual LLM timeout)
+            return (timeoutSec + 30) * 1000;
+        }
+        catch
+        {
+            return 90_000; // 90 second fallback
+        }
+    }
+
     /// <summary>Gets the timeout value from backend settings, with a fallback default.</summary>
     public static int GetBackendTimeout(JObject settings, string backend, int defaultTimeout = 60)
     {
@@ -333,7 +364,7 @@ public class LLMAPICalls : MagicPromptAPI
         try
         {
             long seed = requestData["seed"]?.Value<long>() ?? -1;
-            
+
             if (requestData == null)
             {
                 return CreateErrorResponse("Request data is null");
@@ -360,7 +391,7 @@ public class LLMAPICalls : MagicPromptAPI
                 }
                 catch (Exception ex)
                 {
-                    Logs.Error($"Failed to parse media content: {ex.Message}");
+                    Logs.Error($"MagicPromptExtension.LLMAPICalls: Failed to parse media content: {ex.Message}");
                     return CreateErrorResponse("Failed to parse media content");
                 }
             }
@@ -389,13 +420,13 @@ public class LLMAPICalls : MagicPromptAPI
             JObject sessionSettings = await SessionSettings.GetMagicPromptSettings();
             if (!sessionSettings["success"].Value<bool>())
             {
-                Logs.Error(sessionSettings["error"]?.ToString() ?? "Failed to load settings");
+                Logs.Error($"MagicPromptExtension.LLMAPICalls: {sessionSettings["error"]?.ToString() ?? "Failed to load settings"}");
                 return CreateErrorResponse(sessionSettings["error"]?.ToString() ?? "Failed to load settings");
             }
             JObject settings = sessionSettings["settings"] as JObject;
             if (settings == null)
             {
-                Logs.Error("Configuration not found. Please check your settings.");
+                Logs.Error($"MagicPromptExtension.LLMAPICalls: Configuration not found. Please check your settings.");
                 return CreateErrorResponse("Configuration not found. Please check your settings.");
             }
             // Get appropriate backend based on message type
@@ -430,7 +461,7 @@ public class LLMAPICalls : MagicPromptAPI
             using HttpRequestMessage request = new(HttpMethod.Post, endpoint);
             if (!ConfigureRequest(request, backend, settings, session, out string error))
             {
-                Logs.Error(error);
+                Logs.Error($"MagicPromptExtension.LLMAPICalls: {error}");
                 return CreateErrorResponse(error);
             }
             // Add request body using BackendSchema
@@ -442,7 +473,7 @@ public class LLMAPICalls : MagicPromptAPI
             catch (ArgumentException ex)
             {
                 // Typically thrown for validation issues (e.g., Grok vision requires direct JPG/PNG URLs)
-                Logs.Error($"Request build error for {backend}: {ex.Message}");
+                Logs.Error($"MagicPromptExtension.LLMAPICalls: Request build error for {backend}: {ex.Message}");
                 return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.UnsupportedParameterImage, ex.Message, backend));
             }
             string jsonContent = JsonSerializer.Serialize(requestBody);
@@ -463,7 +494,7 @@ public class LLMAPICalls : MagicPromptAPI
                 {
                     // Use the improved error handler to process response
                     string formattedError = ErrorHandler.ProcessErrorResponse(responseContent, response.StatusCode, backend);
-                    Logs.Error($"HTTP {(int)response.StatusCode} error from {backend}: {responseContent}");
+                    Logs.Error($"MagicPromptExtension.LLMAPICalls: HTTP {(int)response.StatusCode} error from {backend}: {responseContent}");
                     return CreateErrorResponse(formattedError);
                 }
                 // Process successful response
@@ -480,7 +511,7 @@ public class LLMAPICalls : MagicPromptAPI
                     // Error during successful response deserialization
                     string errorType = ErrorHandler.DetectErrorType(ex.Message, response.StatusCode, backend);
                     string formattedError = ErrorHandler.FormatErrorMessage(errorType, ex.Message, backend);
-                    Logs.Error($"Error deserializing response: {ex.Message}");
+                    Logs.Error($"MagicPromptExtension.LLMAPICalls: Error deserializing response: {ex.Message}");
                     return CreateErrorResponse(formattedError);
                 }
                 // If we reach here, something went wrong with a seemingly successful response
@@ -492,28 +523,28 @@ public class LLMAPICalls : MagicPromptAPI
             }
             catch (System.Threading.Tasks.TaskCanceledException)
             {
-                Logs.Error($"Request timed out for backend {backend} ({endpoint})");
+                Logs.Error($"MagicPromptExtension.LLMAPICalls: Request timed out for backend {backend} ({endpoint})");
                 return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.RequestTimeout, $"Request exceeded timeout at {endpoint}", backend));
             }
             catch (OperationCanceledException)
             {
-                Logs.Error($"Request canceled (timeout) for backend {backend} ({endpoint})");
+                Logs.Error($"MagicPromptExtension.LLMAPICalls: Request canceled (timeout) for backend {backend} ({endpoint})");
                 return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.RequestTimeout, $"Request canceled due to timeout at {endpoint}", backend));
             }
             catch (HttpRequestException ex)
             {
-                Logs.Error($"HTTP request error: {ex.Message}");
+                Logs.Error($"MagicPromptExtension.LLMAPICalls: HTTP request error: {ex.Message}");
                 return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.HttpRequestError, ex.Message, backend));
             }
             catch (Exception ex)
             {
-                Logs.Error($"Error in MagicPromptPhoneHome: {ex.Message}");
+                Logs.Error($"MagicPromptExtension.LLMAPICalls: Error in MagicPromptPhoneHome: {ex.Message}");
                 return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.GenericException, ex.Message, backend));
             }
         }
         catch (Exception ex)
         {
-            Logs.Error($"Error in MagicPromptPhoneHome: {ex.Message}");
+            Logs.Error($"MagicPromptExtension.LLMAPICalls: Error in MagicPromptPhoneHome: {ex.Message}");
             return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.GenericException, ex.Message, "unknown"));
         }
     }
