@@ -8,6 +8,7 @@ using System.Net.Http;
 using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
 
 using static Hartsy.Extensions.MagicPromptExtension.BackendSchema;
+using SwarmUI.Backends;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI;
 

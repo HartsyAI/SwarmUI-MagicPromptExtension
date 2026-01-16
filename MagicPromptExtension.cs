@@ -95,7 +95,7 @@ public class MagicPromptExtension : Extension
         RegisterLateParameterHandler();
     }
 
-    private static string ProcessMppromptTag(string data, TagHandlerContext context)
+    private static string ProcessMppromptTag(string data, T2IPromptHandling.PromptTagContext context)
     {
         if (context.Variables.Count > 0 && context.Input != null)
         {
@@ -107,7 +107,7 @@ public class MagicPromptExtension : Extension
         return $"<mpprompt{instructionPart}:{parsedData}>";
     }
 
-    private static string ProcessMpresponseTag(string data, TagHandlerContext context)
+    private static string ProcessMpresponseTag(string data, T2IPromptHandling.PromptTagContext context)
     {
         return $"<mpresponse:{data}>";
     }
