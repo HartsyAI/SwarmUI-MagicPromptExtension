@@ -167,16 +167,18 @@ TABLE OF CONTENTS:
     flex-wrap: wrap;
     border-bottom: 1px solid var(--border-color);
 }
-
     /* Individual action buttons */
     .magicprompt .vision-actions button {
-        min-width: 80px;
-        padding: 0.25rem 1rem;
+        min-width: 110px;
+        padding: 0.3rem 1.1rem;
         background: var(--background);
         color: var(--text-color);
         border: 1px solid var(--border-color);
         border-radius: 4px;
         cursor: pointer;
+        font-size: 0.85rem;
+        line-height: 1.1;
+        white-space: nowrap;
     }
 
         /* Danger button variation (e.g., Clear button) */

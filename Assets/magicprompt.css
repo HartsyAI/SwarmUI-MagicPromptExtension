@@ -26,6 +26,8 @@ TABLE OF CONTENTS:
     bottom: 20px;
     background: var(--background);
     color: var(--text);
+    font-size: 14px;
+    line-height: 1.35;
     display: flex;
     overflow: hidden;
 }
