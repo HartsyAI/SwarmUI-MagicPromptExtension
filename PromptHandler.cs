@@ -97,7 +97,7 @@ public class PromptHandler
             if (string.IsNullOrEmpty(response))
             {
                 Logs.Error($"MagicPromptExtension.PromptHandler: empty response from LLM for tag #{tagIndex}: {fullTag}");
-                return content; // Fall back to original content
+                return content; // Fall back to original content for empty (non-error) responses
             }
 
             return response;
@@ -105,7 +105,7 @@ public class PromptHandler
         catch (Exception ex)
         {
             Logs.Error($"MagicPromptExtension.PromptHandler: LLM call failed for tag #{tagIndex} '{fullTag}': {ex.Message}");
-            return content; // Fall back to original content
+            throw new SwarmReadableErrorException($"[MagicPrompt] LLM request failed: {ex.Message}");
         }
     }
 
@@ -132,7 +132,8 @@ public class PromptHandler
         var success = resp?["success"];
         if (success == null || !success.Value<bool>())
         {
-            return null;
+            var errorMsg = resp?["error"]?.ToString() ?? "Unknown LLM error";
+            throw new InvalidOperationException(errorMsg);
         }
 
         var llmResponse = resp?["response"]?.ToString();
