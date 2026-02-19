@@ -67,10 +67,15 @@ public class PromptCache
 
             lock (_lock)
             {
+                // Signal waiting threads with the error so they don't hang until timeout
+                if (_pendingRequests.TryGetValue(cacheKey, out var tcs))
+                {
+                    tcs.TrySetException(ex);
+                }
                 CleanupPendingRequestLocked(cacheKey);
             }
 
-            return null;
+            throw; // Re-throw so GetLlmResponse can convert to SwarmReadableErrorException
         }
 
         lock (_lock)
@@ -209,6 +214,11 @@ public class PromptCache
         {
             Logs.Debug("MagicPromptExtension.PromptCache: pending request was cancelled");
             return null;
+        }
+        catch (AggregateException ex) when (ex.InnerException is not OperationCanceledException)
+        {
+            Logs.Error($"MagicPromptExtension.PromptCache: pending request failed: {ex.InnerException.Message}");
+            throw ex.InnerException; // Re-throw the factory error so it propagates to the caller
         }
         catch (Exception ex)
         {
