@@ -87,10 +87,13 @@ if (!window.MP) {
                 if (!payload) {
                     throw new Error('Invalid payload');
                 }
-                // Allow handling of existing requests for vision mode
+                // Auto-inject image only for chat actions when vision_mode is enabled.
+                // Prompt enhancement and random prompt should never auto-inject images.
                 const isVisionRequest = payload.messageType === 'Vision';
                 const currentMode = document.getElementById('vision_mode')?.checked;
-                if (!isVisionRequest && currentMode) {
+                const action = payload.action?.toLowerCase() || '';
+                const isPromptAction = action === 'enhance-prompt' || action === 'random-prompt' || action === 'prompt-mode';
+                if (!isVisionRequest && currentMode && !isPromptAction) {
                     const currentImage = window.visionHandler?.getCurrentImage();
                     if (currentImage) {
                         payload.messageContent.media = [{
@@ -606,7 +609,11 @@ document.addEventListener("DOMContentLoaded", async function () {
         // Initialize modal
         $('#settingsModal').modal({
             backdrop: 'static', keyboard: false, show: false
-        }).on('show.bs.modal', initSettingsModal);
+        }).on('show.bs.modal', initSettingsModal)
+          .on('hidden.bs.modal', function () {
+            // Persist any in-memory settings changes when the modal is closed
+            saveSettings();
+        });
         // Initialize models
         await fetchModels();
         MP.modelsInitialized = true;

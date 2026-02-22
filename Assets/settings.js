@@ -2288,7 +2288,9 @@ function initSettingsModal() {
     if (toggleBtn) {
       toggleBtn.addEventListener('change', function (e) {
         const isLinked = e.target.checked;
+        MP.settings.linkChatAndVisionModels = isLinked;
         updateLinkedModelsUI(isLinked);
+        saveSettings();
       });
     }
     // Add event listener for model select change
