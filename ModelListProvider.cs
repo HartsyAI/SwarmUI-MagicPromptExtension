@@ -11,6 +11,7 @@ public static class ModelListProvider
     private static readonly object _cacheLock = new();
     private static JObject _cachedResponse;
     private static DateTime _cacheTimeUtc;
+    private static volatile bool _fetchInProgress;
 
     public static List<string> GetModelList(Session session)
     {
@@ -102,18 +103,38 @@ public static class ModelListProvider
             {
                 return _cachedResponse;
             }
+            // A fetch is already running — return stale data (or null) without blocking
+            if (_fetchInProgress)
+            {
+                return _cachedResponse;
+            }
+            _fetchInProgress = true;
         }
-
-        var response = LLMAPICalls.GetMagicPromptModels(session)
-            .GetAwaiter()
-            .GetResult();
-
+        // Fire-and-forget: fetch in the background so the UI thread is never blocked
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var response = await LLMAPICalls.GetMagicPromptModels(session);
+                lock (_cacheLock)
+                {
+                    _cachedResponse = response;
+                    _cacheTimeUtc = DateTime.UtcNow;
+                }
+            }
+            catch (Exception ex)
+            {
+                SwarmUI.Utils.Logs.Error($"[MagicPrompt] Background model fetch failed: {ex.Message}");
+            }
+            finally
+            {
+                _fetchInProgress = false;
+            }
+        });
+        // Return immediately with whatever we have (null on first call → loading placeholder)
         lock (_cacheLock)
         {
-            _cachedResponse = response;
-            _cacheTimeUtc = DateTime.UtcNow;
+            return _cachedResponse;
         }
-
-        return response;
     }
 }

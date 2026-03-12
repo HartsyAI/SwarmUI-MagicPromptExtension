@@ -16,12 +16,73 @@ public class LLMAPICalls : MagicPromptAPI
 {
     protected static readonly HttpClient HttpClient = CreateHttpClient();
 
+    /// <summary>Backends that run locally and benefit from a fast reachability check before API calls.</summary>
+    private static readonly HashSet<string> LocalBackends = new(StringComparer.OrdinalIgnoreCase) { "ollama", "openaiapi" };
+
+    private static readonly object _reachabilityLock = new();
+    private static readonly Dictionary<string, (bool reachable, DateTime checkedUtc)> _reachabilityCache = new();
+    private static readonly TimeSpan ReachabilityCacheTtlSuccess = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan ReachabilityCacheTtlFailure = TimeSpan.FromSeconds(30);
+    private const int ReachabilityTimeoutSeconds = 3;
+
     // Disable global timeout; per-request CancellationTokenSource controls timeout instead
     private static HttpClient CreateHttpClient()
     {
         var client = NetworkBackendUtils.MakeHttpClient();
         client.Timeout = Timeout.InfiniteTimeSpan;
         return client;
+    }
+
+    /// <summary>Checks whether a local backend server is reachable with a fast probe.
+    /// Returns true for cloud backends (they fail fast on their own via DNS/TLS).
+    /// Results are cached: 10s on success, 30s on failure to avoid repeated probes to a dead server.</summary>
+    public static async Task<bool> IsServerReachable(string backend, JObject settings)
+    {
+        backend = backend?.ToLower();
+        if (!LocalBackends.Contains(backend))
+        {
+            return true; // Cloud backends don't need a connectivity probe
+        }
+        // Extract the base URL from settings
+        string baseUrl = (settings["backends"] as JObject)?[backend]?["baseurl"]?.ToString();
+        if (string.IsNullOrEmpty(baseUrl))
+        {
+            return false;
+        }
+        baseUrl = baseUrl.TrimEnd('/');
+        // Check the cache first — failures are cached longer to avoid repeated probes
+        lock (_reachabilityLock)
+        {
+            if (_reachabilityCache.TryGetValue(baseUrl, out var cached))
+            {
+                var ttl = cached.reachable ? ReachabilityCacheTtlSuccess : ReachabilityCacheTtlFailure;
+                if (DateTime.UtcNow - cached.checkedUtc < ttl)
+                {
+                    return cached.reachable;
+                }
+            }
+        }
+        // Probe the server root with a short timeout
+        bool reachable = false;
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(ReachabilityTimeoutSeconds));
+            using var request = new HttpRequestMessage(HttpMethod.Get, baseUrl);
+            HttpResponseMessage response = await HttpClient.SendAsync(request, cts.Token);
+            // Any HTTP response (even 4xx/5xx) means the server is running
+            reachable = true;
+        }
+        catch (Exception ex) when (ex is TaskCanceledException or OperationCanceledException or HttpRequestException)
+        {
+            Logs.Warning($"[MagicPrompt] {backend} server at {baseUrl} is not reachable: {ex.GetType().Name}");
+            reachable = false;
+        }
+        // Cache the result
+        lock (_reachabilityLock)
+        {
+            _reachabilityCache[baseUrl] = (reachable, DateTime.UtcNow);
+        }
+        return reachable;
     }
 
     /// <summary>Fetches available models from the LLM API endpoint.</summary>
@@ -81,6 +142,13 @@ public class LLMAPICalls : MagicPromptAPI
 
     public static async Task<List<ModelData>> GetModelsForBackend(string backend, JObject settings, bool isVision = false, Session session = null)
     {
+        // Fast-fail for unreachable local backends instead of waiting for the full timeout
+        if (!await IsServerReachable(backend, settings))
+        {
+            string baseUrl = (settings["backends"] as JObject)?[backend]?["baseurl"]?.ToString() ?? "unknown";
+            Logs.Error($"[MagicPrompt] {backend} server at {baseUrl} is not reachable. Skipping model fetch.");
+            return [];
+        }
         // Get endpoint based on backend
         string endpoint = GetEndpoint(backend, settings, "models");
         if (string.IsNullOrEmpty(endpoint))
@@ -439,6 +507,13 @@ public class LLMAPICalls : MagicPromptAPI
             if (string.IsNullOrEmpty(endpoint))
             {
                 return CreateErrorResponse($"Failed to get endpoint for {backend}");
+            }
+            // Fast-fail for unreachable local backends instead of waiting for the full timeout
+            if (!await IsServerReachable(backend, settings))
+            {
+                string baseUrl = (settings["backends"] as JObject)?[backend]?["baseurl"]?.ToString() ?? "unknown";
+                return CreateErrorResponse(ErrorHandler.FormatErrorMessage(ErrorType.Connectivity,
+                    $"{backend} server at {baseUrl} is not reachable. Please ensure the server is running.", backend));
             }
             // Get the instructions from the request if provided
             string clientProvidedInstructions = messageContentToken["instructions"]?.ToString();
