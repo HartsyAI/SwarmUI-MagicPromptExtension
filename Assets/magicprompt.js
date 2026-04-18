@@ -477,9 +477,25 @@ function addPromptButtons() {
     function positionSettingsPanel() {
         const buttonRect = settingsButton.getBoundingClientRect();
         settingsPanel.style.position = 'fixed';
-        settingsPanel.style.top = (buttonRect.bottom + 10) + 'px';
         settingsPanel.style.right = (window.innerWidth - buttonRect.right) + 'px';
         settingsPanel.style.zIndex = '10000';
+        // Temporarily show to measure height
+        settingsPanel.style.visibility = 'hidden';
+        settingsPanel.style.display = 'block';
+        const panelHeight = settingsPanel.offsetHeight;
+        settingsPanel.style.display = 'none';
+        settingsPanel.style.visibility = '';
+        // Check if there's enough space below the button
+        const spaceBelow = window.innerHeight - buttonRect.bottom - 10;
+        if (spaceBelow >= panelHeight) {
+            // Open downward
+            settingsPanel.style.top = (buttonRect.bottom + 10) + 'px';
+            settingsPanel.style.bottom = '';
+        } else {
+            // Open upward
+            settingsPanel.style.bottom = (window.innerHeight - buttonRect.top + 10) + 'px';
+            settingsPanel.style.top = '';
+        }
     }
 
     // Function to populate the feature selects
