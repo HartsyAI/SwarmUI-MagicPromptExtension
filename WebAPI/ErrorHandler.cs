@@ -915,13 +915,16 @@ public class ErrorHandlerImplementation : IErrorHandler
                     {
                         return errorToken.ToString();
                     }
-                    if (errorToken["message"] != null)
+                    if (errorToken is JObject errObj)
                     {
-                        return errorToken["message"].ToString();
-                    }
-                    if (errorToken["error"]?["message"] != null)
-                    {
-                        return errorToken["error"]["message"].ToString();
+                        if (errObj["message"] != null)
+                        {
+                            return errObj["message"].ToString();
+                        }
+                        if (errObj["error"]?["message"] != null)
+                        {
+                            return errObj["error"]["message"].ToString();
+                        }
                     }
                 }
                 if (jobj["message"] != null)
