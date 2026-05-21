@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using Hartsy.Extensions.MagicPromptExtension.WebAPI.Models;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using SwarmUI.Utils;
 
 namespace Hartsy.Extensions.MagicPromptExtension.WebAPI;
@@ -819,14 +820,15 @@ public class ErrorHandlerImplementation : IErrorHandler
                 return false;
             }
             errorMessage = error;
-            // Map Ollama errors based on known patterns without string checks
-            if (statusCode == HttpStatusCode.NotFound)
+            if (statusCode == HttpStatusCode.NotFound ||
+                error.Contains("no longer compatible", StringComparison.OrdinalIgnoreCase) ||
+                error.Contains("ollama pull", StringComparison.OrdinalIgnoreCase) ||
+                error.Contains("not found", StringComparison.OrdinalIgnoreCase))
             {
                 errorType = ErrorType.ModelNotFound;
             }
             else
             {
-                // Use HTTP status code as a fallback
                 errorType = MapStatusCodeToErrorType(statusCode, "ollama");
             }
             Logs.Error($"Ollama error: {error} (HTTP {(int)statusCode})");
@@ -904,24 +906,27 @@ public class ErrorHandlerImplementation : IErrorHandler
         try
         {
             dynamic json = JsonConvert.DeserializeObject<dynamic>(responseContent);
-            if (json != null)
+            if (json is JObject jobj)
             {
-                // Try common error message paths
-                if (json.error?.message != null)
+                JToken errorToken = jobj["error"];
+                if (errorToken != null)
                 {
-                    return json.error.message.ToString();
+                    if (errorToken.Type == JTokenType.String)
+                    {
+                        return errorToken.ToString();
+                    }
+                    if (errorToken["message"] != null)
+                    {
+                        return errorToken["message"].ToString();
+                    }
+                    if (errorToken["error"]?["message"] != null)
+                    {
+                        return errorToken["error"]["message"].ToString();
+                    }
                 }
-                else if (json.error?.error?.message != null)
+                if (jobj["message"] != null)
                 {
-                    return json.error.error.message.ToString();
-                }
-                else if (json.message != null)
-                {
-                    return json.message.ToString();
-                }
-                else if (json.error != null && json.error is string)
-                {
-                    return json.error.ToString();
+                    return jobj["message"].ToString();
                 }
             }
         }
