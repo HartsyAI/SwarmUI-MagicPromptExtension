@@ -544,7 +544,13 @@ public class LLMAPICalls : MagicPromptAPI
             object requestBody;
             try
             {
-                int maxTokens = settings["max_tokens"]?.Value<int?>() ?? BackendSchema.DefaultMaxTokens;
+                int maxTokens = BackendSchema.DefaultMaxTokens;
+                if (long.TryParse(settings["max_tokens"]?.ToString(), out long parsedMaxTokens)
+                    && parsedMaxTokens >= 1
+                    && parsedMaxTokens <= int.MaxValue)
+                {
+                    maxTokens = (int)parsedMaxTokens;
+                }
                 requestBody = GetSchemaType(backend, messageContent, modelId, messageType, seed, maxTokens);
             }
             catch (ArgumentException ex)
