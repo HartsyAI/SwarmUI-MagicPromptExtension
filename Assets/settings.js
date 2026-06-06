@@ -9,6 +9,9 @@
 // Define backends that don't need base URL configuration
 const FIXED_URL_BACKENDS = ['openai', 'anthropic', 'openrouter', 'grok'];
 
+// Define the default max token limit for requests
+const DEFAULT_MAX_TOKENS = 1024;
+
 // Define default feature to instruction mappings
 const DEFAULT_FEATURE_MAPPINGS = {
   'enhance-prompt': 'prompt',
@@ -74,6 +77,7 @@ async function loadSettings() {
               serverSettings.backend ||
               'ollama',
             visionmodel: serverSettings.visionmodel || '',
+            max_tokens: Number(serverSettings.max_tokens) || DEFAULT_MAX_TOKENS,
             linkChatAndVisionModels:
               serverSettings.linkChatAndVisionModels !== false, // Default to true if not set
             // Backends - merge using spread operator which does a "deep merge" of two objects
@@ -190,6 +194,7 @@ async function saveSettings(skipFeatureMappings = false) {
     const visionTimeout = isLinked
       ? chatTimeout
       : parseInt(document.getElementById('visionTimeout')?.value, 10);
+    const maxTokens = parseInt(document.getElementById('maxTokens')?.value, 10);
     // Create settings object matching exact structure expected by C# DefaultSettings
     const settings = {
       // Core settings
@@ -197,6 +202,7 @@ async function saveSettings(skipFeatureMappings = false) {
       model: chatModel,
       visionbackend: visionBackendId,
       visionmodel: visionModel,
+      max_tokens: !isNaN(maxTokens) && maxTokens > 0 ? maxTokens : MP.settings.max_tokens,
       linkChatAndVisionModels: isLinked,
       backends: {
         ...MP.settings.backends,
@@ -1820,6 +1826,10 @@ function initSettingsModal() {
     if (chatTimeoutInput) {
       const defaultChatTimeout = currentBackend === 'ollama' || currentBackend === 'openaiapi' ? 120 : 60;
       chatTimeoutInput.value = MP.settings.backends[currentBackend]?.timeout ?? defaultChatTimeout;
+    }
+    const maxTokensInput = document.getElementById('maxTokens');
+    if (maxTokensInput) {
+      maxTokensInput.value = MP.settings.max_tokens ?? DEFAULT_MAX_TOKENS;
     }
     const currentVisionBackend = MP.settings.visionbackend || 'ollama';
     const currentVisionBackendRadio = document.getElementById(
