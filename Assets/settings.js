@@ -307,14 +307,11 @@ async function fetchModels() {
   modelSelect.add(loadingOption.cloneNode(true));
   visionModelSelect.add(loadingOption.cloneNode(true));
 
-  // Create a request semaphore
-  if (MP.fetchingModels) {
-    return MP.fetchingModelsPromise;
-  }
+  // Tags this call so a stale response (e.g. from a hung request against an old URL) can't overwrite a newer one
+  const myGeneration = (MP.fetchModelsGeneration = (MP.fetchModelsGeneration || 0) + 1);
 
   try {
-    MP.fetchingModels = true;
-    MP.fetchingModelsPromise = (async () => {
+    const requestPromise = (async () => {
       // Use the currently set backend values from MP.settings
       const chatBackendId = MP.settings.backend || 'ollama';
       const visionBackendId = MP.settings.visionbackend || 'ollama';
@@ -349,6 +346,10 @@ async function fetchModels() {
           }
         );
       });
+
+      if (myGeneration !== MP.fetchModelsGeneration) {
+        return response;
+      }
 
       // Clear existing models
       modelSelect.innerHTML = '';
@@ -403,27 +404,25 @@ async function fetchModels() {
       return response;
     })();
 
-    return await MP.fetchingModelsPromise;
+    return await requestPromise;
   } catch (error) {
     console.error('Error fetching models:', error);
 
-    // Clear and show error state in dropdowns
-    modelSelect.innerHTML = '';
-    visionModelSelect.innerHTML = '';
+    if (myGeneration === MP.fetchModelsGeneration) {
+      // Clear and show error state in dropdowns
+      modelSelect.innerHTML = '';
+      visionModelSelect.innerHTML = '';
 
-    const errorOption = new Option(
-      'Error loading models - Check URL and try again',
-      ''
-    );
-    errorOption.disabled = true;
-    modelSelect.add(errorOption.cloneNode(true));
-    visionModelSelect.add(errorOption.cloneNode(true));
+      const errorOption = new Option(
+        'Error loading models - Check URL and try again',
+        ''
+      );
+      errorOption.disabled = true;
+      modelSelect.add(errorOption.cloneNode(true));
+      visionModelSelect.add(errorOption.cloneNode(true));
+    }
 
     return Promise.reject(error);
-  } finally {
-    // Clear semaphore
-    MP.fetchingModels = false;
-    MP.fetchingModelsPromise = null;
   }
 }
 
@@ -1904,14 +1903,10 @@ function initSettingsModal() {
         }
         try {
           const backendUrl = document.getElementById('backendUrl');
-          const baseUrl = backendUrl ? backendUrl.value : '';
-          MP.settings.backend = backend;
-          if (baseUrl && needsBaseUrl(backend)) {
-            if (!MP.settings.backends[backend]) {
-              MP.settings.backends[backend] = {};
-            }
-            MP.settings.backends[backend].baseurl = baseUrl;
+          if (backendUrl) {
+            backendUrl.value = MP.settings.backends[backend]?.baseurl || '';
           }
+          MP.settings.backend = backend;
           // Save settings with minimal data (just backend)
           const payload = {
             settings: {
@@ -1974,14 +1969,10 @@ function initSettingsModal() {
         }
         try {
           const backendUrl = document.getElementById('visionBackendUrl');
-          const baseUrl = backendUrl ? backendUrl.value : '';
-          MP.settings.visionbackend = backend;
-          if (baseUrl && needsBaseUrl(backend)) {
-            if (!MP.settings.backends[backend]) {
-              MP.settings.backends[backend] = {};
-            }
-            MP.settings.backends[backend].baseurl = baseUrl;
+          if (backendUrl) {
+            backendUrl.value = MP.settings.backends[backend]?.baseurl || '';
           }
+          MP.settings.visionbackend = backend;
           const payload = {
             settings: {
               visionbackend: backend,
