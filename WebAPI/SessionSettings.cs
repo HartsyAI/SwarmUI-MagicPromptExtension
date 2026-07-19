@@ -16,7 +16,7 @@ public class SessionSettings : MagicPromptAPI
         {
             ["baseurl"] = "http://localhost:11434",
             ["unloadModel"] = false,
-            ["timeout"] = 120,
+            ["timeout"] = 20,
             ["endpoints"] = new JObject
             {
                 ["chat"] = "/api/chat",
@@ -27,7 +27,7 @@ public class SessionSettings : MagicPromptAPI
         {
             ["baseurl"] = "http://localhost:11434",
             ["unloadModel"] = false,
-            ["timeout"] = 120,
+            ["timeout"] = 20,
             ["endpoints"] = new JObject
             {
                 ["chat"] = "v1/chat/completions",

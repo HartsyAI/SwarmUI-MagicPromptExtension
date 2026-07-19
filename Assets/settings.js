@@ -1817,8 +1817,7 @@ function initSettingsModal() {
     }
     const chatTimeoutInput = document.getElementById('chatTimeout');
     if (chatTimeoutInput) {
-      const defaultChatTimeout = currentBackend === 'ollama' || currentBackend === 'openaiapi' ? 120 : 60;
-      chatTimeoutInput.value = MP.settings.backends[currentBackend]?.timeout ?? defaultChatTimeout;
+      chatTimeoutInput.value = MP.settings.backends[currentBackend]?.timeout ?? 20;
     }
     const currentVisionBackend = MP.settings.visionbackend || 'ollama';
     const currentVisionBackendRadio = document.getElementById(
@@ -1835,8 +1834,7 @@ function initSettingsModal() {
     }
     const visionTimeoutInput = document.getElementById('visionTimeout');
     if (visionTimeoutInput) {
-      const defaultVisionTimeout = currentVisionBackend === 'ollama' || currentVisionBackend === 'openaiapi' ? 120 : 60;
-      visionTimeoutInput.value = MP.settings.backends[currentVisionBackend]?.timeout ?? defaultVisionTimeout;
+      visionTimeoutInput.value = MP.settings.backends[currentVisionBackend]?.timeout ?? 20;
     }
     initInstructionsUI();
     initInstructionsTabInterface();
@@ -1891,8 +1889,7 @@ function initSettingsModal() {
         updateBaseUrlVisibility(backend, false);
         const chatTimeoutInput = document.getElementById('chatTimeout');
         if (chatTimeoutInput) {
-          const defaultTimeout = backend === 'ollama' || backend === 'openaiapi' ? 120 : 60;
-          chatTimeoutInput.value = MP.settings.backends[backend]?.timeout ?? defaultTimeout;
+          chatTimeoutInput.value = MP.settings.backends[backend]?.timeout ?? 20;
         }
         const modelSelect = document.getElementById('modelSelect');
         if (modelSelect) {
@@ -1954,8 +1951,7 @@ function initSettingsModal() {
         updateBaseUrlVisibility(backend, true);
         const visionTimeoutInput = document.getElementById('visionTimeout');
         if (visionTimeoutInput) {
-          const defaultTimeout = backend === 'ollama' || backend === 'openaiapi' ? 120 : 60;
-          visionTimeoutInput.value = MP.settings.backends[backend]?.timeout ?? defaultTimeout;
+          visionTimeoutInput.value = MP.settings.backends[backend]?.timeout ?? 20;
         }
         const modelSelect = document.getElementById('visionModel');
         if (modelSelect) {

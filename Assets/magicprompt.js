@@ -24,7 +24,7 @@ if (!window.MP) {
                 ollama: {
                     baseurl: 'http://localhost:11434',
                     unloadModel: false,
-                    timeout: 120,
+                    timeout: 20,
                     endpoints: {
                         chat: '/api/chat',
                         models: '/api/tags'
@@ -33,7 +33,7 @@ if (!window.MP) {
                 openaiapi: {
                     baseurl: 'http://localhost:11434',
                     unloadModel: false,
-                    timeout: 120,
+                    timeout: 20,
                     endpoints: {
                         chat: 'v1/chat/completions',
                         models: '/v1/models'

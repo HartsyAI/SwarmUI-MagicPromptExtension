@@ -11,7 +11,7 @@ public class PromptCache
     private readonly object _lock = new();
 
     private readonly int _maxSize;
-    private const int DefaultTimeoutMs = 90_000;
+    private const int DefaultTimeoutMs = 20_000;
 
     public PromptCache(int maxSize = 1000)
     {

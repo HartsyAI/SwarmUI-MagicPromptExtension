@@ -376,25 +376,24 @@ public class LLMAPICalls : MagicPromptAPI
             var sessionSettings = SessionSettings.GetMagicPromptSettings().GetAwaiter().GetResult();
             if (sessionSettings?["success"]?.Value<bool>() != true)
             {
-                return 90_000;
+                return 20_000;
             }
 
             var settings = sessionSettings["settings"] as JObject;
             var backend = settings?["backend"]?.ToString()?.ToLower();
-            int defaultTimeout = backend == "ollama" || backend == "openaiapi" ? 120 : 60;
-            int timeoutSec = GetBackendTimeout(settings, backend, defaultTimeout);
+            int timeoutSec = GetBackendTimeout(settings, backend, defaultTimeout: 20);
 
             // Add 30 second buffer for cache waiting (to exceed the actual LLM timeout)
             return (timeoutSec + 30) * 1000;
         }
         catch
         {
-            return 90_000; // 90 second fallback
+            return 20_000; // 20 second fallback
         }
     }
 
     /// <summary>Gets the timeout value from backend settings, with a fallback default.</summary>
-    public static int GetBackendTimeout(JObject settings, string backend, int defaultTimeout = 60)
+    public static int GetBackendTimeout(JObject settings, string backend, int defaultTimeout = 20)
     {
         if (settings == null || string.IsNullOrEmpty(backend))
         {
@@ -559,8 +558,7 @@ public class LLMAPICalls : MagicPromptAPI
                 // Send request and handle response
                 // Detailed diagnostics to help trace hanging requests
                 Logs.Debug($"[MagicPrompt] Sending request | backend={backend} | type={(messageType == MessageType.Vision ? "vision" : "chat")} | endpoint={endpoint} | model={modelId}");
-                int defaultTimeout = backend == "ollama" ? 120 : 60;
-                int timeoutSec = GetBackendTimeout(settings, backend, defaultTimeout);
+                int timeoutSec = GetBackendTimeout(settings, backend, defaultTimeout: 20);
                 Logs.Debug($"[MagicPrompt] Using timeout of {timeoutSec} seconds for {backend}");
                 using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(timeoutSec));
                 HttpResponseMessage response = await HttpClient.SendAsync(request, cts.Token);
