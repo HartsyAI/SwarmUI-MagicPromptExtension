@@ -1,3 +1,4 @@
+using ImageMagick;
 using SwarmUI.Utils;
 using SwarmUI.Media;
 
@@ -50,6 +51,29 @@ public static class BackendSchema
         };
     }
 
+    /// <summary>Raster formats accepted from the client. ImageMagick also renders SVG, and an SVG can reference local
+    /// files, so every other format is rejected before its pixels are decoded.</summary>
+    private static readonly HashSet<MagickFormat> AllowedFormats = [MagickFormat.Png, MagickFormat.Jpeg, MagickFormat.WebP, MagickFormat.Gif, MagickFormat.Bmp, MagickFormat.Tiff];
+
+    /// <summary>Reads only the header to identify the format. Throws <see cref="InvalidOperationException"/> when the
+    /// data is unreadable or its format is not in <see cref="AllowedFormats"/>.</summary>
+    private static void EnsureRasterImage(byte[] bytes)
+    {
+        MagickFormat format;
+        try
+        {
+            format = new MagickImageInfo(bytes).Format;
+        }
+        catch (MagickException ex)
+        {
+            throw new InvalidOperationException("Image could not be read.", ex);
+        }
+        if (!AllowedFormats.Contains(format))
+        {
+            throw new InvalidOperationException("Unsupported image format.");
+        }
+    }
+
     /// <summary>Compresses image data to optimize for LLM vision models</summary>
     /// <param name="media">The media content containing image data</param>
     /// <param name="targetFormat">The target format ("PNG" or "WEBP")</param>
@@ -68,6 +92,7 @@ public static class BackendSchema
             {
                 return media.Data;
             }
+            EnsureRasterImage(image.RawData);
             int maxDimension = 256; // TODO: This needs to be tested and adjusted
             (int width, int height) = image.GetResolution();
             if (width > maxDimension || height > maxDimension)
@@ -77,6 +102,8 @@ public static class BackendSchema
             }
             // Set compression quality based on format TODO: This needs to be tested and adjusted
             int quality = targetFormat == "PNG" ? 60 : 40;
+            // Keep only the first frame; ConvertTo would otherwise encode every page of a multi-page file.
+            image = image.ForceToPng();
             ImageFile compressedImage = image.ConvertTo(targetFormat, quality: quality);
             // Return just the base64 data (without the data:image/webp;base64, prefix)
             return compressedImage.AsBase64;
