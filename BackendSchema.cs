@@ -1,10 +1,5 @@
-using SixLabors.ImageSharp.Processing;
 using SwarmUI.Utils;
 using SwarmUI.Media;
-using Image = SwarmUI.Utils.Image;
-using ISImage = SixLabors.ImageSharp.Image;
-using ISImage32 = SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>;
-using ISImageFrame32 = SixLabors.ImageSharp.ImageFrame<SixLabors.ImageSharp.PixelFormats.Rgba32>;
 
 namespace Hartsy.Extensions.MagicPromptExtension;
 
@@ -73,19 +68,16 @@ public static class BackendSchema
             {
                 return media.Data;
             }
-            ISImage img = image.ToIS;
             int maxDimension = 256; // TODO: This needs to be tested and adjusted
-            if (img.Width > maxDimension || img.Height > maxDimension)
+            (int width, int height) = image.GetResolution();
+            if (width > maxDimension || height > maxDimension)
             {
-                float scaleFactor = maxDimension / (float)Math.Max(img.Width, img.Height);
-                int newWidth = (int)(img.Width * scaleFactor);
-                int newHeight = (int)(img.Height * scaleFactor);
-                img.Mutate(i => i.Resize(newWidth, newHeight));
+                float scaleFactor = maxDimension / (float)Math.Max(width, height);
+                image = image.Resize((int)(width * scaleFactor), (int)(height * scaleFactor));
             }
             // Set compression quality based on format TODO: This needs to be tested and adjusted
             int quality = targetFormat == "PNG" ? 60 : 40;
-            ImageFile tempImage = new Image(ImageFile.ISImgToPngBytes(img), image.Type);
-            ImageFile compressedImage = tempImage.ConvertTo(targetFormat, quality: quality);
+            ImageFile compressedImage = image.ConvertTo(targetFormat, quality: quality);
             // Return just the base64 data (without the data:image/webp;base64, prefix)
             return compressedImage.AsBase64;
         }
