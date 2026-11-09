@@ -55,11 +55,6 @@ public class PromptHandler
             return;
         }
 
-        if (!useCache)
-        {
-            _cache.Clear();
-        }
-
         var firstMppromptContent = matches[0].Groups[2].Value;
         var llmResponses = new List<string>();
 
@@ -83,15 +78,19 @@ public class PromptHandler
     {
         try
         {
+            // Resolved here so the cache key can include the instruction text (with variables substituted).
+            string instructions = InstructionResolver.Resolve(userInput, instructionId, _paramInstructions);
             string response;
             if (useCache)
             {
                 var timeoutMs = LLMAPICalls.GetChatBackendTimeoutMs();
-                response = _cache.GetOrCreate(content, instructionId, () => MakeLlmRequest(content, userInput, instructionId), timeoutMs);
+                string modelId = userInput.Get(_paramModelId, defVal: string.Empty);
+                response = _cache.GetOrCreate(content, modelId, instructions, () => MakeLlmRequest(content, userInput, instructions), timeoutMs);
             }
             else
             {
-                response = MakeLlmRequest(content, userInput, instructionId);
+                // Cache off for this request only; other users' cached results are left alone.
+                response = MakeLlmRequest(content, userInput, instructions);
             }
 
             if (string.IsNullOrEmpty(response))
@@ -109,14 +108,14 @@ public class PromptHandler
         }
     }
 
-    private string MakeLlmRequest(string prompt, T2IParamInput userInput, string instructionId = null)
+    private string MakeLlmRequest(string prompt, T2IParamInput userInput, string instructions)
     {
         var request = new JObject
         {
             ["messageContent"] = new JObject
             {
                 ["text"] = prompt,
-                ["instructions"] = InstructionResolver.Resolve(userInput, instructionId, _paramInstructions)
+                ["instructions"] = instructions
             },
             ["modelId"] = userInput.Get(_paramModelId, defVal: string.Empty),
             ["messageType"] = "Text",
