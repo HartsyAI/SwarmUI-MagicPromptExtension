@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text;
 using SwarmUI.Utils;
 
 namespace Hartsy.Extensions.MagicPromptExtension;
@@ -18,14 +20,12 @@ public class PromptCache
         _maxSize = maxSize;
     }
 
-    /// <summary>
-    /// Gets a cached result or creates a new one using the provided function.
-    /// Handles request deduplication - if another thread is already fetching the same key,
-    /// this thread will wait for that result instead of making a duplicate request.
-    /// </summary>
-    public string GetOrCreate(string prompt, string instructionId, Func<string> createValue, int timeoutMs = 0)
+    /// <summary>Gets a cached result or creates one with <paramref name="createValue"/>. The key covers the prompt, the model
+    /// and the resolved instruction text, so a changed model, variable or instruction never returns a stale response.
+    /// If another thread is already fetching the same key, this thread waits for that result instead of making a duplicate request.</summary>
+    public string GetOrCreate(string prompt, string modelId, string instructions, Func<string> createValue, int timeoutMs = 0)
     {
-        var cacheKey = BuildCacheKey(prompt, instructionId);
+        string cacheKey = BuildCacheKey(prompt, modelId, instructions);
         var effectiveTimeout = timeoutMs > 0 ? timeoutMs : DefaultTimeoutMs;
         TaskCompletionSource<string> pendingTcs = null;
 
@@ -92,28 +92,11 @@ public class PromptCache
         return result;
     }
 
-    public void Clear()
+    private static string BuildCacheKey(string prompt, string modelId, string instructions)
     {
-        lock (_lock)
-        {
-            _cache.Clear();
-            _accessOrder.Clear();
-            _cacheNodes.Clear();
-
-            foreach (var tcs in _pendingRequests.Values)
-            {
-                tcs.TrySetCanceled();
-            }
-            _pendingRequests.Clear();
-        }
-    }
-
-    private static string BuildCacheKey(string prompt, string instructionId)
-    {
-        var normalizedPrompt = NormalizePrompt(prompt);
-        return string.IsNullOrEmpty(instructionId)
-            ? normalizedPrompt
-            : $"{normalizedPrompt}||{instructionId.ToLowerInvariant()}";
+        string normalizedPrompt = NormalizePrompt(prompt);
+        string instructionHash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(instructions ?? string.Empty)));
+        return $"{normalizedPrompt}||{(modelId ?? string.Empty).ToLowerInvariant()}||{instructionHash}";
     }
 
     private static string NormalizePrompt(string prompt)

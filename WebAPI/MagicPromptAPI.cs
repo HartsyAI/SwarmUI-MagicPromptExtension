@@ -17,10 +17,11 @@ public static class MagicPromptPermissions
 {
     public static readonly PermInfoGroup MagicPromptPermGroup = new("MagicPrompt", "Permissions related to MagicPrompt functionality for API calls and settings.");
     public static readonly PermInfo PermPhoneHome = Permissions.Register(new("magicprompt_phone_home", "Phone Home", "Allows the extension to make outbound calls to retrieve external data.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
-    public static readonly PermInfo PermSaveConfig = Permissions.Register(new("magicprompt_save_config", "Save Configuration", "Allows the user to save configuration settings.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
+    /// <summary>Saving settings changes the shared backend URLs every user's requests (and keys) are sent to, so it is admin-level like the host's edit_backends.</summary>
+    public static readonly PermInfo PermSaveConfig = Permissions.Register(new("magicprompt_save_config", "Save Configuration", "Allows the user to save configuration settings, including the backend URLs used for every user's requests.", PermissionDefault.ADMINS, MagicPromptPermGroup, PermSafetyLevel.POWERFUL));
     public static readonly PermInfo PermReadConfig = Permissions.Register(new("magicprompt_read_config", "Read Configuration", "Allows the user to read configuration settings.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
     public static readonly PermInfo PermGetModels = Permissions.Register(new("magicprompt_get_models", "Get Models", "Allows the user to retrieve the list of available models.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
-    public static readonly PermInfo PermResetConfig = Permissions.Register(new("magicprompt_reset_config", "Reset Configuration", "Allows the user to reset configuration settings.", PermissionDefault.POWERUSERS, MagicPromptPermGroup));
+    public static readonly PermInfo PermResetConfig = Permissions.Register(new("magicprompt_reset_config", "Reset Configuration", "Allows the user to reset the shared configuration settings.", PermissionDefault.ADMINS, MagicPromptPermGroup, PermSafetyLevel.POWERFUL));
 }
 
 [API.APIClass("API routes related to MagicPromptExtension extension")]
