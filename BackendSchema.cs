@@ -6,6 +6,8 @@ namespace Hartsy.Extensions.MagicPromptExtension;
 
 public static class BackendSchema
 {
+    public static readonly int DefaultMaxTokens = 1024;
+
     public enum MessageType
     {
         Text,
@@ -36,7 +38,7 @@ public static class BackendSchema
     /// <param name="model">Model name to use</param>
     /// <param name="messageType">Type of message (Text or Vision)</param>
     /// <returns>Returns an object with the schema type for the backend.</returns>
-    public static object GetSchemaType(string type, MessageContent content, string model, MessageType messageType = MessageType.Text, long seed = -1)
+    public static object GetSchemaType(string type, MessageContent content, string model, MessageType messageType = MessageType.Text, long seed = -1, int? maxTokens = null)
     {
         if (content == null || string.IsNullOrEmpty(model))
         {
@@ -47,9 +49,9 @@ public static class BackendSchema
         return type switch
         {
             "ollama" => OllamaRequestBody(content, model, messageType, seed),
-            "grok" => OpenAICompatibleRequestBody(content, model, messageType, preferPngForBase64: true, seed),
-            "openai" or "openaiapi" or "openrouter" => OpenAICompatibleRequestBody(content, model, messageType, preferPngForBase64: false, seed),
-            "anthropic" => AnthropicRequestBody(content, model, messageType),
+            "grok" => OpenAICompatibleRequestBody(content, model, messageType, preferPngForBase64: true, seed, maxTokens),
+            "openai" or "openaiapi" or "openrouter" => OpenAICompatibleRequestBody(content, model, messageType, preferPngForBase64: false, seed, maxTokens),
+            "anthropic" => AnthropicRequestBody(content, model, messageType, maxTokens),
             _ => throw new ArgumentException($"Unsupported backend type: {type}")
         };
     }
@@ -191,7 +193,7 @@ public static class BackendSchema
     }
 
     /// <summary>Generates a request body for OpenAI and compatible backends.</summary>
-    private static object OpenAICompatibleRequestBody(MessageContent content, string model, MessageType messageType, bool preferPngForBase64, long seed = -1)
+    private static object OpenAICompatibleRequestBody(MessageContent content, string model, MessageType messageType, bool preferPngForBase64, long seed = -1, int? maxTokens = null)
     {
         List<object> messages = [];
         // Add system message if instructions exist
@@ -230,7 +232,7 @@ public static class BackendSchema
                 {
                     model,
                     messages = messages.ToArray(),
-                    max_tokens = 1000,
+                    max_tokens = maxTokens ?? DefaultMaxTokens,
                     temperature = 1.0,
                     stream = false,
                     seed
@@ -241,7 +243,7 @@ public static class BackendSchema
             {
                 model,
                 messages = messages.ToArray(),
-                max_tokens = 1000,
+                max_tokens = maxTokens ?? DefaultMaxTokens,
                 temperature = 1.0,
                 stream = false
             };
@@ -254,7 +256,7 @@ public static class BackendSchema
             {
                 model,
                 messages = messages.ToArray(),
-                max_tokens = 1000,
+                max_tokens = maxTokens ?? DefaultMaxTokens,
                 temperature = 1.0,
                 stream = false,
                 seed
@@ -266,14 +268,14 @@ public static class BackendSchema
             model,
             messages = messages.ToArray(),
             temperature = 1.0,
-            max_tokens = 1000,
+            max_tokens = maxTokens ?? DefaultMaxTokens,
             top_p = 0.9,
             stream = false
         };
     }
 
     /// <summary>Generates a request body for the Anthropic (Claude) API.</summary>
-    private static object AnthropicRequestBody(MessageContent content, string model, MessageType messageType)
+    private static object AnthropicRequestBody(MessageContent content, string model, MessageType messageType, int? maxTokens = null)
     {
         List<object> messages = [];
         if (messageType == MessageType.Vision && content.Media?.Any() == true)
@@ -309,7 +311,7 @@ public static class BackendSchema
                 model,
                 messages = messages.ToArray(),
                 system = content.Instructions,
-                max_tokens = 1024
+                max_tokens = maxTokens ?? DefaultMaxTokens
             };
         }
         messages.Add(new { role = "user", content = content.Text });
@@ -318,7 +320,7 @@ public static class BackendSchema
             model,
             messages = messages.ToArray(),
             system = content.Instructions,
-            max_tokens = 1024
+            max_tokens = maxTokens ?? DefaultMaxTokens
         };
     }
 }

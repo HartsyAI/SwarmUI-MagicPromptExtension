@@ -181,7 +181,7 @@
                                             <label class="btn btn-outline-primary" for="grokLLMBtn">Grok (xAI)</label>
                                         </div>
                                     </div>
-                                    <div class="d-flex gap-3">
+                                    <div class="d-flex gap-3 flex-wrap">
                                         <div class="form-group flex-grow-1" id="baseUrlContainer">
                                             <label class="form-label">Base URL</label>
                                             <input type="text" class="form-control" id="backendUrl" placeholder="Enter base URL">
@@ -189,6 +189,10 @@
                                         <div class="form-group" id="chatTimeoutContainer" style="min-width: 120px;">
                                             <label class="form-label">Timeout (s)</label>
                                             <input type="number" class="form-control" id="chatTimeout" min="0" step="1" placeholder="seconds">
+                                        </div>
+                                        <div class="form-group" id="chatMaxTokensContainer" style="min-width: 140px;">
+                                            <label class="form-label">Max Tokens</label>
+                                            <input type="number" class="form-control" id="maxTokens" min="1" step="1" placeholder="tokens">
                                         </div>
                                     </div>
                                     <div class="form-group">

@@ -1,4 +1,5 @@
 using Newtonsoft.Json.Linq;
+using SwarmUI.Backends;
 using SwarmUI.Core;
 using SwarmUI.Utils;
 
@@ -82,6 +83,7 @@ public class SessionSettings : MagicPromptAPI
         ["visionbackend"] = "ollama",
         ["model"] = "llama3.2-vision:latest",
         ["visionmodel"] = "llama3.2-vision:latest",
+        ["max_tokens"] = BackendSchema.DefaultMaxTokens,
         ["instructions"] = new JObject
         {
             ["chat"] = "You are a chatbot named Hartsy. Come up with a random backstory as to why you were created and how you were made to help the user with Stable Diffusion. You will respond to any questions or chats in this character. You will include tips on how to make good prompts for stable diffusion. Never break character and randomly end your response with \"Thank you for choosing Hartsy!\"",
